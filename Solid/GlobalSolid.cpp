@@ -652,7 +652,7 @@ int GlobalSolid::solveStaticProblem()
             for (Cell *el : cells_part)
             {
                 std::pair<vector<double>, matrix<double>> elementMatrices;
-                elementMatrices = el->cellContributions(planeState_, "STATIC", loadStep, numberOfSteps_, 1.0, 0.25, 0.5);
+                elementMatrices = el->cellContributions(planeState_, "STATIC", loadStep, numberOfSteps_, 1.0, 0.25, 0.5, quadrature_);
                 int num = el->getControlPoints().size();
 
                 for (size_t i = 0; i < num; i++)
@@ -1400,7 +1400,7 @@ int GlobalSolid::solveDynamicProblem()
             for (Cell *el : cells_part)
             {
                 std::pair<vector<double>, matrix<double>> elementMatrices;
-                elementMatrices = el->cellContributions(planeState_, "DYNAMIC", 1, 1, deltat_, beta_, gamma_); //COM 1 E 1 AS FORÇAS DE DOMINIO PERMANCEM CONSTATEM AO LONGO DO TEMPO
+                elementMatrices = el->cellContributions(planeState_, "DYNAMIC", 1, 1, deltat_, beta_, gamma_, quadrature_); //COM 1 E 1 AS FORÇAS DE DOMINIO PERMANCEM CONSTATEM AO LONGO DO TEMPO
                 int num = el->getControlPoints().size();
 
                 for (size_t i = 0; i < num; i++)
@@ -1650,10 +1650,10 @@ int GlobalSolid::firstAccelerationCalculation()
     for (Cell *el : cells_part)
     {
         std::pair<vector<double>, matrix<double>> elementMatrices;
-        elementMatrices = el->cellContributions(planeState_, "STATIC", 1, 1, deltat_, beta_, gamma_);
+        elementMatrices = el->cellContributions(planeState_, "STATIC", 1, 1, deltat_, beta_, gamma_, quadrature_);
         int num = el->getControlPoints().size();
         matrix<double> massLocal(2 * num, 2 * num, 0.0);
-        massLocal = el->massMatrix();
+        massLocal = el->massMatrix(quadrature_);
 
         for (size_t i = 0; i < num; i++)
         {
