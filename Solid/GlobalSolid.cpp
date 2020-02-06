@@ -109,7 +109,7 @@ void GlobalSolid::dataReading(const std::string &inputParameters, const std::str
         std::getline(parameters, line);
         std::getline(parameters, line);
         std::getline(parameters, line);
-        parameters >> orderParaview_;
+        parameters >> quadrature_;
     }
     else
     {
@@ -122,8 +122,15 @@ void GlobalSolid::dataReading(const std::string &inputParameters, const std::str
         std::getline(parameters, line);
         std::getline(parameters, line);
         std::getline(parameters, line);
-        parameters >> orderParaview_;
+        parameters >> quadrature_;
     }
+
+    std::getline(parameters, line);
+    std::getline(parameters, line);
+    std::getline(parameters, line);
+    std::getline(parameters, line);
+    std::getline(parameters, line);
+    parameters >> orderParaview_;
 
     mirror << "TYPE OF ANALYSIS: " << problemType_ << std::endl;
     mirror << "PLANE STATE: " << planeState_ << std::endl;
@@ -135,6 +142,7 @@ void GlobalSolid::dataReading(const std::string &inputParameters, const std::str
         mirror << "BETA: " << beta_ << std::endl;
         mirror << "GAMMA: " << gamma_ << std::endl;
     }
+    mirror << "NUMBER OF INTEGRATION POINTS: " << quadrature_ * quadrature_ << std::endl;
     mirror << "DEGREE(PARAVIEW): " << orderParaview_ << std::endl;
     mirror << std::endl;
 
@@ -964,7 +972,7 @@ void GlobalSolid::exportToParaview(const int &loadstep)
     file << "    <PointData>"
          << "\n";
 
-    file << "      <DataArray type=\"Float64\" NumberOfComponents=\"3\" "
+    file << "      <DataArray type=\"Float64\" NumberOfComponents=\"2\" "
          << "Name=\"Displacement\" format=\"ascii\">"
          << "\n";
 
@@ -1002,7 +1010,7 @@ void GlobalSolid::exportToParaview(const int &loadstep)
 
         for (int i = 0; i < auxxx; i++)
         {
-            file << xInt(i, 0) << " " << xInt(i, 1) << " " << xInt(i, 1) << std::endl;
+            file << xInt(i, 0) << " " << xInt(i, 1) << std::endl;
         }
     }
 
@@ -1282,4 +1290,492 @@ void GlobalSolid::ISOdomainDecompositionMETIS()
         mirrorData << "process = " << pointsPartition_[i]
                    << ", control point = " << i << std::endl;
     }
+}
+
+int GlobalSolid::solveDynamicProblem()
+{
+    firstAccelerationCalculation();
+
+    Mat A;
+    Vec b, x, All;
+    PetscErrorCode ierr;
+    PetscInt Istart, Iend, Idof, Ione, iterations, *dof;
+    KSP ksp;
+    PC pc;
+    VecScatter ctx;
+    PetscScalar val, value;
+
+    int rank;
+
+    MPI_Comm_rank(PETSC_COMM_WORLD, &rank);
+
+    //int n = (order_ + 1) * (order_ + 2) / 2.0;
+    //std::stringstream text1;
+
+    if (rank == 0)
+    {
+        exportToParaview(0);
+        //text1 << "DeslocamentoxTempo.txt";
+    }
+    //std::ofstream file1(text1.str());
+
+    double initialNorm = 0.0;
+    for (ControlPoint *node : controlPoints_)
+    {
+        double x1 = node->getInitialCoordinate()(0);
+        double x2 = node->getInitialCoordinate()(1);
+        initialNorm += x1 * x1 + x2 * x2;
+    }
+
+    PetscMalloc1(dirichletConditions_.size(), &dof);
+    for (size_t i = 0; i < dirichletConditions_.size(); i++)
+    {
+        int indexNode = dirichletConditions_[i]->getControlPoint()->getIndex();
+        int direction = dirichletConditions_[i]->getDirection();
+        dof[i] = (2 * indexNode + direction);
+    }
+
+    int nnnumber = controlPoints_.size();
+
+    for (int timeStep = 1; timeStep <= numberOfSteps_; timeStep++)
+    {
+        boost::posix_time::ptime t1 =
+            boost::posix_time::microsec_clock::local_time();
+
+        if (rank == 0)
+        {
+            std::cout << "------------------------- TIME STEP = "
+                      << timeStep << " -------------------------\n";
+        }
+
+        //double norm = 100.0;
+
+        for (int iteration = 0; iteration < maximumOfIteration_; iteration++) //definir o máximo de interações por passo de carga
+        {
+            //Create PETSc sparse parallel matrix
+            ierr = MatCreateAIJ(PETSC_COMM_WORLD, PETSC_DECIDE, PETSC_DECIDE,
+                                2 * nnnumber, 2 * nnnumber,
+                                100, NULL, 300, NULL, &A);
+            CHKERRQ(ierr);
+
+            ierr = MatGetOwnershipRange(A, &Istart, &Iend);
+            CHKERRQ(ierr);
+
+            //Create PETSc vectors
+            ierr = VecCreate(PETSC_COMM_WORLD, &b);
+            CHKERRQ(ierr);
+            ierr = VecSetSizes(b, PETSC_DECIDE, 2 * nnnumber);
+            CHKERRQ(ierr);
+            ierr = VecSetFromOptions(b);
+            CHKERRQ(ierr);
+            ierr = VecDuplicate(b, &x);
+            CHKERRQ(ierr);
+            ierr = VecDuplicate(b, &All);
+            CHKERRQ(ierr);
+
+            if (rank == 0)
+            {
+                for (NeumannCondition *con : neumannConditions_)
+                {
+                    int ind = con->getControlPoint()->getIndex();
+                    int dir = con->getDirection();
+                    double val1 = con->getValue(); //AS FORÇAS APLICADAS PODEM VARIAR AO LONGO DO TEMPO
+                    int dof = 2 * ind + dir;
+                    ierr = VecSetValues(b, 1, &dof, &val1, ADD_VALUES);
+                }
+            }
+
+            if (iteration == 0)
+            {
+                for (DirichletCondition *con : dirichletConditions_)
+                {
+                    ControlPoint *cp = con->getControlPoint();
+                    int dir = con->getDirection();
+                    double val1 = (con->getValue()) / (1.0 * numberOfSteps_);
+
+                    cp->incrementCurrentCoordinate(dir, val1);
+                }
+            }
+
+            for (Cell *el : cells_part)
+            {
+                std::pair<vector<double>, matrix<double>> elementMatrices;
+                elementMatrices = el->cellContributions(planeState_, "DYNAMIC", 1, 1, deltat_, beta_, gamma_); //COM 1 E 1 AS FORÇAS DE DOMINIO PERMANCEM CONSTATEM AO LONGO DO TEMPO
+                int num = el->getControlPoints().size();
+
+                for (size_t i = 0; i < num; i++)
+                {
+                    if (fabs(elementMatrices.first(2 * i)) >= 1.0e-15)
+                    {
+                        int dof = 2 * el->getControlPoint(i)->getIndex();
+                        ierr = VecSetValues(b, 1, &dof, &elementMatrices.first(2 * i), ADD_VALUES);
+                    }
+                    if (fabs(elementMatrices.first(2 * i + 1)) >= 1.0e-15)
+                    {
+                        int dof = 2 * el->getControlPoint(i)->getIndex() + 1;
+                        ierr = VecSetValues(b, 1, &dof, &elementMatrices.first(2 * i + 1), ADD_VALUES);
+                    }
+
+                    for (size_t j = 0; j < num; j++)
+                    {
+                        if (fabs(elementMatrices.second(2 * i, 2 * j)) >= 1.e-15)
+                        {
+                            int dof1 = 2 * el->getControlPoint(i)->getIndex();
+                            int dof2 = 2 * el->getControlPoint(j)->getIndex();
+                            ierr = MatSetValues(A, 1, &dof1, 1, &dof2, &elementMatrices.second(2 * i, 2 * j), ADD_VALUES);
+                        }
+                        if (fabs(elementMatrices.second(2 * i + 1, 2 * j)) >= 1.e-15)
+                        {
+                            int dof1 = 2 * el->getControlPoint(i)->getIndex() + 1;
+                            int dof2 = 2 * el->getControlPoint(j)->getIndex();
+                            ierr = MatSetValues(A, 1, &dof1, 1, &dof2, &elementMatrices.second(2 * i + 1, 2 * j), ADD_VALUES);
+                        }
+                        if (fabs(elementMatrices.second(2 * i, 2 * j + 1)) >= 1.e-15)
+                        {
+                            int dof1 = 2 * el->getControlPoint(i)->getIndex();
+                            int dof2 = 2 * el->getControlPoint(j)->getIndex() + 1;
+                            ierr = MatSetValues(A, 1, &dof1, 1, &dof2, &elementMatrices.second(2 * i, 2 * j + 1), ADD_VALUES);
+                        }
+                        if (fabs(elementMatrices.second(2 * i + 1, 2 * j + 1)) >= 1.e-15)
+                        {
+                            int dof1 = 2 * el->getControlPoint(i)->getIndex() + 1;
+                            int dof2 = 2 * el->getControlPoint(j)->getIndex() + 1;
+                            ierr = MatSetValues(A, 1, &dof1, 1, &dof2, &elementMatrices.second(2 * i + 1, 2 * j + 1), ADD_VALUES);
+                        }
+                    }
+                }
+            }
+
+            //Assemble matrices and vectors
+            ierr = MatAssemblyBegin(A, MAT_FINAL_ASSEMBLY);
+            CHKERRQ(ierr);
+            ierr = MatAssemblyEnd(A, MAT_FINAL_ASSEMBLY);
+            CHKERRQ(ierr);
+
+            ierr = VecAssemblyBegin(b);
+            CHKERRQ(ierr);
+            ierr = VecAssemblyEnd(b);
+            CHKERRQ(ierr);
+
+            MatZeroRowsColumns(A, dirichletConditions_.size(), dof, 1.0, x, b);
+
+            //Create KSP context to solve the linear system
+            ierr = KSPCreate(PETSC_COMM_WORLD, &ksp);
+            CHKERRQ(ierr);
+            ierr = KSPSetOperators(ksp, A, A);
+            CHKERRQ(ierr);
+
+            //Solve using MUMPS
+#if defined(PETSC_HAVE_MUMPS)
+            ierr = KSPSetType(ksp, KSPPREONLY);
+            ierr = KSPGetPC(ksp, &pc);
+            ierr = PCSetType(pc, PCLU);
+#endif
+            ierr = KSPSetFromOptions(ksp);
+            CHKERRQ(ierr);
+            ierr = KSPSetUp(ksp);
+
+            //Solve linear system
+            ierr = KSPSolve(ksp, b, x);
+            CHKERRQ(ierr);
+            ierr = KSPGetTotalIterations(ksp, &iterations);
+
+            //Gathers the solution vector to the master process
+            ierr = VecScatterCreateToAll(x, &ctx, &All);
+            CHKERRQ(ierr);
+            ierr = VecScatterBegin(ctx, x, All, INSERT_VALUES, SCATTER_FORWARD);
+            CHKERRQ(ierr);
+            ierr = VecScatterEnd(ctx, x, All, INSERT_VALUES, SCATTER_FORWARD);
+            CHKERRQ(ierr);
+            ierr = VecScatterDestroy(&ctx);
+            CHKERRQ(ierr);
+
+            // VecView(x,PETSC_VIEWER_STDOUT_WORLD);CHKERRQ(ierr);
+
+            //Updates nodal variables
+            double norm = 0.0;
+            Ione = 1;
+
+            for (ControlPoint *cp : controlPoints_)
+            {
+                int i = cp->getIndex();
+
+                Idof = 2 * i;
+                ierr = VecGetValues(All, Ione, &Idof, &val);
+                CHKERRQ(ierr);
+                norm += val * val;
+                cp->incrementCurrentCoordinate(0, val);
+
+                Idof = 2 * i + 1;
+                ierr = VecGetValues(All, Ione, &Idof, &val);
+                CHKERRQ(ierr);
+                norm += val * val;
+                cp->incrementCurrentCoordinate(1, val);
+
+                bounded_vector<double, 2> vel, accel;
+                accel = cp->getCurrentCoordinate() / (beta_ * deltat_ * deltat_) - cp->getPastCoordinate() / (beta_ * deltat_ * deltat_) -
+                        cp->getPastVelocity() / (beta_ * deltat_) - cp->getPastAcceleration() * (0.5 / beta_ - 1.0);
+                cp->setCurrentAcceleration(accel);
+
+                vel = gamma_ * deltat_ * cp->getCurrentAcceleration() + cp->getPastVelocity() + deltat_ * (1.0 - gamma_) * cp->getPastAcceleration();
+                cp->setCurrentVelocity(vel);
+            }
+
+            boost::posix_time::ptime t2 =
+                boost::posix_time::microsec_clock::local_time();
+
+            if (rank == 0)
+            {
+                boost::posix_time::time_duration diff = t2 - t1;
+                std::cout << "Iteration = " << iteration
+                          << " (" << timeStep << ")"
+                          << "   x Norm = " << std::scientific << sqrt(norm / initialNorm)
+                          << "  Time (s) = " << std::fixed
+                          << diff.total_milliseconds() / 1000. << std::endl;
+            }
+
+            ierr = KSPDestroy(&ksp);
+            CHKERRQ(ierr);
+            ierr = VecDestroy(&b);
+            CHKERRQ(ierr);
+            ierr = VecDestroy(&x);
+            CHKERRQ(ierr);
+            ierr = VecDestroy(&All);
+            CHKERRQ(ierr);
+            ierr = MatDestroy(&A);
+            CHKERRQ(ierr);
+
+            if (sqrt(norm / initialNorm) <= tolerance_)
+            {
+                break;
+            }
+        }
+
+        if (rank == 0)
+        {
+            exportToParaview(timeStep);
+            // file1 << timeStep * deltat_ << " " << nodes_[1]->getCurrentCoordinate()[1] - nodes_[1]->getInitialCoordinate()[1] << std::endl;
+        }
+
+        for (ControlPoint *cp : controlPoints_)
+        {
+            bounded_vector<double, 2> coordinate = cp->getCurrentCoordinate();
+            cp->setPastCoordinate(coordinate);
+            bounded_vector<double, 2> vel = cp->getCurrentVelocity();
+            cp->setPastVelocity(vel);
+            bounded_vector<double, 2> accel = cp->getCurrentAcceleration();
+            cp->setPastAcceleration(accel);
+        }
+
+        for (ControlPoint *cp : controlPoints_)
+        {
+            bounded_vector<double, 2> vel, accel;
+            accel = cp->getCurrentCoordinate() / (beta_ * deltat_ * deltat_) - cp->getPastCoordinate() / (beta_ * deltat_ * deltat_) -
+                    cp->getPastVelocity() / (beta_ * deltat_) - cp->getPastAcceleration() * (0.5 / beta_ - 1.0);
+            cp->setCurrentAcceleration(accel);
+            vel = gamma_ * deltat_ * cp->getCurrentAcceleration() + cp->getPastVelocity() + deltat_ * (1.0 - gamma_) * cp->getPastAcceleration();
+            cp->setCurrentVelocity(vel);
+        }
+    }
+    PetscFree(dof);
+    return 0;
+}
+
+int GlobalSolid::firstAccelerationCalculation()
+{
+    Mat A;
+    Vec b, x, All;
+    PetscErrorCode ierr;
+    PetscInt Istart, Iend, Idof, Ione, iterations, *dof;
+    KSP ksp;
+    PC pc;
+    VecScatter ctx;
+    PetscScalar val, value;
+
+    int rank;
+
+    MPI_Comm_rank(PETSC_COMM_WORLD, &rank);
+    int nnnumber = controlPoints_.size();
+
+    //int n = (order_ + 1) * (order_ + 2) / 2.0;
+
+    //Create PETSc sparse parallel matrix
+    PetscMalloc1(dirichletConditions_.size(), &dof);
+    for (size_t i = 0; i < dirichletConditions_.size(); i++)
+    {
+        int indexNode = dirichletConditions_[i]->getControlPoint()->getIndex();
+        int direction = dirichletConditions_[i]->getDirection();
+        dof[i] = (2 * indexNode + direction);
+    }
+    ierr = MatCreateAIJ(PETSC_COMM_WORLD, PETSC_DECIDE, PETSC_DECIDE,
+                        2 * nnnumber, 2 * nnnumber,
+                        100, NULL, 300, NULL, &A);
+    CHKERRQ(ierr);
+
+    ierr = MatGetOwnershipRange(A, &Istart, &Iend);
+    CHKERRQ(ierr);
+
+    //Create PETSc vectors
+    ierr = VecCreate(PETSC_COMM_WORLD, &b);
+    CHKERRQ(ierr);
+    ierr = VecSetSizes(b, PETSC_DECIDE, 2 * nnnumber);
+    CHKERRQ(ierr);
+    ierr = VecSetFromOptions(b);
+    CHKERRQ(ierr);
+    ierr = VecDuplicate(b, &x);
+    CHKERRQ(ierr);
+    ierr = VecDuplicate(b, &All);
+    CHKERRQ(ierr);
+
+    if (rank == 0)
+    {
+        for (NeumannCondition *con : neumannConditions_)
+        {
+            int ind = con->getControlPoint()->getIndex();
+            int dir = con->getDirection();
+            double val1 = con->getValue();
+            int dof = 2 * ind + dir;
+            ierr = VecSetValues(b, 1, &dof, &val1, ADD_VALUES);
+        }
+    }
+
+    for (DirichletCondition *con : dirichletConditions_)
+    {
+        int dir = con->getDirection();
+        double val1 = con->getValue();
+
+        con->getControlPoint()->incrementCurrentCoordinate(dir, val1);
+    }
+
+    for (Cell *el : cells_part)
+    {
+        std::pair<vector<double>, matrix<double>> elementMatrices;
+        elementMatrices = el->cellContributions(planeState_, "STATIC", 1, 1, deltat_, beta_, gamma_);
+        int num = el->getControlPoints().size();
+        matrix<double> massLocal(2 * num, 2 * num, 0.0);
+        massLocal = el->massMatrix();
+
+        for (size_t i = 0; i < num; i++)
+        {
+            if (fabs(elementMatrices.first(2 * i)) >= 1.0e-15)
+            {
+                int dof = 2 * el->getControlPoint(i)->getIndex();
+                ierr = VecSetValues(b, 1, &dof, &elementMatrices.first(2 * i), ADD_VALUES);
+            }
+            if (fabs(elementMatrices.first(2 * i + 1)) >= 1.0e-15)
+            {
+                int dof = 2 * el->getControlPoint(i)->getIndex() + 1;
+                ierr = VecSetValues(b, 1, &dof, &elementMatrices.first(2 * i + 1), ADD_VALUES);
+            }
+
+            for (size_t j = 0; j < num; j++)
+            {
+                if (fabs(massLocal(2 * i, 2 * j)) >= 1.e-15)
+                {
+                    int dof1 = 2 * el->getControlPoint(i)->getIndex();
+                    int dof2 = 2 * el->getControlPoint(j)->getIndex();
+                    ierr = MatSetValues(A, 1, &dof1, 1, &dof2, &massLocal(2 * i, 2 * j), ADD_VALUES);
+                }
+                if (fabs(massLocal(2 * i + 1, 2 * j)) >= 1.e-15)
+                {
+                    int dof1 = 2 * el->getControlPoint(i)->getIndex() + 1;
+                    int dof2 = 2 * el->getControlPoint(j)->getIndex();
+                    ierr = MatSetValues(A, 1, &dof1, 1, &dof2, &massLocal(2 * i + 1, 2 * j), ADD_VALUES);
+                }
+                if (fabs(massLocal(2 * i, 2 * j + 1)) >= 1.e-15)
+                {
+                    int dof1 = 2 * el->getControlPoint(i)->getIndex();
+                    int dof2 = 2 * el->getControlPoint(j)->getIndex() + 1;
+                    ierr = MatSetValues(A, 1, &dof1, 1, &dof2, &massLocal(2 * i, 2 * j + 1), ADD_VALUES);
+                }
+                if (fabs(massLocal(2 * i + 1, 2 * j + 1)) >= 1.e-15)
+                {
+                    int dof1 = 2 * el->getControlPoint(i)->getIndex() + 1;
+                    int dof2 = 2 * el->getControlPoint(j)->getIndex() + 1;
+                    ierr = MatSetValues(A, 1, &dof1, 1, &dof2, &massLocal(2 * i + 1, 2 * j + 1), ADD_VALUES);
+                }
+            }
+        }
+    }
+
+    //Assemble matrices and vectors
+    ierr = MatAssemblyBegin(A, MAT_FINAL_ASSEMBLY);
+    CHKERRQ(ierr);
+    ierr = MatAssemblyEnd(A, MAT_FINAL_ASSEMBLY);
+    CHKERRQ(ierr);
+    ;
+
+    ierr = VecAssemblyBegin(b);
+    CHKERRQ(ierr);
+    ierr = VecAssemblyEnd(b);
+    CHKERRQ(ierr);
+
+    MatZeroRowsColumns(A, dirichletConditions_.size(), dof, 1.0, x, b);
+
+    //Create KSP context to solve the linear system
+    ierr = KSPCreate(PETSC_COMM_WORLD, &ksp);
+    CHKERRQ(ierr);
+    ierr = KSPSetOperators(ksp, A, A);
+    CHKERRQ(ierr);
+
+    //Solve using MUMPS
+#if defined(PETSC_HAVE_MUMPS)
+    ierr = KSPSetType(ksp, KSPPREONLY);
+    ierr = KSPGetPC(ksp, &pc);
+    ierr = PCSetType(pc, PCLU);
+#endif
+    ierr = KSPSetFromOptions(ksp);
+    CHKERRQ(ierr);
+    ierr = KSPSetUp(ksp);
+
+    //Solve linear system
+    ierr = KSPSolve(ksp, b, x);
+    CHKERRQ(ierr);
+    ierr = KSPGetTotalIterations(ksp, &iterations);
+
+    //Gathers the solution vector to the master process
+    ierr = VecScatterCreateToAll(x, &ctx, &All);
+    CHKERRQ(ierr);
+    ierr = VecScatterBegin(ctx, x, All, INSERT_VALUES, SCATTER_FORWARD);
+    CHKERRQ(ierr);
+    ierr = VecScatterEnd(ctx, x, All, INSERT_VALUES, SCATTER_FORWARD);
+    CHKERRQ(ierr);
+    ierr = VecScatterDestroy(&ctx);
+    CHKERRQ(ierr);
+
+    Ione = 1;
+
+    for (ControlPoint *cp : controlPoints_)
+    {
+        bounded_vector<double, 2> firstAccel;
+        int i = cp->getIndex();
+        Idof = 2 * i;
+        ierr = VecGetValues(All, Ione, &Idof, &val);
+        CHKERRQ(ierr);
+        firstAccel(0) = val;
+
+        Idof = 2 * i + 1;
+        ierr = VecGetValues(All, Ione, &Idof, &val);
+        CHKERRQ(ierr);
+        firstAccel(1) = val;
+        cp->setCurrentAcceleration(firstAccel);
+        cp->setPastAcceleration(firstAccel);
+    }
+
+    ierr = KSPDestroy(&ksp);
+    CHKERRQ(ierr);
+    ierr = VecDestroy(&b);
+    CHKERRQ(ierr);
+    ierr = VecDestroy(&x);
+    CHKERRQ(ierr);
+    ierr = VecDestroy(&All);
+    CHKERRQ(ierr);
+    ierr = MatDestroy(&A);
+    CHKERRQ(ierr);
+    PetscFree(dof);
+    if (rank == 0)
+    {
+        std::cout << "ACELERAÇÕES NO PRIMEIRO PASSO DE TEMPO CALCULADAS." << std::endl;
+    }
+    return 0;
 }

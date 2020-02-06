@@ -46,4 +46,7 @@ run8:
 
 run12:
 	@$ mpirun -np 12 ./s
+
+run10:
+	@$ mpirun -np 10 ./s
 #	@$ mpirun -np 16 ./f -pc_type jacobi -ksp_type gmres -ksp_monitor_singular_value -ksp_gmres_restart 1000

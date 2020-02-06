@@ -542,181 +542,190 @@ double Cell::jacobianDeterminant(const bounded_matrix<double, 2, 2> &jacobianMat
     return (jacobianMatrix(0, 0) * jacobianMatrix(1, 1) - jacobianMatrix(0, 1) * jacobianMatrix(1, 0));
 }
 
-matrix<double> Cell::isoQuadrature()
+matrix<double> Cell::isoQuadrature(const int &points)
 {
-    matrix<double> pointCoordIso(16, 3); //xsi1, xsi2, weight
+    matrix<double> pointCoordIso(points * points, 3); //xsi1, xsi2, weight
 
-    // pointCoordIso(0, 0) = 0.;
-    // pointCoordIso(0, 1) = 0.;
-    // pointCoordIso(0, 2) = 0.790123456790124;
+    if (points == 3)
+    {
+        pointCoordIso(0, 0) = 0.;
+        pointCoordIso(0, 1) = 0.;
+        pointCoordIso(0, 2) = 0.790123456790124;
 
-    // pointCoordIso(1, 0) = 0.774596669241483;
-    // pointCoordIso(1, 1) = 0.000000000000000;
-    // pointCoordIso(1, 2) = 0.493827160493828;
+        pointCoordIso(1, 0) = 0.774596669241483;
+        pointCoordIso(1, 1) = 0.000000000000000;
+        pointCoordIso(1, 2) = 0.493827160493828;
 
-    // pointCoordIso(2, 0) = -0.774596669241483;
-    // pointCoordIso(2, 1) = 0.;
-    // pointCoordIso(2, 2) = 0.493827160493828;
+        pointCoordIso(2, 0) = -0.774596669241483;
+        pointCoordIso(2, 1) = 0.;
+        pointCoordIso(2, 2) = 0.493827160493828;
 
-    // pointCoordIso(3, 0) = 0.;
-    // pointCoordIso(3, 1) = 0.774596669241483;
-    // pointCoordIso(3, 2) = 0.493827160493828;
+        pointCoordIso(3, 0) = 0.;
+        pointCoordIso(3, 1) = 0.774596669241483;
+        pointCoordIso(3, 2) = 0.493827160493828;
 
-    // pointCoordIso(4, 0) = 0.774596669241483;
-    // pointCoordIso(4, 1) = 0.774596669241483;
-    // pointCoordIso(4, 2) = 0.308641975308642;
+        pointCoordIso(4, 0) = 0.774596669241483;
+        pointCoordIso(4, 1) = 0.774596669241483;
+        pointCoordIso(4, 2) = 0.308641975308642;
 
-    // pointCoordIso(5, 0) = -0.774596669241483;
-    // pointCoordIso(5, 1) = 0.774596669241483;
-    // pointCoordIso(5, 2) = 0.308641975308642;
+        pointCoordIso(5, 0) = -0.774596669241483;
+        pointCoordIso(5, 1) = 0.774596669241483;
+        pointCoordIso(5, 2) = 0.308641975308642;
 
-    // pointCoordIso(6, 0) = 0.;
-    // pointCoordIso(6, 1) = -0.774596669241483;
-    // pointCoordIso(6, 2) = 0.493827160493828;
+        pointCoordIso(6, 0) = 0.;
+        pointCoordIso(6, 1) = -0.774596669241483;
+        pointCoordIso(6, 2) = 0.493827160493828;
 
-    // pointCoordIso(7, 0) = 0.774596669241483;
-    // pointCoordIso(7, 1) = -0.774596669241483;
-    // pointCoordIso(7, 2) = 0.308641975308642;
+        pointCoordIso(7, 0) = 0.774596669241483;
+        pointCoordIso(7, 1) = -0.774596669241483;
+        pointCoordIso(7, 2) = 0.308641975308642;
 
-    // pointCoordIso(8, 0) = -0.774596669241483;
-    // pointCoordIso(8, 1) = -0.774596669241483;
-    // pointCoordIso(8, 2) = 0.308641975308642;
+        pointCoordIso(8, 0) = -0.774596669241483;
+        pointCoordIso(8, 1) = -0.774596669241483;
+        pointCoordIso(8, 2) = 0.308641975308642;
+    }
+    else if (points == 4)
+    {
+        pointCoordIso(0, 0) = -0.861136311594053;
+        pointCoordIso(1, 0) = -0.861136311594053;
+        pointCoordIso(2, 0) = -0.861136311594053;
+        pointCoordIso(3, 0) = -0.861136311594053;
+        pointCoordIso(4, 0) = 0.861136311594053;
+        pointCoordIso(5, 0) = 0.861136311594053;
+        pointCoordIso(6, 0) = 0.861136311594053;
+        pointCoordIso(7, 0) = 0.861136311594053;
+        pointCoordIso(8, 0) = -0.339981043584856;
+        pointCoordIso(9, 0) = -0.339981043584856;
+        pointCoordIso(10, 0) = -0.339981043584856;
+        pointCoordIso(11, 0) = -0.339981043584856;
+        pointCoordIso(12, 0) = 0.339981043584856;
+        pointCoordIso(13, 0) = 0.339981043584856;
+        pointCoordIso(14, 0) = 0.339981043584856;
+        pointCoordIso(15, 0) = 0.339981043584856;
 
-    pointCoordIso(0, 0) = -0.861136311594053;
-    pointCoordIso(1, 0) = -0.861136311594053;
-    pointCoordIso(2, 0) = -0.861136311594053;
-    pointCoordIso(3, 0) = -0.861136311594053;
-    pointCoordIso(4, 0) = 0.861136311594053;
-    pointCoordIso(5, 0) = 0.861136311594053;
-    pointCoordIso(6, 0) = 0.861136311594053;
-    pointCoordIso(7, 0) = 0.861136311594053;
-    pointCoordIso(8, 0) = -0.339981043584856;
-    pointCoordIso(9, 0) = -0.339981043584856;
-    pointCoordIso(10, 0) = -0.339981043584856;
-    pointCoordIso(11, 0) = -0.339981043584856;
-    pointCoordIso(12, 0) = 0.339981043584856;
-    pointCoordIso(13, 0) = 0.339981043584856;
-    pointCoordIso(14, 0) = 0.339981043584856;
-    pointCoordIso(15, 0) = 0.339981043584856;
+        pointCoordIso(0, 1) = -0.861136311594053;
+        pointCoordIso(1, 1) = 0.861136311594053;
+        pointCoordIso(2, 1) = -0.339981043584856;
+        pointCoordIso(3, 1) = 0.339981043584856;
+        pointCoordIso(4, 1) = -0.861136311594053;
+        pointCoordIso(5, 1) = 0.861136311594053;
+        pointCoordIso(6, 1) = -0.339981043584856;
+        pointCoordIso(7, 1) = 0.339981043584856;
+        pointCoordIso(8, 1) = -0.861136311594053;
+        pointCoordIso(9, 1) = 0.861136311594053;
+        pointCoordIso(10, 1) = -0.339981043584856;
+        pointCoordIso(11, 1) = 0.339981043584856;
+        pointCoordIso(12, 1) = -0.861136311594053;
+        pointCoordIso(13, 1) = 0.861136311594053;
+        pointCoordIso(14, 1) = -0.339981043584856;
+        pointCoordIso(15, 1) = 0.339981043584856;
 
-    pointCoordIso(0, 1) = -0.861136311594053;
-    pointCoordIso(1, 1) = 0.861136311594053;
-    pointCoordIso(2, 1) = -0.339981043584856;
-    pointCoordIso(3, 1) = 0.339981043584856;
-    pointCoordIso(4, 1) = -0.861136311594053;
-    pointCoordIso(5, 1) = 0.861136311594053;
-    pointCoordIso(6, 1) = -0.339981043584856;
-    pointCoordIso(7, 1) = 0.339981043584856;
-    pointCoordIso(8, 1) = -0.861136311594053;
-    pointCoordIso(9, 1) = 0.861136311594053;
-    pointCoordIso(10, 1) = -0.339981043584856;
-    pointCoordIso(11, 1) = 0.339981043584856;
-    pointCoordIso(12, 1) = -0.861136311594053;
-    pointCoordIso(13, 1) = 0.861136311594053;
-    pointCoordIso(14, 1) = -0.339981043584856;
-    pointCoordIso(15, 1) = 0.339981043584856;
+        pointCoordIso(0, 2) = 0.121002993285602;
+        pointCoordIso(1, 2) = 0.121002993285602;
+        pointCoordIso(2, 2) = 0.226851851851852;
+        pointCoordIso(3, 2) = 0.226851851851852;
+        pointCoordIso(4, 2) = 0.121002993285602;
+        pointCoordIso(5, 2) = 0.121002993285602;
+        pointCoordIso(6, 2) = 0.226851851851852;
+        pointCoordIso(7, 2) = 0.226851851851852;
+        pointCoordIso(8, 2) = 0.226851851851852;
+        pointCoordIso(9, 2) = 0.226851851851852;
+        pointCoordIso(10, 2) = 0.425293303010694;
+        pointCoordIso(11, 2) = 0.425293303010694;
+        pointCoordIso(12, 2) = 0.226851851851852;
+        pointCoordIso(13, 2) = 0.226851851851852;
+        pointCoordIso(14, 2) = 0.425293303010694;
+        pointCoordIso(15, 2) = 0.425293303010694;
+    }
 
-    pointCoordIso(0, 2) = 0.121002993285602;
-    pointCoordIso(1, 2) = 0.121002993285602;
-    pointCoordIso(2, 2) = 0.226851851851852;
-    pointCoordIso(3, 2) = 0.226851851851852;
-    pointCoordIso(4, 2) = 0.121002993285602;
-    pointCoordIso(5, 2) = 0.121002993285602;
-    pointCoordIso(6, 2) = 0.226851851851852;
-    pointCoordIso(7, 2) = 0.226851851851852;
-    pointCoordIso(8, 2) = 0.226851851851852;
-    pointCoordIso(9, 2) = 0.226851851851852;
-    pointCoordIso(10, 2) = 0.425293303010694;
-    pointCoordIso(11, 2) = 0.425293303010694;
-    pointCoordIso(12, 2) = 0.226851851851852;
-    pointCoordIso(13, 2) = 0.226851851851852;
-    pointCoordIso(14, 2) = 0.425293303010694;
-    pointCoordIso(15, 2) = 0.425293303010694;
+    if (points == 5)
+    {
 
-    // pointCoordIso(0, 0) = 0.000000000000000;
-    // pointCoordIso(1, 0) = 0.000000000000000;
-    // pointCoordIso(2, 0) = 0.000000000000000;
-    // pointCoordIso(3, 0) = 0.000000000000000;
-    // pointCoordIso(4, 0) = 0.000000000000000;
-    // pointCoordIso(5, 0) = 0.538469310195683;
-    // pointCoordIso(6, 0) = 0.538469310195683;
-    // pointCoordIso(7, 0) = 0.538469310195683;
-    // pointCoordIso(8, 0) = 0.538469310195683;
-    // pointCoordIso(9, 0) = 0.538469310195683;
-    // pointCoordIso(10, 0) = -0.538469310195683;
-    // pointCoordIso(11, 0) = -0.538469310195683;
-    // pointCoordIso(12, 0) = -0.538469310195683;
-    // pointCoordIso(13, 0) = -0.538469310195683;
-    // pointCoordIso(14, 0) = -0.538469310195683;
-    // pointCoordIso(15, 0) = 0.906179845938664;
-    // pointCoordIso(16, 0) = 0.906179845938664;
-    // pointCoordIso(17, 0) = 0.906179845938664;
-    // pointCoordIso(18, 0) = 0.906179845938664;
-    // pointCoordIso(19, 0) = 0.906179845938664;
-    // pointCoordIso(20, 0) = -0.906179845938664;
-    // pointCoordIso(21, 0) = -0.906179845938664;
-    // pointCoordIso(22, 0) = -0.906179845938664;
-    // pointCoordIso(23, 0) = -0.906179845938664;
-    // pointCoordIso(24, 0) = -0.906179845938664;
+        pointCoordIso(0, 0) = 0.000000000000000;
+        pointCoordIso(1, 0) = 0.000000000000000;
+        pointCoordIso(2, 0) = 0.000000000000000;
+        pointCoordIso(3, 0) = 0.000000000000000;
+        pointCoordIso(4, 0) = 0.000000000000000;
+        pointCoordIso(5, 0) = 0.538469310195683;
+        pointCoordIso(6, 0) = 0.538469310195683;
+        pointCoordIso(7, 0) = 0.538469310195683;
+        pointCoordIso(8, 0) = 0.538469310195683;
+        pointCoordIso(9, 0) = 0.538469310195683;
+        pointCoordIso(10, 0) = -0.538469310195683;
+        pointCoordIso(11, 0) = -0.538469310195683;
+        pointCoordIso(12, 0) = -0.538469310195683;
+        pointCoordIso(13, 0) = -0.538469310195683;
+        pointCoordIso(14, 0) = -0.538469310195683;
+        pointCoordIso(15, 0) = 0.906179845938664;
+        pointCoordIso(16, 0) = 0.906179845938664;
+        pointCoordIso(17, 0) = 0.906179845938664;
+        pointCoordIso(18, 0) = 0.906179845938664;
+        pointCoordIso(19, 0) = 0.906179845938664;
+        pointCoordIso(20, 0) = -0.906179845938664;
+        pointCoordIso(21, 0) = -0.906179845938664;
+        pointCoordIso(22, 0) = -0.906179845938664;
+        pointCoordIso(23, 0) = -0.906179845938664;
+        pointCoordIso(24, 0) = -0.906179845938664;
 
-    // pointCoordIso(0, 1) = 0.000000000000000;
-    // pointCoordIso(1, 1) = 0.538469310195683;
-    // pointCoordIso(2, 1) = -0.538469310195683;
-    // pointCoordIso(3, 1) = 0.906179845938664;
-    // pointCoordIso(4, 1) = -0.906179845938664;
-    // pointCoordIso(5, 1) = 0.000000000000000;
-    // pointCoordIso(6, 1) = 0.538469310195683;
-    // pointCoordIso(7, 1) = -0.538469310195683;
-    // pointCoordIso(8, 1) = 0.906179845938664;
-    // pointCoordIso(9, 1) = -0.906179845938664;
-    // pointCoordIso(10, 1) = 0.000000000000000;
-    // pointCoordIso(11, 1) = 0.538469310195683;
-    // pointCoordIso(12, 1) = -0.538469310195683;
-    // pointCoordIso(13, 1) = 0.906179845938664;
-    // pointCoordIso(14, 1) = -0.906179845938664;
-    // pointCoordIso(15, 1) = 0.000000000000000;
-    // pointCoordIso(16, 1) = 0.538469310195683;
-    // pointCoordIso(17, 1) = -0.538469310195683;
-    // pointCoordIso(18, 1) = 0.906179845938664;
-    // pointCoordIso(19, 1) = -0.906179845938664;
-    // pointCoordIso(20, 1) = 0.000000000000000;
-    // pointCoordIso(21, 1) = 0.538469310195683;
-    // pointCoordIso(22, 1) = -0.538469310195683;
-    // pointCoordIso(23, 1) = 0.906179845938664;
-    // pointCoordIso(24, 1) = -0.906179845938664;
+        pointCoordIso(0, 1) = 0.000000000000000;
+        pointCoordIso(1, 1) = 0.538469310195683;
+        pointCoordIso(2, 1) = -0.538469310195683;
+        pointCoordIso(3, 1) = 0.906179845938664;
+        pointCoordIso(4, 1) = -0.906179845938664;
+        pointCoordIso(5, 1) = 0.000000000000000;
+        pointCoordIso(6, 1) = 0.538469310195683;
+        pointCoordIso(7, 1) = -0.538469310195683;
+        pointCoordIso(8, 1) = 0.906179845938664;
+        pointCoordIso(9, 1) = -0.906179845938664;
+        pointCoordIso(10, 1) = 0.000000000000000;
+        pointCoordIso(11, 1) = 0.538469310195683;
+        pointCoordIso(12, 1) = -0.538469310195683;
+        pointCoordIso(13, 1) = 0.906179845938664;
+        pointCoordIso(14, 1) = -0.906179845938664;
+        pointCoordIso(15, 1) = 0.000000000000000;
+        pointCoordIso(16, 1) = 0.538469310195683;
+        pointCoordIso(17, 1) = -0.538469310195683;
+        pointCoordIso(18, 1) = 0.906179845938664;
+        pointCoordIso(19, 1) = -0.906179845938664;
+        pointCoordIso(20, 1) = 0.000000000000000;
+        pointCoordIso(21, 1) = 0.538469310195683;
+        pointCoordIso(22, 1) = -0.538469310195683;
+        pointCoordIso(23, 1) = 0.906179845938664;
+        pointCoordIso(24, 1) = -0.906179845938664;
 
-    // pointCoordIso(0, 2) = 0.323634567901235;
-    // pointCoordIso(1, 2) = 0.27228653255075;
-    // pointCoordIso(2, 2) = 0.27228653255075;
-    // pointCoordIso(3, 2) = 0.134785072387521;
-    // pointCoordIso(4, 2) = 0.134785072387521;
-    // pointCoordIso(5, 2) = 0.272286532550750;
-    // pointCoordIso(6, 2) = 0.229085404223991;
-    // pointCoordIso(7, 2) = 0.229085404223991;
-    // pointCoordIso(8, 2) = 0.1134;
-    // pointCoordIso(9, 2) = 0.1134;
-    // pointCoordIso(10, 2) = 0.272286532550750;
-    // pointCoordIso(11, 2) = 0.229085404223991;
-    // pointCoordIso(12, 2) = 0.229085404223991;
-    // pointCoordIso(13, 2) = 0.1134;
-    // pointCoordIso(14, 2) = 0.1134;
-    // pointCoordIso(15, 2) = 0.134785072387521;
-    // pointCoordIso(16, 2) = 0.1134;
-    // pointCoordIso(17, 2) = 0.1134;
-    // pointCoordIso(18, 2) = 0.056134348862429;
-    // pointCoordIso(19, 2) = 0.056134348862429;
-    // pointCoordIso(20, 2) = 0.134785072387521;
-    // pointCoordIso(21, 2) = 0.1134;
-    // pointCoordIso(22, 2) = 0.1134;
-    // pointCoordIso(23, 2) = 0.056134348862429;
-    // pointCoordIso(24, 2) = 0.056134348862429;
+        pointCoordIso(0, 2) = 0.323634567901235;
+        pointCoordIso(1, 2) = 0.27228653255075;
+        pointCoordIso(2, 2) = 0.27228653255075;
+        pointCoordIso(3, 2) = 0.134785072387521;
+        pointCoordIso(4, 2) = 0.134785072387521;
+        pointCoordIso(5, 2) = 0.272286532550750;
+        pointCoordIso(6, 2) = 0.229085404223991;
+        pointCoordIso(7, 2) = 0.229085404223991;
+        pointCoordIso(8, 2) = 0.1134;
+        pointCoordIso(9, 2) = 0.1134;
+        pointCoordIso(10, 2) = 0.272286532550750;
+        pointCoordIso(11, 2) = 0.229085404223991;
+        pointCoordIso(12, 2) = 0.229085404223991;
+        pointCoordIso(13, 2) = 0.1134;
+        pointCoordIso(14, 2) = 0.1134;
+        pointCoordIso(15, 2) = 0.134785072387521;
+        pointCoordIso(16, 2) = 0.1134;
+        pointCoordIso(17, 2) = 0.1134;
+        pointCoordIso(18, 2) = 0.056134348862429;
+        pointCoordIso(19, 2) = 0.056134348862429;
+        pointCoordIso(20, 2) = 0.134785072387521;
+        pointCoordIso(21, 2) = 0.1134;
+        pointCoordIso(22, 2) = 0.1134;
+        pointCoordIso(23, 2) = 0.056134348862429;
+        pointCoordIso(24, 2) = 0.056134348862429;
+    }
 
     return pointCoordIso;
 }
 
 std::pair<vector<double>, matrix<double>> Cell::cellContributions(const std::string &ep, const std::string &typeAnalyze,
                                                                   const int &step, const int &numberOfStep, const double &deltat,
-                                                                  const double &beta, const double &gama)
+                                                                  const double &beta, const double &gama, const int &pointsQuadrature)
 {
     int npc = controlPoints_.size();
 
@@ -724,7 +733,7 @@ std::pair<vector<double>, matrix<double>> Cell::cellContributions(const std::str
     matrix<double> tangent(2 * npc, 2 * npc, 0.0);
     vector<double> wpc(npc);
     bounded_vector<int, 2> inc_;
-    matrix<double> domainIntegrationPoints_ = isoQuadrature();
+    matrix<double> domainIntegrationPoints_ = isoQuadrature(pointsQuadrature);
 
     inc_ = controlPoints_[npc - 1]->getINC();
 
@@ -1023,243 +1032,42 @@ bounded_vector<double, 4> Cell::getGreen(const bounded_vector<double, 2> &qxsi, 
     return green;
 }
 
-// void Element::StressCalculate(const std::string &ep)
-// {
-// if (elementType_ == "T6")
-// {
-// for (int i = 0; i < 6; i++)
-// {
-// bounded_matrix<double, 6, 2> xsi;
-// xsi(0, 0) = 1.0;
-// xsi(0, 1) = 0.0;
+matrix<double> Cell::massMatrix(const int &pointsQuadrature)
+{
+    int number = controlPoints_.size();
+    matrix<double> mass(2 * number, 2 * number, 0.0);
+    matrix<double> domainIntegrationPoints_ = isoQuadrature(pointsQuadrature);
+    double auxiliar = patch_->getMaterial()->getDensity() * patch_->getThickness();
+    double resul;
+    bounded_vector<int, 2> INC_;
+    vector<double> wpc2(number);
 
-// xsi(1, 0) = 0.0;
-// xsi(1, 1) = 1.0;
+    INC_ = controlPoints_[number - 1]->getINC();
 
-// xsi(2, 0) = 0.0;
-// xsi(2, 1) = 0.0;
+    for (int i = 0; i < number; i++)
+    {
+        wpc2(i) = controlPoints_[i]->getWeight();
+    }
 
-// xsi(3, 0) = 0.5;
-// xsi(3, 1) = 0.5;
+    for (int ih = 0; ih < domainIntegrationPoints_.size1(); ih++)
+    {
+        bounded_vector<double, 2> qxsi;
+        qxsi(0) = domainIntegrationPoints_(ih, 0);
+        qxsi(1) = domainIntegrationPoints_(ih, 1);
+        double weight = domainIntegrationPoints_(ih, 2);
 
-// xsi(4, 0) = 0.0;
-// xsi(4, 1) = 0.5;
+        vector<double> phi = shapeFunction(qxsi, wpc2, INC_);
 
-// xsi(5, 0) = 0.5;
-// xsi(5, 1) = 0.0;
+        for (int i = 0; i < controlPoints_.size(); i++)
+        {
 
-// bounded_matrix<double, 2, 2> A0 = referenceJacobianMatrix(xsi(i, 0), xsi(i, 1)); //initial configuration map
-// double j0 = jacobianDeterminant(A0);
-// bounded_matrix<double, 2, 2> A0I; //inverse initial configuration map
-// A0I(0, 0) = A0(1, 1) / j0;
-// A0I(1, 1) = A0(0, 0) / j0;
-// A0I(0, 1) = -A0(0, 1) / j0;
-// A0I(1, 0) = -A0(1, 0) / j0;
-// bounded_matrix<double, 2, 2> A1 = currentJacobianMatrix(xsi(i, 0), xsi(i, 1));
-// bounded_matrix<double, 2, 2> Ac = prod(A1, A0I);                   //current deformation gradient
-// identity_matrix<double> I(2);                                      //identity matrix
-// bounded_matrix<double, 2, 2> Ec = 0.5 * (prod(trans(Ac), Ac) - I); //current green strain tensor
-// bounded_matrix<double, 2, 2> S;                                    //second piola kirchhoff stress tensor
-// double young = material_->getYoung();
-// double poisson = material_->getPoisson();
-
-// if (ep == "EPD")
-// {
-// S(0, 0) = (young / ((1.0 + poisson) * (1.0 - 2.0 * poisson))) * ((1.0 - poisson) * Ec(0, 0) + poisson * Ec(1, 1));
-// S(1, 1) = (young / ((1.0 + poisson) * (1.0 - 2.0 * poisson))) * ((1.0 - poisson) * Ec(1, 1) + poisson * Ec(0, 0));
-// S(1, 0) = (young / (1.0 + poisson)) * Ec(1, 0);
-// S(0, 1) = (young / (1.0 + poisson)) * Ec(0, 1);
-// }
-// else
-// {
-// S(0, 0) = (young / (1.0 - poisson * poisson)) * (Ec(0, 0) + poisson * Ec(1, 1));
-// S(1, 1) = (young / (1.0 - poisson * poisson)) * (Ec(1, 1) + poisson * Ec(0, 0));
-// S(1, 0) = (young / (1.0 + poisson)) * Ec(1, 0);
-// S(0, 1) = (young / (1.0 + poisson)) * Ec(0, 1);
-// }
-
-// bounded_matrix<double, 2, 2> sigma;
-// double jac = jacobianDeterminant(Ac);
-// bounded_matrix<double, 2, 2> mat1;
-// mat1 = prod(Ac, S);
-// sigma = (1.0 / jac) * prod(mat1, trans(Ac));
-
-// bounded_vector<double, 3> cauchy;
-
-// cauchy(0) = sigma(0, 0);
-// cauchy(1) = sigma(1, 1);
-// cauchy(2) = sigma(0, 1);
-// // std::cout << thickness_ << std::endl;
-
-// getConnection()[i]->setStressState(cauchy);
-// }
-// }
-// else if (elementType_ == "T3")
-// {
-// for (int i = 0; i < 3; i++)
-// {
-// bounded_matrix<double, 3, 2> xsi;
-// xsi(0, 0) = 1.0;
-// xsi(0, 1) = 0.0;
-
-// xsi(1, 0) = 0.0;
-// xsi(1, 1) = 1.0;
-
-// xsi(2, 0) = 0.0;
-// xsi(2, 1) = 0.0;
-
-// bounded_matrix<double, 2, 2> A0 = referenceJacobianMatrix(xsi(i, 0), xsi(i, 1)); //initial configuration map
-// double j0 = jacobianDeterminant(A0);
-// bounded_matrix<double, 2, 2> A0I; //inverse initial configuration map
-// A0I(0, 0) = A0(1, 1) / j0;
-// A0I(1, 1) = A0(0, 0) / j0;
-// A0I(0, 1) = -A0(0, 1) / j0;
-// A0I(1, 0) = -A0(1, 0) / j0;
-// bounded_matrix<double, 2, 2> A1 = currentJacobianMatrix(xsi(i, 0), xsi(i, 1));
-// bounded_matrix<double, 2, 2> Ac = prod(A1, A0I);                   //current deformation gradient
-// identity_matrix<double> I(2);                                      //identity matrix
-// bounded_matrix<double, 2, 2> Ec = 0.5 * (prod(trans(Ac), Ac) - I); //current green strain tensor
-// bounded_matrix<double, 2, 2> S;                                    //second piola kirchhoff stress tensor
-// double young = material_->getYoung();
-// double poisson = material_->getPoisson();
-
-// if (ep == "EPD")
-// {
-// S(0, 0) = (young / ((1.0 + poisson) * (1.0 - 2.0 * poisson))) * ((1.0 - poisson) * Ec(0, 0) + poisson * Ec(1, 1));
-// S(1, 1) = (young / ((1.0 + poisson) * (1.0 - 2.0 * poisson))) * ((1.0 - poisson) * Ec(1, 1) + poisson * Ec(0, 0));
-// S(1, 0) = (young / (1.0 + poisson)) * Ec(1, 0);
-// S(0, 1) = (young / (1.0 + poisson)) * Ec(0, 1);
-// }
-// else
-// {
-// S(0, 0) = (young / (1.0 - poisson * poisson)) * (Ec(0, 0) + poisson * Ec(1, 1));
-// S(1, 1) = (young / (1.0 - poisson * poisson)) * (Ec(1, 1) + poisson * Ec(0, 0));
-// S(1, 0) = (young / (1.0 + poisson)) * Ec(1, 0);
-// S(0, 1) = (young / (1.0 + poisson)) * Ec(0, 1);
-// }
-
-// bounded_matrix<double, 2, 2> sigma;
-// double jac = jacobianDeterminant(Ac);
-// bounded_matrix<double, 2, 2> mat1;
-// mat1 = prod(Ac, S);
-// sigma = (1.0 / jac) * prod(mat1, trans(Ac));
-
-// bounded_vector<double, 3> cauchy;
-
-// cauchy(0) = sigma(0, 0);
-// cauchy(1) = sigma(1, 1);
-// cauchy(2) = sigma(0, 1);
-
-// getConnection()[i]->setStressState(cauchy);
-// }
-// }
-// else if (elementType_ == "T10")
-// {
-// for (int i = 0; i < 10; i++)
-// {
-// bounded_matrix<double, 10, 2> xsi;
-// xsi(0, 0) = 1.0;
-// xsi(0, 1) = 0.0;
-
-// xsi(1, 0) = 0.0;
-// xsi(1, 1) = 1.0;
-
-// xsi(2, 0) = 0.0;
-// xsi(2, 1) = 0.0;
-
-// xsi(3, 0) = 2.0 / 3.0;
-// xsi(3, 1) = 1.0 / 3.0;
-
-// xsi(4, 0) = 1.0 / 3.0;
-// xsi(4, 1) = 2.0 / 3.0;
-
-// xsi(5, 0) = 0.0;
-// xsi(5, 1) = 2.0 / 3.0;
-
-// xsi(6, 0) = 0.0;
-// xsi(6, 1) = 1.0 / 3.0;
-
-// xsi(7, 0) = 1.0 / 3.0;
-// xsi(7, 1) = 0.0;
-
-// xsi(8, 0) = 2.0 / 3.0;
-// xsi(8, 1) = 0.0;
-
-// xsi(9, 0) = 1.0 / 3.0;
-// xsi(9, 1) = 1.0 / 3.0;
-
-// bounded_matrix<double, 2, 2> A0 = referenceJacobianMatrix(xsi(i, 0), xsi(i, 1)); //initial configuration map
-// double j0 = jacobianDeterminant(A0);
-// bounded_matrix<double, 2, 2> A0I; //inverse initial configuration map
-// A0I(0, 0) = A0(1, 1) / j0;
-// A0I(1, 1) = A0(0, 0) / j0;
-// A0I(0, 1) = -A0(0, 1) / j0;
-// A0I(1, 0) = -A0(1, 0) / j0;
-// bounded_matrix<double, 2, 2> A1 = currentJacobianMatrix(xsi(i, 0), xsi(i, 1));
-// bounded_matrix<double, 2, 2> Ac = prod(A1, A0I);                   //current deformation gradient
-// identity_matrix<double> I(2);                                      //identity matrix
-// bounded_matrix<double, 2, 2> Ec = 0.5 * (prod(trans(Ac), Ac) - I); //current green strain tensor
-// bounded_matrix<double, 2, 2> S;                                    //second piola kirchhoff stress tensor
-// double young = material_->getYoung();
-// double poisson = material_->getPoisson();
-
-// if (ep == "EPD")
-// {
-// S(0, 0) = (young / ((1.0 + poisson) * (1.0 - 2.0 * poisson))) * ((1.0 - poisson) * Ec(0, 0) + poisson * Ec(1, 1));
-// S(1, 1) = (young / ((1.0 + poisson) * (1.0 - 2.0 * poisson))) * ((1.0 - poisson) * Ec(1, 1) + poisson * Ec(0, 0));
-// S(1, 0) = (young / (1.0 + poisson)) * Ec(1, 0);
-// S(0, 1) = (young / (1.0 + poisson)) * Ec(0, 1);
-// }
-// else
-// {
-// S(0, 0) = (young / (1.0 - poisson * poisson)) * (Ec(0, 0) + poisson * Ec(1, 1));
-// S(1, 1) = (young / (1.0 - poisson * poisson)) * (Ec(1, 1) + poisson * Ec(0, 0));
-// S(1, 0) = (young / (1.0 + poisson)) * Ec(1, 0);
-// S(0, 1) = (young / (1.0 + poisson)) * Ec(0, 1);
-// }
-
-// bounded_matrix<double, 2, 2> sigma;
-// double jac = jacobianDeterminant(Ac);
-// bounded_matrix<double, 2, 2> mat1;
-// mat1 = prod(Ac, S);
-// sigma = (1.0 / jac) * prod(mat1, trans(Ac));
-
-// bounded_vector<double, 3> cauchy;
-
-// cauchy(0) = sigma(0, 0);
-// cauchy(1) = sigma(1, 1);
-// cauchy(2) = sigma(0, 1);
-
-// getConnection()[i]->setStressState(cauchy);
-// }
-// }
-// }
-
-// matrix<double> Cell::massMatrix()
-// {
-//     matrix<double> mass(2 * controlPoints_.size(), 2 * controlPoints_.size(), 0.0);
-//     matrix<double> domainIntegrationPoints_ = hammerQuadrature(numberOfDomainIntegrationPoints_);
-//     double auxiliar = material_->getDensity() * thickness_;
-//     double resul;
-
-//     for (int ih = 0; ih < numberOfDomainIntegrationPoints_; ih++)
-//     {
-//         double xsi1 = domainIntegrationPoints_(ih, 0);
-//         double xsi2 = domainIntegrationPoints_(ih, 1);
-//         double weight = domainIntegrationPoints_(ih, 2);
-
-//         vector<double> phi = domainShapeFunction(xsi1, xsi2);
-
-//         for (int i = 0; i < controlPoints_.size(); i++)
-//         {
-
-//             for (int k = 0; k < controlPoints_.size(); k++)
-//             {
-//                 resul = auxiliar * phi(i) * phi(k);
-//                 mass(2 * i, 2 * k) += resul;
-//                 mass(2 * i + 1, 2 * k + 1) += resul;
-//             }
-//         }
-//     }
-//     return mass;
-// }
+            for (int k = 0; k < controlPoints_.size(); k++)
+            {
+                resul = auxiliar * phi(i) * phi(k);
+                mass(2 * i, 2 * k) += resul;
+                mass(2 * i + 1, 2 * k + 1) += resul;
+            }
+        }
+    }
+    return mass;
+}

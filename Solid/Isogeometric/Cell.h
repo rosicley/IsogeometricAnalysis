@@ -38,17 +38,18 @@ public:
 
     std::pair<vector<double>, matrix<double>> cellContributions(const std::string &ep, const std::string &typeAnalyze,
                                                                 const int &step, const int &numberOfStep, const double &deltat,
-                                                                const double &beta, const double &gama);
+                                                                const double &beta, const double &gama,
+                                                                const int &pointsQuadrature);
 
     void setShapeForce(const bounded_vector<double, 2> &shapeForce);
 
     void StressCalculate(const std::string &ep);
 
-    matrix<double> massMatrix();
+    matrix<double> massMatrix(const int &pointsQuadrature);
 
     Patch *getPatch();
 
-    matrix<double> isoQuadrature();
+    matrix<double> isoQuadrature(const int &points);
 
     bounded_vector<double, 4> getCauchStress(const bounded_vector<double, 2> &qxsi, const std::string &ep);
 

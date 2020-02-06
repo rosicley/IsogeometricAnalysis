@@ -44,7 +44,7 @@ int main(int argc, char **args)
         }
         else if (type == "DYNAMIC")
         {
-            //problem->solveDynamicProblem();
+            problem->solveDynamicProblem();
         }
         else
         {

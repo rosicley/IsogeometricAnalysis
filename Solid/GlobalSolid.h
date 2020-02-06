@@ -45,7 +45,9 @@ public:
 
     int solveStaticProblem();
 
-    //int solveDynamicProblem();
+    int solveDynamicProblem();
+
+    int firstAccelerationCalculation();
 
     void exportToParaview(const int &loadstep);
 
@@ -111,4 +113,6 @@ private:
     std::vector<ControlPoint *> controlPoints_; 
 
     int orderParaview_;
+
+    int quadrature_;
 };
