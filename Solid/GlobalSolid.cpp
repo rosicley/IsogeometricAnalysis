@@ -180,6 +180,7 @@ void GlobalSolid::dataReading(const std::string &inputParameters, const std::str
     std::getline(isogeometric, line);
     std::getline(isogeometric, line);
     isogeometric >> npatch;
+    std::getline(isogeometric, line);
 
     mirror << "NUMBER OF PATCHES: " << npatch << std::endl;
 
@@ -189,7 +190,6 @@ void GlobalSolid::dataReading(const std::string &inputParameters, const std::str
         double thickness;
         bounded_vector<int, 2> npc_dir, degree; //NUMBER OF CONTROL POINTS(U, V);ORDER(U,V)
 
-        std::getline(isogeometric, line);
         std::getline(isogeometric, line);
         std::getline(isogeometric, line);
         std::getline(isogeometric, line);
@@ -249,20 +249,31 @@ void GlobalSolid::dataReading(const std::string &inputParameters, const std::str
 
                 mirror << ipc << " " << coord(0) << " " << coord(1) << " " << weight << std::endl;
 
-                // if (coord(0) / weight <= -20.0)
+                if (coord(0) / weight == 0.0)
+                {
+                    bounded_vector<int, 2> free;
+                    bounded_vector<double, 2> value;
+                    free(0) = 1;
+                    free(1) = 1;
+                    value(0) = 0.0;
+                    value(1) = 0.0;
+                    addDirichletCondition(ipc, ipatch, free, value);
+                }
+                // if (coord(0) / weight == 0.0 && coord(1) / weight)
                 // {
                 //     bounded_vector<int, 2> free;
                 //     bounded_vector<double, 2> value;
-                //     free(0) = 1;
+                //     free(0) = 0;
                 //     free(1) = 1;
                 //     value(0) = 0.0;
                 //     value(1) = 0.0;
                 //     addDirichletCondition(ipc, ipatch, free, value);
                 // }
-                // if (coord(0) / weight >= 20.0)
+
+                // if (coord(0) / weight == 15.0 && ipatch == 2)
                 // {
                 //     bounded_vector<double, 2> value;
-                //     value(0) = 200.0;
+                //     value(0) = 30.0;
                 //     value(1) = 0.0;
                 //     addNeumannCondition(ipc, ipatch, value);
                 // }
@@ -304,13 +315,23 @@ void GlobalSolid::dataReading(const std::string &inputParameters, const std::str
                         value(1) = 0.0;
                         addDirichletCondition(j * npc_dir(0) + i, ipatch, free, value);
                     }
-                    if (coord(0) / weight == 500.0)
-                    {
-                        bounded_vector<double, 2> value;
-                        value(0) = 0.0;
-                        value(1) = -4000.0;
-                        addNeumannCondition(j * npc_dir(0) + i, ipatch, value);
-                    }
+                    // if (coord(0) / weight == 0.0 && coord(1) == 0.0)
+                    // {
+                    //     bounded_vector<int, 2> free;
+                    //     bounded_vector<double, 2> value;
+                    //     free(0) = 0;
+                    //     free(1) = 1;
+                    //     value(0) = 0.0;
+                    //     value(1) = 0.0;
+                    //     addDirichletCondition(j * npc_dir(0) + i, ipatch, free, value);
+                    // }
+                    // if (coord(0) / weight == 15.0 && ipatch == 2)
+                    // {
+                    //     bounded_vector<double, 2> value;
+                    //     value(0) = 30.0;
+                    //     value(1) = 0.0;
+                    //     addNeumannCondition(j * npc_dir(0) + i, ipatch, value);
+                    // }
                 }
             }
         }
@@ -486,28 +507,68 @@ void GlobalSolid::dataReading(const std::string &inputParameters, const std::str
                 }
             }
         }
-    }
+        mirror << "DIRICHLET CONDITION (" << dirichletConditions_.size() << ")" << std::endl;
+        mirror << "INDEX POINT   DIRECTION   VALUE" << std::endl;
+        for (DirichletCondition *dir : dirichletConditions_)
+        {
+            mirror << dir->getControlPoint()->getIndex() << " " << dir->getDirection() << " " << dir->getValue() << std::endl;
+        }
 
-    mirror << "DIRICHLET CONDITION (" << dirichletConditions_.size() << ")" << std::endl;
-    mirror << "INDEX POINT   DIRECTION   VALUE" << std::endl;
-    for (DirichletCondition *dir : dirichletConditions_)
-    {
-        mirror << dir->getControlPoint()->getIndex() << " " << dir->getDirection() << " " << dir->getValue() << std::endl;
-    }
-
-    mirror << "NEUMAN CONDITION (" << neumannConditions_.size() << ")" << std::endl;
-    mirror << "INDEX POINT   DIRECTION   VALUE" << std::endl;
-    for (NeumannCondition *dir : neumannConditions_)
-    {
-        mirror << dir->getControlPoint()->getIndex() << " " << dir->getDirection() << " " << dir->getValue() << std::endl;
+        mirror << "NEUMAN CONDITION (" << neumannConditions_.size() << ")" << std::endl;
+        mirror << "INDEX POINT   DIRECTION   VALUE" << std::endl;
+        for (NeumannCondition *dir : neumannConditions_)
+        {
+            mirror << dir->getControlPoint()->getIndex() << " " << dir->getDirection() << " " << dir->getValue() << std::endl;
+        }
     }
 
     parameters.close();
     properties.close();
     isogeometric.close();
 
-    ///CRIAR LOOPING PARA ORGANIZAR OS PONTOS DE CONTROLE DOS PATCHES NO GLOBAL
+    ///LOOPING PARA ORGANIZAR OS PONTOS DE CONTROLE DOS PATCHES NO GLOBAL
     controlPoints_ = patches_[0]->getControlPoints();
+    int cpnum = controlPoints_.size();
+    int cpindex = controlPoints_.size();
+
+    if (npatch > 1)
+    {
+        for (int i = 1; i < npatch; i++)
+        {
+            std::vector<ControlPoint *> cpaux = patches_[i]->getControlPoints();
+
+            for (int k = 0; k < cpaux.size(); k++)
+            {
+                bounded_vector<double, 2> coordK = cpaux[k]->getInitialCoordinate();
+                int ver = -1;
+                for (int j = 0; j < cpnum; j++)
+                {
+                    bounded_vector<double, 2> coordJ = controlPoints_[j]->getInitialCoordinate();
+                    int indexJ = controlPoints_[j]->getIndex();
+
+                    if (coordJ(0) == coordK(0) && coordJ(1) == coordK(1))
+                    {
+                        ver = indexJ;
+                        break;
+                    }
+                }
+                if (ver != -1)
+                {
+                    cpaux[k]->setIndex(ver);
+                    controlPoints_.push_back(cpaux[k]);
+                }
+                else
+                {
+                    cpaux[k]->setIndex(cpindex);
+                    controlPoints_.push_back(cpaux[k]);
+                    cpindex = cpindex + 1;
+                }
+            }
+            cpnum = controlPoints_.size();
+        }
+    }
+
+    cpnumber_ = cpindex;
 
     for (Patch *pat : patches_)
     {
@@ -561,12 +622,12 @@ int GlobalSolid::solveStaticProblem()
     MPI_Comm_rank(PETSC_COMM_WORLD, &rank);
     MPI_Comm_size(PETSC_COMM_WORLD, &size);
 
-    //std::stringstream text1;
+    std::stringstream text1;
 
     if (rank == 0)
     {
         exportToParaview(0);
-        // text1 << "ForcasInternas.txt";
+        //text1 << "ForcasInternas.txt";
     }
     //std::ofstream file1(text1.str());
 
@@ -587,8 +648,6 @@ int GlobalSolid::solveStaticProblem()
         dof[idir++] = (2 * indexNode + direction);
     }
 
-    int nnnumber = controlPoints_.size();
-
     for (int loadStep = 1; loadStep <= numberOfSteps_; loadStep++)
     {
         boost::posix_time::ptime t1 =
@@ -604,7 +663,7 @@ int GlobalSolid::solveStaticProblem()
         {
             //Create PETSc sparse parallel matrix
             ierr = MatCreateAIJ(PETSC_COMM_WORLD, PETSC_DECIDE, PETSC_DECIDE,
-                                2 * nnnumber, 2 * nnnumber,
+                                2 * cpnumber_, 2 * cpnumber_,
                                 100, NULL, 300, NULL, &A);
             CHKERRQ(ierr);
 
@@ -614,7 +673,7 @@ int GlobalSolid::solveStaticProblem()
             //Create PETSc vectors
             ierr = VecCreate(PETSC_COMM_WORLD, &b);
             CHKERRQ(ierr);
-            ierr = VecSetSizes(b, PETSC_DECIDE, 2 * nnnumber);
+            ierr = VecSetSizes(b, PETSC_DECIDE, 2 * cpnumber_);
             CHKERRQ(ierr);
             ierr = VecSetFromOptions(b);
             CHKERRQ(ierr);
@@ -786,19 +845,20 @@ int GlobalSolid::solveStaticProblem()
             double norm = 0.0;
             Ione = 1;
 
-            for (size_t i = 0; i < nnnumber; i++)
+            for (ControlPoint *cp : controlPoints_)
             {
-                Idof = 2 * i;
+                int newIndex = cp->getIndex();
+                Idof = 2 * newIndex;
                 ierr = VecGetValues(All, Ione, &Idof, &val);
                 CHKERRQ(ierr);
                 norm += val * val;
-                controlPoints_[i]->incrementCurrentCoordinate(0, val);
+                cp->incrementCurrentCoordinate(0, val);
 
-                Idof = 2 * i + 1;
+                Idof = 2 * newIndex + 1;
                 ierr = VecGetValues(All, Ione, &Idof, &val);
                 CHKERRQ(ierr);
                 norm += val * val;
-                controlPoints_[i]->incrementCurrentCoordinate(1, val);
+                cp->incrementCurrentCoordinate(1, val);
             }
 
             boost::posix_time::ptime t2 =
@@ -833,15 +893,6 @@ int GlobalSolid::solveStaticProblem()
 
         if (rank == 0)
         {
-            // for (Node *n : nodes_)
-            // {
-            // n->setZeroStressState();
-            // }
-
-            // for (int i = 0; i < elements_.size(); i++)
-            // {
-            // elements_[i]->StressCalculate(planeState_);
-            // }
             exportToParaview(loadStep);
             //file1 << (1.0 * loadStep) / (1.0 * numberOfSteps) << " " << -nodes_[0]->getCurrentCoordinate()[1] + nodes_[0]->getInitialCoordinate()[1] << std::endl;
         }
@@ -1080,17 +1131,6 @@ void GlobalSolid::exportToParaview(const int &loadstep)
     file << "      </DataArray> "
          << "\n";
 
-    // file << "      <DataArray type=\"Float64\" NumberOfComponents=\"1\" "
-    //      << "Name=\"CauchyShearStress\" format=\"ascii\">"
-    //      << "\n";
-    // for (Node *n : nodes_)
-    // {
-    //     double cont = n->getStressState()(3);
-    //     double aux3 = n->getStressState()(2);
-    //     file << aux3 / cont << "\n";
-    // }
-    // file << "      </DataArray> "
-    //      << "\n";
 
     file << "    </PointData>"
          << "\n";
@@ -1310,14 +1350,14 @@ int GlobalSolid::solveDynamicProblem()
     MPI_Comm_rank(PETSC_COMM_WORLD, &rank);
 
     //int n = (order_ + 1) * (order_ + 2) / 2.0;
-    //std::stringstream text1;
+    std::stringstream text1;
 
     if (rank == 0)
     {
         exportToParaview(0);
-        //text1 << "DeslocamentoxTempo.txt";
+        text1 << "DeslocamentoxTempo.txt";
     }
-    //std::ofstream file1(text1.str());
+    std::ofstream file1(text1.str());
 
     double initialNorm = 0.0;
     for (ControlPoint *node : controlPoints_)
@@ -1334,8 +1374,6 @@ int GlobalSolid::solveDynamicProblem()
         int direction = dirichletConditions_[i]->getDirection();
         dof[i] = (2 * indexNode + direction);
     }
-
-    int nnnumber = controlPoints_.size();
 
     for (int timeStep = 1; timeStep <= numberOfSteps_; timeStep++)
     {
@@ -1354,7 +1392,7 @@ int GlobalSolid::solveDynamicProblem()
         {
             //Create PETSc sparse parallel matrix
             ierr = MatCreateAIJ(PETSC_COMM_WORLD, PETSC_DECIDE, PETSC_DECIDE,
-                                2 * nnnumber, 2 * nnnumber,
+                                2 * cpnumber_, 2 * cpnumber_,
                                 100, NULL, 300, NULL, &A);
             CHKERRQ(ierr);
 
@@ -1364,7 +1402,7 @@ int GlobalSolid::solveDynamicProblem()
             //Create PETSc vectors
             ierr = VecCreate(PETSC_COMM_WORLD, &b);
             CHKERRQ(ierr);
-            ierr = VecSetSizes(b, PETSC_DECIDE, 2 * nnnumber);
+            ierr = VecSetSizes(b, PETSC_DECIDE, 2 * cpnumber_);
             CHKERRQ(ierr);
             ierr = VecSetFromOptions(b);
             CHKERRQ(ierr);
@@ -1554,7 +1592,7 @@ int GlobalSolid::solveDynamicProblem()
         if (rank == 0)
         {
             exportToParaview(timeStep);
-            // file1 << timeStep * deltat_ << " " << nodes_[1]->getCurrentCoordinate()[1] - nodes_[1]->getInitialCoordinate()[1] << std::endl;
+            file1 << timeStep * deltat_ << " " << controlPoints_[1999]->getCurrentCoordinate()[1] - controlPoints_[1999]->getInitialCoordinate()[1] << " " << controlPoints_[1999]->getCurrentCoordinate()[0] - controlPoints_[1999]->getInitialCoordinate()[0] << std::endl;
         }
 
         for (ControlPoint *cp : controlPoints_)
@@ -1595,9 +1633,6 @@ int GlobalSolid::firstAccelerationCalculation()
     int rank;
 
     MPI_Comm_rank(PETSC_COMM_WORLD, &rank);
-    int nnnumber = controlPoints_.size();
-
-    //int n = (order_ + 1) * (order_ + 2) / 2.0;
 
     //Create PETSc sparse parallel matrix
     PetscMalloc1(dirichletConditions_.size(), &dof);
@@ -1608,7 +1643,7 @@ int GlobalSolid::firstAccelerationCalculation()
         dof[i] = (2 * indexNode + direction);
     }
     ierr = MatCreateAIJ(PETSC_COMM_WORLD, PETSC_DECIDE, PETSC_DECIDE,
-                        2 * nnnumber, 2 * nnnumber,
+                        2 * cpnumber_, 2 * cpnumber_,
                         100, NULL, 300, NULL, &A);
     CHKERRQ(ierr);
 
@@ -1618,7 +1653,7 @@ int GlobalSolid::firstAccelerationCalculation()
     //Create PETSc vectors
     ierr = VecCreate(PETSC_COMM_WORLD, &b);
     CHKERRQ(ierr);
-    ierr = VecSetSizes(b, PETSC_DECIDE, 2 * nnnumber);
+    ierr = VecSetSizes(b, PETSC_DECIDE, 2 * cpnumber_);
     CHKERRQ(ierr);
     ierr = VecSetFromOptions(b);
     CHKERRQ(ierr);

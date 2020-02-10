@@ -21,7 +21,7 @@ int main(int argc, char **args)
     // boost::posix_time::ptime initialRead =
     //     boost::posix_time::microsec_clock::local_time();
 
-    problem->dataReading("parameters.txt", "properties.txt", "viga_3.txt",true);
+    problem->dataReading("parameters.txt", "properties.txt", "cunha.txt",false);
 
     // boost::posix_time::ptime endRead =
     //     boost::posix_time::microsec_clock::local_time();

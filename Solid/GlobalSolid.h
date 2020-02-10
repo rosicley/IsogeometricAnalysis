@@ -115,4 +115,6 @@ private:
     int orderParaview_;
 
     int quadrature_;
+
+    int cpnumber_;
 };

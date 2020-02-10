@@ -966,9 +966,36 @@ bounded_vector<double, 4> Cell::getCauchStress(const bounded_vector<double, 2> &
     mat1 = prod(Ac, S);
     sigma = (1.0 / jac) * prod(mat1, trans(Ac));
 
-    cauchStress(0) = sigma(0, 0);
-    cauchStress(1) = sigma(1, 1);
-    cauchStress(3) = sigma(0, 1);
+    if (sigma(0, 0) >= 10.0e-11 or sigma(0, 0) <= -10.0e-11)
+    {
+        cauchStress(0) = sigma(0, 0);
+    }
+    else
+    {
+        cauchStress(0) = 0.0;
+    }
+
+    if (sigma(1, 1) >= 10.0e-11 or sigma(1, 1) <= -10.0e-11)
+    {
+        cauchStress(1) = sigma(1, 1);
+    }
+    else
+    {
+        cauchStress(1) = 0.0;
+    }
+
+    if (sigma(0, 1) >= 10.0e-11 or sigma(0, 1) <= -10.0e-11)
+    {
+        cauchStress(3) = sigma(0, 1);
+    }
+    else
+    {
+        cauchStress(3) = 0.0;
+    }
+
+    //cauchStress(0) = sigma(0, 0);
+    //cauchStress(1) = sigma(1, 1);
+    //cauchStress(3) = sigma(0, 1);
 
     if (ep == "EPD")
     {
@@ -1016,9 +1043,36 @@ bounded_vector<double, 4> Cell::getGreen(const bounded_vector<double, 2> &qxsi, 
     identity_matrix<double> I(2);                                                   //identity matrix
     bounded_matrix<double, 2, 2> Ec = 0.5 * (prod(trans(Ac), Ac) - I);              //current green strain tensor
 
-    green(0) = Ec(0, 0);
-    green(1) = Ec(1, 1);
-    green(3) = Ec(0, 1);
+    if (Ec(0, 0) >= 10.0e-14 or Ec(0, 0) <= -10.0e-14)
+    {
+        green(0) = Ec(0, 0);
+    }
+    else
+    {
+        green(0) = 0.0;
+    }
+
+    if (Ec(1, 1) >= 10.0e-14 or Ec(1, 1) <= -10.0e-14)
+    {
+        green(1) = Ec(1, 1);
+    }
+    else
+    {
+        green(1) = 0.0;
+    }
+
+    if (Ec(0, 1) >= 10.0e-14 or Ec(0, 1) <= -10.0e-14)
+    {
+        green(3) = Ec(0, 1);
+    }
+    else
+    {
+        green(3) = 0.0;
+    }
+
+    // green(0) = Ec(0, 0);
+    // green(1) = Ec(1, 1);
+    // green(3) = Ec(0, 1);
 
     if (ep == "EPD")
     {

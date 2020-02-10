@@ -140,3 +140,8 @@ void ControlPoint::setINC(const bounded_vector<int, 2> inc)
 {
     inc_ = inc;
 }
+
+void ControlPoint::setIndex(const int &newIndex)
+{
+    index_ = newIndex;
+}

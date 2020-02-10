@@ -56,6 +56,8 @@ public:
 	void incrementCurrentCoordinate(const int &direction, const double &value);
 
 	void setINC(const bounded_vector<int, 2> inc);
+
+	void setIndex(const int &newIndex);
 	// void setStressState(const bounded_vector<double, 3> &stressState);
 
 	// void setZeroStressState();
