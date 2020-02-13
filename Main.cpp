@@ -21,7 +21,7 @@ int main(int argc, char **args)
     // boost::posix_time::ptime initialRead =
     //     boost::posix_time::microsec_clock::local_time();
 
-    problem->dataReading("parameters.txt", "properties.txt", "cunha.txt",false);
+    problem->dataReading("parameters.txt", "properties.txt", "circunferencia_2_4.txt",true);
 
     // boost::posix_time::ptime endRead =
     //     boost::posix_time::microsec_clock::local_time();
@@ -40,7 +40,7 @@ int main(int argc, char **args)
     {
         if (type == "STATIC")
         {
-            problem->solveStaticProblem();
+          problem->solveStaticProblem();
         }
         else if (type == "DYNAMIC")
         {

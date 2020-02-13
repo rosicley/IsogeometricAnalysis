@@ -249,7 +249,9 @@ void GlobalSolid::dataReading(const std::string &inputParameters, const std::str
 
                 mirror << ipc << " " << coord(0) << " " << coord(1) << " " << weight << std::endl;
 
-                if (coord(0) / weight == 0.0)
+                double tol = 1.0e-05;
+
+                if (fabs(coord(0)) <= tol and coord(1) <= 0.0)
                 {
                     bounded_vector<int, 2> free;
                     bounded_vector<double, 2> value;
@@ -259,6 +261,39 @@ void GlobalSolid::dataReading(const std::string &inputParameters, const std::str
                     value(1) = 0.0;
                     addDirichletCondition(ipc, ipatch, free, value);
                 }
+                if (coord(0) >= 4.0)
+                {
+                    bounded_vector<int, 2> free;
+                    bounded_vector<double, 2> value;
+                    free(0) = 1;
+                    free(1) = 0;
+                    value(0) = 0.5;
+                    value(1) = 0.0;
+                    addDirichletCondition(ipc, ipatch, free, value);
+                    std::cout << "adiciounou" << std::endl;
+                }
+
+                // if (coord(1) <= -1.95)
+                // {
+                //     bounded_vector<int, 2> free;
+                //     bounded_vector<double, 2> value;
+                //     free(0) = 1;
+                //     free(1) = 1;
+                //     value(0) = 0.0;
+                //     value(1) = 0.0;
+                //     addDirichletCondition(ipc, ipatch, free, value);
+                // }
+                // if (coord(1) >= 1.95)
+                // {
+                //     bounded_vector<int, 2> free;
+                //     bounded_vector<double, 2> value;
+                //     free(0) = 1;
+                //     free(1) = 0;
+                //     value(0) = 0.2;
+                //     value(1) = 0.0;
+                //     addDirichletCondition(ipc, ipatch, free, value);
+                // }
+
                 // if (coord(0) / weight == 0.0 && coord(1) / weight)
                 // {
                 //     bounded_vector<int, 2> free;
@@ -288,6 +323,8 @@ void GlobalSolid::dataReading(const std::string &inputParameters, const std::str
         std::getline(isogeometric, line);
         isogeometric >> npc_dir(0) >> npc_dir(1);
 
+        // std::cout << ipatch<<" "<< npc <<" " << npc_dir(0) << " " << npc_dir(1) << std::endl;
+
         if (rhino == true)
         {
             for (int j = 0; j < npc_dir(1); j++)
@@ -305,16 +342,49 @@ void GlobalSolid::dataReading(const std::string &inputParameters, const std::str
 
                     mirror << j * npc_dir(0) + i << " " << coord(0) << " " << coord(1) << " " << weight << std::endl;
 
-                    if (coord(0) / weight == 0.0)
+                    double tol = 1.0e-05;
+
+                    if (fabs(coord(0) + 5.0) <= tol)
                     {
                         bounded_vector<int, 2> free;
                         bounded_vector<double, 2> value;
                         free(0) = 1;
-                        free(1) = 1;
+                        free(1) = 0;
+                        if (fabs(coord(1) + 5.0) <= tol)
+                        {
+                            free(1) = 1;
+                        }
                         value(0) = 0.0;
                         value(1) = 0.0;
                         addDirichletCondition(j * npc_dir(0) + i, ipatch, free, value);
                     }
+                    // if (fabs(coord(0) - 5.0) <= tol and ipatch == 2)
+                    // {
+                    //     //bounded_vector<int, 2> free;
+                    //     bounded_vector<double, 2> value;
+                    //     //free(0) = 1;
+                    //     //free(1) = 1;
+                    //     value(0) = 446.4285714;
+                    //     value(1) = 0.0;
+                    //     if (fabs(coord(1) - 5.0) <= tol or fabs(coord(1) + 5) <= tol)
+                    //     {
+                    //         value(0) = 0.0;
+                    //     }
+
+                    //     //addDirichletCondition(j * npc_dir(0) + i, ipatch, free, value);
+                    //     addNeumannCondition(j * npc_dir(0) + i, ipatch, value);
+                    // }
+
+                    // if (coord(0) / weight == 0.0)
+                    // {
+                    //     bounded_vector<int, 2> free;
+                    //     bounded_vector<double, 2> value;
+                    //     free(0) = 1;
+                    //     free(1) = 1;
+                    //     value(0) = 0.0;
+                    //     value(1) = 0.0;
+                    //     addDirichletCondition(j * npc_dir(0) + i, ipatch, free, value);
+                    // }
                     // if (coord(0) / weight == 0.0 && coord(1) == 0.0)
                     // {
                     //     bounded_vector<int, 2> free;
@@ -507,19 +577,20 @@ void GlobalSolid::dataReading(const std::string &inputParameters, const std::str
                 }
             }
         }
-        mirror << "DIRICHLET CONDITION (" << dirichletConditions_.size() << ")" << std::endl;
-        mirror << "INDEX POINT   DIRECTION   VALUE" << std::endl;
-        for (DirichletCondition *dir : dirichletConditions_)
-        {
-            mirror << dir->getControlPoint()->getIndex() << " " << dir->getDirection() << " " << dir->getValue() << std::endl;
-        }
+    }
+    mirror << std::endl;
+    mirror << "DIRICHLET CONDITION (" << dirichletConditions_.size() << ")" << std::endl;
+    mirror << "INDEX POINT   DIRECTION   VALUE" << std::endl;
+    for (DirichletCondition *dir : dirichletConditions_)
+    {
+        mirror << dir->getControlPoint()->getIndex() << " " << dir->getDirection() << " " << dir->getValue() << std::endl;
+    }
 
-        mirror << "NEUMAN CONDITION (" << neumannConditions_.size() << ")" << std::endl;
-        mirror << "INDEX POINT   DIRECTION   VALUE" << std::endl;
-        for (NeumannCondition *dir : neumannConditions_)
-        {
-            mirror << dir->getControlPoint()->getIndex() << " " << dir->getDirection() << " " << dir->getValue() << std::endl;
-        }
+    mirror << "NEUMAN CONDITION (" << neumannConditions_.size() << ")" << std::endl;
+    mirror << "INDEX POINT   DIRECTION   VALUE" << std::endl;
+    for (NeumannCondition *dir : neumannConditions_)
+    {
+        mirror << dir->getControlPoint()->getIndex() << " " << dir->getDirection() << " " << dir->getValue() << std::endl;
     }
 
     parameters.close();
@@ -527,48 +598,49 @@ void GlobalSolid::dataReading(const std::string &inputParameters, const std::str
     isogeometric.close();
 
     ///LOOPING PARA ORGANIZAR OS PONTOS DE CONTROLE DOS PATCHES NO GLOBAL
-    controlPoints_ = patches_[0]->getControlPoints();
-    int cpnum = controlPoints_.size();
-    int cpindex = controlPoints_.size();
+    int cpindex = 0;
 
-    if (npatch > 1)
+    double dist = 1.0e-6;
+    for (Patch *patch : patches_)
     {
-        for (int i = 1; i < npatch; i++)
+        std::vector<ControlPoint *> cpaux = patch->getControlPoints();
+
+        for (ControlPoint *cp_patch : cpaux)
         {
-            std::vector<ControlPoint *> cpaux = patches_[i]->getControlPoints();
+            bounded_vector<double, 2> coord_patch = cp_patch->getInitialCoordinate();
+            int ver = -1;
 
-            for (int k = 0; k < cpaux.size(); k++)
+            for (ControlPoint *cp_global : controlPoints_)
             {
-                bounded_vector<double, 2> coordK = cpaux[k]->getInitialCoordinate();
-                int ver = -1;
-                for (int j = 0; j < cpnum; j++)
-                {
-                    bounded_vector<double, 2> coordJ = controlPoints_[j]->getInitialCoordinate();
-                    int indexJ = controlPoints_[j]->getIndex();
+                bounded_vector<double, 2> coord_global = cp_global->getInitialCoordinate();
+                int index = cp_global->getIndex();
 
-                    if (coordJ(0) == coordK(0) && coordJ(1) == coordK(1))
-                    {
-                        ver = indexJ;
-                        break;
-                    }
-                }
-                if (ver != -1)
+                bounded_vector<double, 2> aux = coord_global - coord_patch;
+                double dist2 = aux(0) * aux(0) + aux(1) * aux(1);
+
+                if (dist2 <= dist)
                 {
-                    cpaux[k]->setIndex(ver);
-                    controlPoints_.push_back(cpaux[k]);
-                }
-                else
-                {
-                    cpaux[k]->setIndex(cpindex);
-                    controlPoints_.push_back(cpaux[k]);
-                    cpindex = cpindex + 1;
+                    ver = index;
+                    break;
                 }
             }
-            cpnum = controlPoints_.size();
+            if (ver != -1)
+            {
+                cp_patch->setIndex(ver);
+                controlPoints_.push_back(cp_patch);
+            }
+            else
+            {
+                cp_patch->setIndex(cpindex);
+                controlPoints_.push_back(cp_patch);
+                cpindex = cpindex + 1;
+            }
         }
     }
 
     cpnumber_ = cpindex;
+
+    std::cout << cpnumber_ << std::endl;
 
     for (Patch *pat : patches_)
     {
@@ -1130,7 +1202,6 @@ void GlobalSolid::exportToParaview(const int &loadstep)
     }
     file << "      </DataArray> "
          << "\n";
-
 
     file << "    </PointData>"
          << "\n";
