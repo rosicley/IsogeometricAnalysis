@@ -16,22 +16,7 @@ int main(int argc, char **args)
 
     GlobalSolid *problem = new GlobalSolid;
 
-    // MPI_Barrier(PETSC_COMM_WORLD);
-
-    // boost::posix_time::ptime initialRead =
-    //     boost::posix_time::microsec_clock::local_time();
-
-    problem->dataReading("parameters.txt", "properties.txt", "circunferencia_2_4.txt",true);
-
-    // boost::posix_time::ptime endRead =
-    //     boost::posix_time::microsec_clock::local_time();
-
-    //     if (rank == 0)
-    // {
-    //     boost::posix_time::time_duration diff = endRead - initialRead;
-    //     std::cout << "   " << std::fixed
-    //               << diff.total_milliseconds() / 1000. << std::endl;
-    // }
+    problem->dataReading("parameters.txt", "properties.txt", "teste.txt", "fe2.txt", true);
 
     std::string planeState = problem->getPlaneState(); //EPD OR EPT
     std::string type = problem->getAnalysisType();     //DYNAMIC OR STATIC
@@ -40,7 +25,7 @@ int main(int argc, char **args)
     {
         if (type == "STATIC")
         {
-          problem->solveStaticProblem();
+            problem->solveStaticProblem();
         }
         else if (type == "DYNAMIC")
         {

@@ -115,22 +115,6 @@ void ControlPoint::setCurrentAcceleration(const bounded_vector<double, 2> &curre
     currentAcceleration_ = currentAcceleration;
 }
 
-// void ControlPoint::setStressState(const bounded_vector<double, 2> &stressState)
-// {
-//     stressState_(0) = stressState_(0) + stressState(0);
-//     stressState_(1) = stressState_(1) + stressState(1);
-//     stressState_(2) = stressState_(2) + stressState(2);
-//     stressState_(2) = stressState_(2) + 1.0;
-// }
-
-// void ControlPoint::setZeroStressState()
-// {
-//     stressState_(0) = 0.0;
-//     stressState_(1) = 0.0;
-//     stressState_(2) = 0.0;
-//     stressState_(2) = 0.0;
-// }
-
 void ControlPoint::incrementCurrentCoordinate(const int &direction, const double &value)
 {
     currentCoordinate_(direction) += value;
@@ -144,4 +128,12 @@ void ControlPoint::setINC(const bounded_vector<int, 2> inc)
 void ControlPoint::setIndex(const int &newIndex)
 {
     index_ = newIndex;
+}
+
+
+void ControlPoint::updatePastValue()
+{
+    pastAcceleration_ = currentAcceleration_;
+    pastCoordinate_ = currentCoordinate_;
+    pastVelocity_ = currentVelocity_;
 }

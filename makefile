@@ -1,7 +1,7 @@
 MANSEC           = KSP
 CLEANFILES       = rhs.vtk solution.vtk
 NP               = 1
-CSOURCES 				 = $(wildcard *.cpp Solid/BoundaryConditions/*.cpp Solid/Isogeometric/*.cpp Solid/*.cpp)
+CSOURCES 				 = $(wildcard *.cpp Solid/BoundaryConditions/*.cpp Solid/Isogeometric/*.cpp Solid/*.cpp Solid/FiniteElement/*.cpp)
 FCOMPILER        = gfortran -O2
 CXXFLAGS        += -w
 CURRENT_DIR      = $(shell pwd)
@@ -18,7 +18,7 @@ debug: $(CSOURCES:.cpp=.o)
 	@gdb debug
 
 clear:
-	@$ rm *.o *~ s *.vtu mirror* domain* fiber_decomposition.txt *.mod *.dat ma26* tensao* esforc* saida omega.txt *.geo *.msh $(CURRENT_DIR)/src/*.gch
+	@$ rm *.o *~ s *.vtu mirror* ISOdomain* FEdomain* *.mod *.dat ma26* tensao* esforc* saida omega.txt *.geo *.msh $(CURRENT_DIR)/src/*.gch
 
 run1:
 	@$ mpirun -np 1 ./s

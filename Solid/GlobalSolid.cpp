@@ -58,17 +58,52 @@ void GlobalSolid::addNeumannCondition(const int &index, const int &patchIndex, c
     }
 }
 
+void GlobalSolid::addDirichletConditionFE(const int &index, const int &meshIndex, const bounded_vector<int, 2> &free, const bounded_vector<double, 2> &values)
+{
+    if (free(0) == 1)
+    {
+        DirichletConditionFE *cond = new DirichletConditionFE(meshes_[meshIndex]->getNode(index), 0, values(0));
+        dirichletConditionsFE_.push_back(cond);
+    }
+    if (free(1) == 1)
+    {
+        DirichletConditionFE *cond = new DirichletConditionFE(meshes_[meshIndex]->getNode(index), 1, values(1));
+        dirichletConditionsFE_.push_back(cond);
+    }
+}
+
+void GlobalSolid::addNeumannConditionFE(const int &index, const int &meshIndex, const bounded_vector<double, 2> &values)
+{
+    if (values(0) != 0.0)
+    {
+        NeumannConditionFE *cond = new NeumannConditionFE(meshes_[meshIndex]->getNode(index), 0, values(0));
+        neumannConditionsFE_.push_back(cond);
+    }
+    if (values(1) != 0.0)
+    {
+        NeumannConditionFE *cond = new NeumannConditionFE(meshes_[meshIndex]->getNode(index), 1, values(1));
+        neumannConditionsFE_.push_back(cond);
+    }
+}
+
 void GlobalSolid::addPatch(const int &index, const int &npc, const int &indexMaterial, const double &thickness)
 {
     Patch *patch = new Patch(index, npc, materials_[indexMaterial], thickness);
     patches_.push_back(patch);
 }
 
-void GlobalSolid::dataReading(const std::string &inputParameters, const std::string &inputProperties, const std::string &inputMeshIso, const bool &rhino)
+void GlobalSolid::addMesh(const int &index, const int &nnodes, const int &nelem, const int &indexMaterial, const double &thickness, const std::string &elementType)
+{
+    Mesh *mesh = new Mesh(index, nnodes, nelem, materials_[indexMaterial], thickness, elementType);
+    meshes_.push_back(mesh);
+}
+
+void GlobalSolid::dataReading(const std::string &inputParameters, const std::string &inputProperties, const std::string &inputMeshIso, const std::string &inputMeshFE, const bool &rhino)
 {
     std::ifstream parameters(inputParameters);
     std::ifstream properties(inputProperties);
     std::ifstream isogeometric(inputMeshIso);
+    std::ifstream feMesh(inputMeshFE);
     std::string line;
 
     std::stringstream text1;
@@ -95,7 +130,6 @@ void GlobalSolid::dataReading(const std::string &inputParameters, const std::str
     std::getline(parameters, line);
     std::getline(parameters, line);
     parameters >> numberOfSteps_ >> maximumOfIteration_ >> tolerance_;
-
     if (problemType_ == "DYNAMIC")
     {
         std::getline(parameters, line);
@@ -124,7 +158,6 @@ void GlobalSolid::dataReading(const std::string &inputParameters, const std::str
         std::getline(parameters, line);
         parameters >> quadrature_;
     }
-
     std::getline(parameters, line);
     std::getline(parameters, line);
     std::getline(parameters, line);
@@ -149,14 +182,10 @@ void GlobalSolid::dataReading(const std::string &inputParameters, const std::str
     //READING SOLID PROPERTIES
     int nmaterial;
     double young, poisson, density;
-
     std::getline(properties, line);
     std::getline(properties, line);
     std::getline(properties, line);
     properties >> nmaterial;
-
-    // mirror << "NUMBER OF MATERIALS: " << nmaterial << std::endl;
-
     for (int i = 0; i < nmaterial; i++)
     {
         std::getline(properties, line);
@@ -166,30 +195,23 @@ void GlobalSolid::dataReading(const std::string &inputParameters, const std::str
         std::getline(properties, line);
         properties >> young >> poisson >> density;
         addMaterial(i, young, poisson, density);
-        // mirror << "MATERIAL " << i << std::endl;
-        // mirror << "YOUNG: " << young << std::endl;
-        // mirror << "POISSON: " << poisson << std::endl;
-        // mirror << "DENSITY: " << density << std::endl;
     }
 
     //READING ISOGEOMETRIC MESH
-
     int npatch;       //nº de patchs
     int cellCont = 0; //contador de células
+    int cellpatches = 0;
     std::getline(isogeometric, line);
     std::getline(isogeometric, line);
     std::getline(isogeometric, line);
     isogeometric >> npatch;
     std::getline(isogeometric, line);
-
     mirror << "NUMBER OF PATCHES: " << npatch << std::endl;
-
     for (int ipatch = 0; ipatch < npatch; ipatch++)
     {
         int npc, imaterial, dim_u, dim_v;
         double thickness;
         bounded_vector<int, 2> npc_dir, degree; //NUMBER OF CONTROL POINTS(U, V);ORDER(U,V)
-
         std::getline(isogeometric, line);
         std::getline(isogeometric, line);
         std::getline(isogeometric, line);
@@ -213,16 +235,13 @@ void GlobalSolid::dataReading(const std::string &inputParameters, const std::str
         std::getline(isogeometric, line);
         std::getline(isogeometric, line);
         std::getline(isogeometric, line);
-
         mirror << "PATCH " << ipatch << std::endl;
         mirror << "THICKNESS: " << thickness << std::endl;
         mirror << "YOUNG: " << materials_[imaterial]->getYoung() << std::endl;
         mirror << "POISSON: " << materials_[imaterial]->getPoisson() << std::endl;
         mirror << "DENSITY: " << materials_[imaterial]->getDensity() << std::endl;
-
         mirror << "CONTROL POINTS (" << npc << ")" << std::endl;
         mirror << "INDEX  COORDINATES (X1, X2)  WEIGHT" << std::endl;
-
         //CREATE CONTROL POINTS IN PATCH
         matrix<double> auxil(npc, 3);
         if (rhino == true)
@@ -232,7 +251,6 @@ void GlobalSolid::dataReading(const std::string &inputParameters, const std::str
             {
                 double aux;
                 isogeometric >> auxil(ipc, 0) >> auxil(ipc, 1) >> aux >> auxil(ipc, 2);
-
                 std::getline(isogeometric, line);
             }
         }
@@ -242,89 +260,17 @@ void GlobalSolid::dataReading(const std::string &inputParameters, const std::str
             {
                 bounded_vector<double, 2> coord;
                 double aux, weight;
-
                 isogeometric >> coord(0) >> coord(1) >> aux >> weight;
-
                 patches_[ipatch]->addControlPoint(ipc, coord, weight);
-
                 mirror << ipc << " " << coord(0) << " " << coord(1) << " " << weight << std::endl;
-
-                double tol = 1.0e-05;
-
-                if (fabs(coord(0)) <= tol and coord(1) <= 0.0)
-                {
-                    bounded_vector<int, 2> free;
-                    bounded_vector<double, 2> value;
-                    free(0) = 1;
-                    free(1) = 1;
-                    value(0) = 0.0;
-                    value(1) = 0.0;
-                    addDirichletCondition(ipc, ipatch, free, value);
-                }
-                if (coord(0) >= 4.0)
-                {
-                    bounded_vector<int, 2> free;
-                    bounded_vector<double, 2> value;
-                    free(0) = 1;
-                    free(1) = 0;
-                    value(0) = 0.5;
-                    value(1) = 0.0;
-                    addDirichletCondition(ipc, ipatch, free, value);
-                    std::cout << "adiciounou" << std::endl;
-                }
-
-                // if (coord(1) <= -1.95)
-                // {
-                //     bounded_vector<int, 2> free;
-                //     bounded_vector<double, 2> value;
-                //     free(0) = 1;
-                //     free(1) = 1;
-                //     value(0) = 0.0;
-                //     value(1) = 0.0;
-                //     addDirichletCondition(ipc, ipatch, free, value);
-                // }
-                // if (coord(1) >= 1.95)
-                // {
-                //     bounded_vector<int, 2> free;
-                //     bounded_vector<double, 2> value;
-                //     free(0) = 1;
-                //     free(1) = 0;
-                //     value(0) = 0.2;
-                //     value(1) = 0.0;
-                //     addDirichletCondition(ipc, ipatch, free, value);
-                // }
-
-                // if (coord(0) / weight == 0.0 && coord(1) / weight)
-                // {
-                //     bounded_vector<int, 2> free;
-                //     bounded_vector<double, 2> value;
-                //     free(0) = 0;
-                //     free(1) = 1;
-                //     value(0) = 0.0;
-                //     value(1) = 0.0;
-                //     addDirichletCondition(ipc, ipatch, free, value);
-                // }
-
-                // if (coord(0) / weight == 15.0 && ipatch == 2)
-                // {
-                //     bounded_vector<double, 2> value;
-                //     value(0) = 30.0;
-                //     value(1) = 0.0;
-                //     addNeumannCondition(ipc, ipatch, value);
-                // }
-
                 std::getline(isogeometric, line);
             }
         }
-
         std::getline(isogeometric, line);
         std::getline(isogeometric, line);
         std::getline(isogeometric, line);
         std::getline(isogeometric, line);
         isogeometric >> npc_dir(0) >> npc_dir(1);
-
-        // std::cout << ipatch<<" "<< npc <<" " << npc_dir(0) << " " << npc_dir(1) << std::endl;
-
         if (rhino == true)
         {
             for (int j = 0; j < npc_dir(1); j++)
@@ -333,162 +279,148 @@ void GlobalSolid::dataReading(const std::string &inputParameters, const std::str
                 {
                     bounded_vector<double, 2> coord;
                     double aux, weight;
-
                     coord(0) = auxil(i * npc_dir(1) + j, 0);
                     coord(1) = auxil(i * npc_dir(1) + j, 1);
                     weight = auxil(i * npc_dir(1) + j, 2);
-
                     patches_[ipatch]->addControlPoint(j * npc_dir(0) + i, coord, weight);
-
                     mirror << j * npc_dir(0) + i << " " << coord(0) << " " << coord(1) << " " << weight << std::endl;
-
-                    double tol = 1.0e-05;
-
-                    if (fabs(coord(0) + 5.0) <= tol)
-                    {
-                        bounded_vector<int, 2> free;
-                        bounded_vector<double, 2> value;
-                        free(0) = 1;
-                        free(1) = 0;
-                        if (fabs(coord(1) + 5.0) <= tol)
-                        {
-                            free(1) = 1;
-                        }
-                        value(0) = 0.0;
-                        value(1) = 0.0;
-                        addDirichletCondition(j * npc_dir(0) + i, ipatch, free, value);
-                    }
-                    // if (fabs(coord(0) - 5.0) <= tol and ipatch == 2)
-                    // {
-                    //     //bounded_vector<int, 2> free;
-                    //     bounded_vector<double, 2> value;
-                    //     //free(0) = 1;
-                    //     //free(1) = 1;
-                    //     value(0) = 446.4285714;
-                    //     value(1) = 0.0;
-                    //     if (fabs(coord(1) - 5.0) <= tol or fabs(coord(1) + 5) <= tol)
-                    //     {
-                    //         value(0) = 0.0;
-                    //     }
-
-                    //     //addDirichletCondition(j * npc_dir(0) + i, ipatch, free, value);
-                    //     addNeumannCondition(j * npc_dir(0) + i, ipatch, value);
-                    // }
-
-                    // if (coord(0) / weight == 0.0)
-                    // {
-                    //     bounded_vector<int, 2> free;
-                    //     bounded_vector<double, 2> value;
-                    //     free(0) = 1;
-                    //     free(1) = 1;
-                    //     value(0) = 0.0;
-                    //     value(1) = 0.0;
-                    //     addDirichletCondition(j * npc_dir(0) + i, ipatch, free, value);
-                    // }
-                    // if (coord(0) / weight == 0.0 && coord(1) == 0.0)
-                    // {
-                    //     bounded_vector<int, 2> free;
-                    //     bounded_vector<double, 2> value;
-                    //     free(0) = 0;
-                    //     free(1) = 1;
-                    //     value(0) = 0.0;
-                    //     value(1) = 0.0;
-                    //     addDirichletCondition(j * npc_dir(0) + i, ipatch, free, value);
-                    // }
-                    // if (coord(0) / weight == 15.0 && ipatch == 2)
-                    // {
-                    //     bounded_vector<double, 2> value;
-                    //     value(0) = 30.0;
-                    //     value(1) = 0.0;
-                    //     addNeumannCondition(j * npc_dir(0) + i, ipatch, value);
-                    // }
                 }
             }
         }
-
         std::getline(isogeometric, line);
         std::getline(isogeometric, line);
         std::getline(isogeometric, line);
         std::getline(isogeometric, line);
         std::getline(isogeometric, line);
         isogeometric >> degree(0) >> degree(1);
-
         patches_[ipatch]->setDegree(degree);
         patches_[ipatch]->setNpc_Dir(npc_dir);
         dim_u = npc_dir(0) + degree(0) + 1;
         dim_v = npc_dir(1) + degree(1) + 1;
         vector<double> uknot(dim_u);
         vector<double> vknot(dim_v);
-
         std::getline(isogeometric, line);
         std::getline(isogeometric, line);
         std::getline(isogeometric, line);
         std::getline(isogeometric, line);
         std::getline(isogeometric, line);
-
         for (int iu = 0; iu < dim_u; iu++)
         {
             isogeometric >> uknot(iu);
             std::getline(isogeometric, line);
         }
-
         std::getline(isogeometric, line);
         std::getline(isogeometric, line);
         std::getline(isogeometric, line);
         std::getline(isogeometric, line);
-
         for (int iv = 0; iv < dim_v; iv++)
         {
             isogeometric >> vknot(iv);
             std::getline(isogeometric, line);
         }
-
         patches_[ipatch]->setKnotsVectors(uknot, vknot);
 
-        //CONDIÇÕES DE CONTORNO RELACIONADAS COM O PATCH 0
-
+        //CONDIÇÕES DE CONTORNO RELACIONADAS COM O PATCH ipatch
         std::getline(isogeometric, line);
         std::getline(isogeometric, line);
         std::getline(isogeometric, line);
         std::getline(isogeometric, line);
-
         int nneuman, ndirichlet, ipc;
         bounded_vector<double, 2> value;
         bounded_vector<int, 2> free;
-
         isogeometric >> nneuman;
+        std::getline(isogeometric, line);
+        std::getline(isogeometric, line);
+        std::getline(isogeometric, line);
+        std::getline(isogeometric, line);
+        std::getline(isogeometric, line);
 
-        std::getline(isogeometric, line);
-        std::getline(isogeometric, line);
-        std::getline(isogeometric, line);
-        std::getline(isogeometric, line);
-        std::getline(isogeometric, line);
+        std::string typecond;
+        //std::vector<int> neumanCurve;
+        //std::vector<double> neumanValue0;
+        //std::vector<double> neumanValue1;
+
+        std::vector<bounded_vector<double, 3>> neummanCurve;
 
         for (int ineuman = 0; ineuman < nneuman; ineuman++)
         {
-            isogeometric >> ipc >> value(0) >> value(1);
-            addNeumannCondition(ipc, ipatch, value);
-            std::getline(isogeometric, line);
+            isogeometric >> typecond;
+            if (typecond == "POINT")
+            {
+                isogeometric >> ipc >> value(0) >> value(1);
+                addNeumannCondition(ipc, ipatch, value);
+                std::getline(isogeometric, line);
+            }
+            else if (typecond == "CURVE")
+            {
+                bounded_vector<double, 3> aux;
+
+                isogeometric >> ipc >> aux(1) >> aux(2);
+                aux(0) = static_cast<double>(ipc);
+
+                neummanCurve.push_back(aux);
+                std::getline(isogeometric, line);
+            }
         }
-
         std::getline(isogeometric, line);
         std::getline(isogeometric, line);
         std::getline(isogeometric, line);
         std::getline(isogeometric, line);
-
         isogeometric >> ndirichlet;
-
         std::getline(isogeometric, line);
         std::getline(isogeometric, line);
         std::getline(isogeometric, line);
         std::getline(isogeometric, line);
         std::getline(isogeometric, line);
-
+        //std::vector<bounded_vector<double, 5>> dirichletCurve;
         for (int idirichlet = 0; idirichlet < ndirichlet; idirichlet++)
         {
-            isogeometric >> ipc >> free(0) >> free(1) >> value(0) >> value(1);
-            addDirichletCondition(ipc, ipatch, free, value);
-            std::getline(isogeometric, line);
+            isogeometric >> typecond;
+            if (typecond == "POINT")
+            {
+                isogeometric >> ipc >> free(0) >> free(1) >> value(0) >> value(1);
+                addDirichletCondition(ipc, ipatch, free, value);
+                std::getline(isogeometric, line);
+            }
+            else if (typecond == "CURVE")
+            {
+                isogeometric >> ipc >> free(0) >> free(1) >> value(0) >> value(1);
+                if (ipc == 0)
+                {
+                    for (int cp = 0; cp < npc_dir(0); cp++)
+                    {
+                        addDirichletCondition(cp, ipatch, free, value);
+                    }
+                }
+                else if (ipc == 1)
+                {
+                    int aux = npc_dir(0) - 1;
+                    for (int ih = 0; ih < npc_dir(1); ih++)
+                    {
+                        addDirichletCondition(aux, ipatch, free, value);
+                        aux = aux + npc_dir(0);
+                    }
+                }
+                else if (ipc == 2)
+                {
+                    int aux = (npc_dir(1) - 1) * npc_dir(0);
+                    for (int ih = 0; ih < npc_dir(0); ih++)
+                    {
+                        addDirichletCondition(aux, ipatch, free, value);
+                        aux = aux + 1;
+                    }
+                }
+                else if (ipc == 3)
+                {
+                    int aux = 0;
+                    for (int ih = 0; ih < npc_dir(1); ih++)
+                    {
+                        addDirichletCondition(aux, ipatch, free, value);
+                        aux = aux + npc_dir(0);
+                    }
+                }
+                std::getline(isogeometric, line);
+            }
         }
 
         /////////////////////////////////FIM DE LEITURA DO PATCH//////////////////////////////////
@@ -567,104 +499,411 @@ void GlobalSolid::dataReading(const std::string &inputParameters, const std::str
 
                         Cell *cell = new Cell(cellCont++, patches_[ipatch], connection);
                         cells_.push_back(cell);
-
-                        // for (int k = 0; k < 9; k++)
-                        // {
-
-                        //     nodes_[connect(k)]->pushInverseIncidence(index);
-                        // };
                     }
                 }
             }
         }
-    }
-    mirror << std::endl;
-    mirror << "DIRICHLET CONDITION (" << dirichletConditions_.size() << ")" << std::endl;
-    mirror << "INDEX POINT   DIRECTION   VALUE" << std::endl;
-    for (DirichletCondition *dir : dirichletConditions_)
-    {
-        mirror << dir->getControlPoint()->getIndex() << " " << dir->getDirection() << " " << dir->getValue() << std::endl;
-    }
-
-    mirror << "NEUMAN CONDITION (" << neumannConditions_.size() << ")" << std::endl;
-    mirror << "INDEX POINT   DIRECTION   VALUE" << std::endl;
-    for (NeumannCondition *dir : neumannConditions_)
-    {
-        mirror << dir->getControlPoint()->getIndex() << " " << dir->getDirection() << " " << dir->getValue() << std::endl;
-    }
-
-    parameters.close();
-    properties.close();
-    isogeometric.close();
-
-    ///LOOPING PARA ORGANIZAR OS PONTOS DE CONTROLE DOS PATCHES NO GLOBAL
-    int cpindex = 0;
-
-    double dist = 1.0e-6;
-    for (Patch *patch : patches_)
-    {
-        std::vector<ControlPoint *> cpaux = patch->getControlPoints();
-
-        for (ControlPoint *cp_patch : cpaux)
+        if (rank == 0)
         {
-            bounded_vector<double, 2> coord_patch = cp_patch->getInitialCoordinate();
-            int ver = -1;
-
-            for (ControlPoint *cp_global : controlPoints_)
+            for (int i = 0; i < neummanCurve.size(); i++)
             {
-                bounded_vector<double, 2> coord_global = cp_global->getInitialCoordinate();
-                int index = cp_global->getIndex();
+                bounded_vector<double, 3> neu = neummanCurve[i];
+                value(0) = neu(1);
+                value(1) = neu(2);
+                int curve = static_cast<int>(neu(0));
 
-                bounded_vector<double, 2> aux = coord_global - coord_patch;
-                double dist2 = aux(0) * aux(0) + aux(1) * aux(1);
-
-                if (dist2 <= dist)
+                if (curve == 0)
                 {
-                    ver = index;
-                    break;
+                    int j = cellpatches;
+                    vector<double> force(2 * npc_dir(0), 0.0);
+                    for (int c = 0; c < span(0); c++)
+                    {
+                        vector<double> contribuition = cells_[j]->computeDistribuitedLoads(value, quadrature_, 0);
+                        j = j + 1;
+
+                        for (int in = 0; in < contribuition.size(); in++)
+                        {
+                            force(2 * c + in) += contribuition(in);
+                        }
+                    }
+                    for (int ih = 0; ih < npc_dir(0); ih++)
+                    {
+                        value(0) = force(2 * ih);
+                        value(1) = force(2 * ih + 1);
+                        addNeumannCondition(ih, ipatch, value);
+                    }
+                }
+                else if (curve == 1)
+                {
+                    int j = cellpatches + span(0) - 1;
+                    vector<double> force(2 * npc_dir(1), 0.0);
+
+                    for (int c = 0; c < span(1); c++)
+                    {
+                        vector<double> contribuition = cells_[j]->computeDistribuitedLoads(value, quadrature_, 1);
+                        j = j + span(0);
+
+                        for (int in = 0; in < contribuition.size(); in++)
+                        {
+                            force(2 * c + in) += contribuition(in);
+                        }
+                    }
+
+                    int aux = npc_dir(0) - 1;
+                    for (int ih = 0; ih < npc_dir(1); ih++)
+                    {
+                        value(0) = force(2 * ih);
+                        value(1) = force(2 * ih + 1);
+                        addNeumannCondition(aux, ipatch, value);
+                        aux = aux + npc_dir(0);
+                    }
+                }
+                else if (curve == 2)
+                {
+                    int j = cellpatches + (span(1) - 1) * span(0);
+                    vector<double> force(2 * npc_dir(0), 0.0);
+                    for (int c = 0; c < span(0); c++)
+                    {
+                        vector<double> contribuition = cells_[j]->computeDistribuitedLoads(value, quadrature_, 2);
+                        std::vector<ControlPoint *> points = cells_[j]->getControlPointsOnSide(2);
+                        j = j + 1;
+
+                        for (int in = 0; in < contribuition.size(); in++)
+                        {
+                            force(2*c + in) += contribuition(in);
+                        }
+                    }
+                    int aux = (npc_dir(1) - 1) * npc_dir(0);
+                    for (int ih = 0; ih < npc_dir(0); ih++)
+                    {
+                        value(0) = force(2 * ih);
+                        value(1) = force(2 * ih + 1);
+                        addNeumannCondition(aux, ipatch, value);
+                        aux = aux + 1;
+                    }
+                }
+                else if (curve == 3)
+                {
+                    int j = cellpatches;
+                    vector<double> force(2 * npc_dir(1), 0.0);
+                    for (int c = 0; c < span(1); c++)
+                    {
+                        vector<double> contribuition = cells_[j]->computeDistribuitedLoads(value, quadrature_, 3);
+                        j = j + span(0);
+
+                        for (int in = 0; in < contribuition.size(); in++)
+                        {
+                            force(2 * c + in) += contribuition(in);
+                        }
+                    }
+                    int aux = 0;
+                    for (int ih = 0; ih < npc_dir(1); ih++)
+                    {
+                        value(0) = force(2 * ih);
+                        value(1) = force(2 * ih + 1);
+                        addNeumannCondition(aux, ipatch, value);
+                        aux = aux + npc_dir(0);
+                    }
                 }
             }
-            if (ver != -1)
-            {
-                cp_patch->setIndex(ver);
-                controlPoints_.push_back(cp_patch);
-            }
-            else
-            {
-                cp_patch->setIndex(cpindex);
-                controlPoints_.push_back(cp_patch);
-                cpindex = cpindex + 1;
-            }
         }
+        cellpatches += span(0) * span(1);
     }
 
-    cpnumber_ = cpindex;
-
-    std::cout << cpnumber_ << std::endl;
-
-    for (Patch *pat : patches_)
+    int cpindex = 0;
+    double dist = 1.0e-6;
+    if (cells_.size() > 0)
     {
-        pat->removeControlPoints();
-    }
-
-    ISOdomainDecompositionMETIS();
-
-    for (int i = 0; i < cells_.size(); i++)
-    {
-        if (rank == cellPartition_[i])
+        mirror << std::endl;
+        mirror << "DIRICHLET CONDITION (" << dirichletConditions_.size() << ")" << std::endl;
+        mirror << "INDEX POINT   DIRECTION   VALUE" << std::endl;
+        for (DirichletCondition *dir : dirichletConditions_)
         {
-            cells_part.push_back(cells_[i]);
+            mirror << dir->getControlPoint()->getIndex() << " " << dir->getDirection() << " " << dir->getValue() << std::endl;
         }
-        else if (rank != 0)
-        {
 
-            delete cells_[i];
+        mirror << "NEUMAN CONDITION (" << neumannConditions_.size() << ")" << std::endl;
+        mirror << "INDEX POINT   DIRECTION   VALUE" << std::endl;
+        for (NeumannCondition *dir : neumannConditions_)
+        {
+            mirror << dir->getControlPoint()->getIndex() << " " << dir->getDirection() << " " << dir->getValue() << std::endl;
+        }
+
+        parameters.close();
+        properties.close();
+        isogeometric.close();
+
+        ///LOOPING PARA ORGANIZAR OS PONTOS DE CONTROLE DOS PATCHES NO GLOBAL
+        for (Patch *patch : patches_)
+        {
+            std::vector<ControlPoint *> cpaux = patch->getControlPoints();
+
+            for (ControlPoint *cp_patch : cpaux)
+            {
+                bounded_vector<double, 2> coord_patch = cp_patch->getInitialCoordinate();
+                int ver = -1;
+
+                for (ControlPoint *cp_global : controlPoints_)
+                {
+                    bounded_vector<double, 2> coord_global = cp_global->getInitialCoordinate();
+                    int index = cp_global->getIndex();
+
+                    bounded_vector<double, 2> aux = coord_global - coord_patch;
+                    double dist2 = aux(0) * aux(0) + aux(1) * aux(1);
+
+                    if (dist2 <= dist)
+                    {
+                        ver = index;
+                        break;
+                    }
+                }
+                if (ver != -1)
+                {
+                    cp_patch->setIndex(ver);
+                    controlPoints_.push_back(cp_patch);
+                }
+                else
+                {
+                    cp_patch->setIndex(cpindex);
+                    controlPoints_.push_back(cp_patch);
+                    cpindex = cpindex + 1;
+                }
+            }
+        }
+
+        cpnumber_ = cpindex;
+        for (Patch *pat : patches_)
+        {
+            pat->removeControlPoints();
+        }
+        ISOdomainDecompositionMETIS();
+        for (int i = 0; i < cells_.size(); i++)
+        {
+            if (rank == cellPartition_[i])
+            {
+                cells_part.push_back(cells_[i]);
+            }
+            else if (rank != 0)
+            {
+
+                delete cells_[i];
+            }
+        }
+        if (rank != 0)
+        {
+            cells_.erase(cells_.begin(), cells_.begin() + cells_.size());
         }
     }
 
-    if (rank != 0)
+    //LEITURA DAS MALHAS DE ELEMENTOS FINITOS
+    int nmesh;
+    int elemCont = 0;
+    int nodeCont = 0;
+    std::string type;
+    std::getline(feMesh, line);
+    std::getline(feMesh, line);
+    std::getline(feMesh, line);
+    feMesh >> nmesh;
+    std::getline(feMesh, line);
+
+    for (int imesh = 0; imesh < nmesh; imesh++)
     {
-        cells_.erase(cells_.begin(), cells_.begin() + cells_.size());
+        int nnodes, imaterial, nelem, nneuman, ndir;
+        double thickness;
+        std::getline(feMesh, line);
+        std::getline(feMesh, line);
+        std::getline(feMesh, line);
+        std::getline(feMesh, line);
+        feMesh >> type;
+        std::getline(feMesh, line);
+        std::getline(feMesh, line);
+        std::getline(feMesh, line);
+        std::getline(feMesh, line);
+        std::getline(feMesh, line);
+        feMesh >> imaterial;
+        std::getline(feMesh, line);
+        std::getline(feMesh, line);
+        std::getline(feMesh, line);
+        std::getline(feMesh, line);
+        std::getline(feMesh, line);
+        feMesh >> thickness;
+        std::getline(feMesh, line);
+        std::getline(feMesh, line);
+        std::getline(feMesh, line);
+        std::getline(feMesh, line);
+        std::getline(feMesh, line);
+        feMesh >> nnodes;
+        std::getline(feMesh, line);
+        std::getline(feMesh, line);
+        std::getline(feMesh, line);
+        std::getline(feMesh, line);
+        std::getline(feMesh, line);
+        feMesh >> nelem;
+        std::getline(feMesh, line);
+        std::getline(feMesh, line);
+        std::getline(feMesh, line);
+        std::getline(feMesh, line);
+        std::getline(feMesh, line);
+
+        addMesh(imesh, nnodes, nelem, imaterial, thickness, type);
+        mirror << "MESH " << imesh << std::endl;
+        mirror << "ELEMENT TYPE: " << type << std::endl;
+        mirror << "THICKNESS: " << thickness << std::endl;
+        mirror << "YOUNG: " << materials_[imaterial]->getYoung() << std::endl;
+        mirror << "POISSON: " << materials_[imaterial]->getPoisson() << std::endl;
+        mirror << "DENSITY: " << materials_[imaterial]->getDensity() << std::endl;
+        mirror << "NODES (" << nnodes << ")" << std::endl;
+        mirror << "INDEX  COORDINATES (X1, X2) " << std::endl;
+        for (int inode = 0; inode < nnodes; inode++)
+        {
+            double aux;
+            bounded_vector<double, 2> coord;
+            feMesh >> aux >> coord(0) >> coord(1);
+            meshes_[imesh]->addNode(inode, nodeCont++, coord);
+            mirror << inode << " " << coord(0) << " " << coord(1) << std::endl;
+            std::getline(feMesh, line);
+        }
+        std::getline(feMesh, line);
+        std::getline(feMesh, line);
+        std::getline(feMesh, line);
+        std::getline(feMesh, line);
+        int n;
+        if (type == "T3")
+        {
+            n = 3;
+        }
+        else if (type == "T6")
+        {
+            n = 6;
+        }
+        else if (type == "T10")
+        {
+            n = 10;
+        }
+        mirror << "ELEMENTS (" << nelem << ")" << std::endl;
+        mirror << "INDEX  CONNECTION " << n << std::endl;
+        for (int iel = 0; iel < nelem; iel++)
+        {
+            std::vector<int> nodesconec;
+            nodesconec.reserve(n);
+            mirror << iel << " ";
+
+            for (int j = 0; j < n; j++)
+            {
+                feMesh >> nodesconec[j];
+                mirror << nodesconec[j] - 1 << " ";
+            }
+            mirror << std::endl;
+
+            std::vector<Node *> nodes;
+
+            for (int i = 0; i < n; i++)
+            {
+                nodes.push_back(meshes_[imesh]->getNode(nodesconec[i] - 1));
+            }
+
+            Element *el = new Element(elemCont++, meshes_[imesh], nodes);
+            elements_.push_back(el);
+            std::getline(feMesh, line);
+        }
+        std::getline(feMesh, line);
+        std::getline(feMesh, line);
+        std::getline(feMesh, line);
+        std::getline(feMesh, line);
+        feMesh >> nneuman;
+        std::getline(feMesh, line);
+        std::getline(feMesh, line);
+        std::getline(feMesh, line);
+        std::getline(feMesh, line);
+        std::getline(feMesh, line);
+        int inode;
+        bounded_vector<double, 2> value;
+        bounded_vector<int, 2> free;
+        for (int ineuman = 0; ineuman < nneuman; ineuman++)
+        {
+            feMesh >> inode >> value(0) >> value(1);
+            addNeumannConditionFE(inode, imesh, value);
+            std::getline(feMesh, line);
+        }
+        std::getline(feMesh, line);
+        std::getline(feMesh, line);
+        std::getline(feMesh, line);
+        std::getline(feMesh, line);
+        feMesh >> ndir;
+        std::getline(feMesh, line);
+        std::getline(feMesh, line);
+        std::getline(feMesh, line);
+        std::getline(feMesh, line);
+        std::getline(feMesh, line);
+        for (int idir = 0; idir < ndir; idir++)
+        {
+            feMesh >> inode >> free(0) >> free(1) >> value(0) >> value(1);
+            addDirichletConditionFE(inode, imesh, free, value);
+            std::getline(feMesh, line);
+        }
+    }
+    if (elements_.size() > 0)
+    {
+        for (Mesh *mesh : meshes_)
+        {
+            std::vector<Node *> nodeaux = mesh->getNodes();
+
+            for (Node *node_mesh : nodeaux)
+            {
+                bounded_vector<double, 2> coord_mesh = node_mesh->getInitialCoordinate();
+                int ver = -1;
+
+                for (Node *node_global : nodes_)
+                {
+                    bounded_vector<double, 2> coord_global = node_global->getInitialCoordinate();
+                    int index = node_global->getIndex();
+
+                    bounded_vector<double, 2> aux = coord_global - coord_mesh;
+                    double dist2 = aux(0) * aux(0) + aux(1) * aux(1);
+
+                    if (dist2 <= dist)
+                    {
+                        ver = index;
+                        break;
+                    }
+                }
+                if (ver != -1)
+                {
+                    node_mesh->setIndex(ver);
+                    nodes_.push_back(node_mesh);
+                }
+                else
+                {
+                    node_mesh->setIndex(cpindex);
+                    nodes_.push_back(node_mesh);
+                    cpindex = cpindex + 1;
+                }
+            }
+        }
+
+        cpnumber_ = cpindex;
+        for (Mesh *me : meshes_)
+        {
+            me->removeNodes();
+        }
+        domainDecompositionMETIS(type);
+
+        for (int i = 0; i < elements_.size(); i++)
+        {
+            if (rank == elementPartition_[i])
+            {
+                elements_part.push_back(elements_[i]);
+            }
+            else if (rank != 0)
+            {
+
+                delete elements_[i];
+            }
+        }
+        if (rank != 0)
+        {
+            elements_.erase(elements_.begin(), elements_.begin() + elements_.size());
+        }
     }
 }
 
@@ -710,12 +949,25 @@ int GlobalSolid::solveStaticProblem()
         double x2 = node->getInitialCoordinate()(1);
         initialNorm += x1 * x1 + x2 * x2;
     }
+    for (Node *node : nodes_)
+    {
+        double x1 = node->getInitialCoordinate()(0);
+        double x2 = node->getInitialCoordinate()(1);
+        initialNorm += x1 * x1 + x2 * x2;
+    }
 
-    PetscMalloc1(dirichletConditions_.size(), &dof);
+    int ndir = dirichletConditions_.size() + dirichletConditionsFE_.size();
+    PetscMalloc1(ndir, &dof);
     int idir = 0;
     for (DirichletCondition *dir : dirichletConditions_)
     {
         int indexNode = dir->getControlPoint()->getIndex();
+        int direction = dir->getDirection();
+        dof[idir++] = (2 * indexNode + direction);
+    }
+    for (DirichletConditionFE *dir : dirichletConditionsFE_)
+    {
+        int indexNode = dir->getNode()->getIndex();
         int direction = dir->getDirection();
         dof[idir++] = (2 * indexNode + direction);
     }
@@ -764,6 +1016,15 @@ int GlobalSolid::solveStaticProblem()
                     int dof = 2 * ind + dir;
                     ierr = VecSetValues(b, 1, &dof, &val1, ADD_VALUES);
                 }
+                for (NeumannConditionFE *con : neumannConditionsFE_)
+                {
+                    int ind = con->getNode()->getIndex();
+                    int dir = con->getDirection();
+                    double val1 = con->getValue() * (1.0 * loadStep / (1.0 * numberOfSteps_));
+                    int dof = 2 * ind + dir;
+                    ierr = VecSetValues(b, 1, &dof, &val1, ADD_VALUES);
+                    // std::cout<<"NODE: "<<ind<<" DIRECTION: "<<dir<<" VALUE: "<<val1<<std::endl;
+                }
             }
 
             if (iteration == 0)
@@ -776,10 +1037,16 @@ int GlobalSolid::solveStaticProblem()
 
                     cp->incrementCurrentCoordinate(dir, val1);
                 }
+                for (DirichletConditionFE *con : dirichletConditionsFE_)
+                {
+                    Node *no = con->getNode();
+                    int dir = con->getDirection();
+                    double val1 = (con->getValue()) / (1.0 * numberOfSteps_);
+
+                    no->incrementCurrentCoordinate(dir, val1);
+                }
             }
 
-            // if (rank == 0)
-            // {
             for (Cell *el : cells_part)
             {
                 std::pair<vector<double>, matrix<double>> elementMatrices;
@@ -790,12 +1057,12 @@ int GlobalSolid::solveStaticProblem()
                 {
                     if (fabs(elementMatrices.first(2 * i)) >= 1.0e-11)
                     {
-                        int dof = 2 * el->getControlPoints()[i]->getIndex();
+                        int dof = 2 * el->getControlPoint(i)->getIndex();
                         ierr = VecSetValues(b, 1, &dof, &elementMatrices.first(2 * i), ADD_VALUES);
                     }
                     if (fabs(elementMatrices.first(2 * i + 1)) >= 1.0e-11)
                     {
-                        int dof = 2 * el->getControlPoints()[i]->getIndex() + 1;
+                        int dof = 2 * el->getControlPoint(i)->getIndex() + 1;
                         ierr = VecSetValues(b, 1, &dof, &elementMatrices.first(2 * i + 1), ADD_VALUES);
                     }
 
@@ -803,34 +1070,79 @@ int GlobalSolid::solveStaticProblem()
                     {
                         if (fabs(elementMatrices.second(2 * i, 2 * j)) >= 1.e-11)
                         {
-                            int dof1 = 2 * el->getControlPoints()[i]->getIndex();
-                            int dof2 = 2 * el->getControlPoints()[j]->getIndex();
+                            int dof1 = 2 * el->getControlPoint(i)->getIndex();
+                            int dof2 = 2 * el->getControlPoint(j)->getIndex();
                             ierr = MatSetValues(A, 1, &dof1, 1, &dof2, &elementMatrices.second(2 * i, 2 * j), ADD_VALUES);
                         }
                         if (fabs(elementMatrices.second(2 * i + 1, 2 * j)) >= 1.e-11)
                         {
-                            int dof1 = 2 * el->getControlPoints()[i]->getIndex() + 1;
-                            int dof2 = 2 * el->getControlPoints()[j]->getIndex();
+                            int dof1 = 2 * el->getControlPoint(i)->getIndex() + 1;
+                            int dof2 = 2 * el->getControlPoint(j)->getIndex();
                             ierr = MatSetValues(A, 1, &dof1, 1, &dof2, &elementMatrices.second(2 * i + 1, 2 * j), ADD_VALUES);
                         }
                         if (fabs(elementMatrices.second(2 * i, 2 * j + 1)) >= 1.e-11)
                         {
-                            int dof1 = 2 * el->getControlPoints()[i]->getIndex();
-                            int dof2 = 2 * el->getControlPoints()[j]->getIndex() + 1;
+                            int dof1 = 2 * el->getControlPoint(i)->getIndex();
+                            int dof2 = 2 * el->getControlPoint(j)->getIndex() + 1;
                             ierr = MatSetValues(A, 1, &dof1, 1, &dof2, &elementMatrices.second(2 * i, 2 * j + 1), ADD_VALUES);
                         }
                         if (fabs(elementMatrices.second(2 * i + 1, 2 * j + 1)) >= 1.e-11)
                         {
-                            int dof1 = 2 * el->getControlPoints()[i]->getIndex() + 1;
-                            int dof2 = 2 * el->getControlPoints()[j]->getIndex() + 1;
+                            int dof1 = 2 * el->getControlPoint(i)->getIndex() + 1;
+                            int dof2 = 2 * el->getControlPoint(j)->getIndex() + 1;
                             ierr = MatSetValues(A, 1, &dof1, 1, &dof2, &elementMatrices.second(2 * i + 1, 2 * j + 1), ADD_VALUES);
                         }
-
-                        //std::cout<<elementMatrices.second(2 * i, 2 * j)<<" "<<elementMatrices.second(2 * i + 1, 2 * j)<<" "<<elementMatrices.second(2 * i, 2 * j +1)<< " "<< elementMatrices.second(2 * i+1, 2 * j +1)  <<std::endl;
                     }
                 }
+            }
 
-                // }
+            for (Element *el : elements_part)
+            {
+                std::pair<vector<double>, matrix<double>> elementMatrices;
+                elementMatrices = el->elementContributions(planeState_, "STATIC", loadStep, numberOfSteps_, 1.0, 0.25, 0.5);
+                int num = el->getConnection().size();
+
+                for (size_t i = 0; i < num; i++)
+                {
+                    if (fabs(elementMatrices.first(2 * i)) >= 1.0e-11)
+                    {
+                        int dof = 2 * el->getNode(i)->getIndex();
+                        ierr = VecSetValues(b, 1, &dof, &elementMatrices.first(2 * i), ADD_VALUES);
+                    }
+                    if (fabs(elementMatrices.first(2 * i + 1)) >= 1.0e-11)
+                    {
+                        int dof = 2 * el->getNode(i)->getIndex() + 1;
+                        ierr = VecSetValues(b, 1, &dof, &elementMatrices.first(2 * i + 1), ADD_VALUES);
+                    }
+
+                    for (size_t j = 0; j < num; j++)
+                    {
+                        if (fabs(elementMatrices.second(2 * i, 2 * j)) >= 1.e-11)
+                        {
+                            int dof1 = 2 * el->getNode(i)->getIndex();
+                            int dof2 = 2 * el->getNode(j)->getIndex();
+                            ierr = MatSetValues(A, 1, &dof1, 1, &dof2, &elementMatrices.second(2 * i, 2 * j), ADD_VALUES);
+                        }
+                        if (fabs(elementMatrices.second(2 * i + 1, 2 * j)) >= 1.e-11)
+                        {
+                            int dof1 = 2 * el->getNode(i)->getIndex() + 1;
+                            int dof2 = 2 * el->getNode(j)->getIndex();
+                            ierr = MatSetValues(A, 1, &dof1, 1, &dof2, &elementMatrices.second(2 * i + 1, 2 * j), ADD_VALUES);
+                        }
+                        if (fabs(elementMatrices.second(2 * i, 2 * j + 1)) >= 1.e-11)
+                        {
+                            int dof1 = 2 * el->getNode(i)->getIndex();
+                            int dof2 = 2 * el->getNode(j)->getIndex() + 1;
+                            ierr = MatSetValues(A, 1, &dof1, 1, &dof2, &elementMatrices.second(2 * i, 2 * j + 1), ADD_VALUES);
+                        }
+                        if (fabs(elementMatrices.second(2 * i + 1, 2 * j + 1)) >= 1.e-11)
+                        {
+                            int dof1 = 2 * el->getNode(i)->getIndex() + 1;
+                            int dof2 = 2 * el->getNode(j)->getIndex() + 1;
+                            ierr = MatSetValues(A, 1, &dof1, 1, &dof2, &elementMatrices.second(2 * i + 1, 2 * j + 1), ADD_VALUES);
+                        }
+                    }
+                }
             }
 
             //MPI_Barrier(PETSC_COMM_WORLD);
@@ -845,42 +1157,8 @@ int GlobalSolid::solveStaticProblem()
             ierr = VecAssemblyEnd(b);
             CHKERRQ(ierr);
 
-            // std::cout<<"MATRIZ A"<<std::endl;
-            // MPI_Barrier(PETSC_COMM_WORLD);
-            //             std::cout<<" "<<std::endl;
-
-            // MatView(A,PETSC_VIEWER_STDOUT_WORLD);CHKERRQ(ierr);
-            // std::cout<<" "<<std::endl;
-
-            //             std::cout<<" "<<std::endl;
-
-            // //             MPI_Barrier(PETSC_COMM_WORLD);
-
-            // VecView(b,PETSC_VIEWER_STDOUT_WORLD);CHKERRQ(ierr);
-
-            //             std::cout<<" "<<std::endl;
-
-            // std::cout<<"VECTOR X"<<std::endl;
-            // std::cout << std::endl;
-            // VecView(b, PETSC_VIEWER_STDOUT_WORLD);
-            // CHKERRQ(ierr);
-            // std::cout << std::endl;
-            //   std::cout<<std::endl;
-
-            // VecView(b,PETSC_VIEWER_STDOUT_WORLD);CHKERRQ(ierr);
-
-            MatZeroRowsColumns(A, dirichletConditions_.size(), dof, 1.0, x, b);
-
-            // std::cout<<"MATRIZ A"<<std::endl;
-
-            // MatView(A,PETSC_VIEWER_STDOUT_WORLD);CHKERRQ(ierr);
-            // std::cout<<std::endl;
-            // for (DirichletCondition *dir : dirichletConditions_)
-            // {
-            //     PetscInt teste;
-            //     teste = 2 * dir->getControlPoint()->getIndex() + dir->getDirection();
-            //     MatZeroRowsColumns(A, 1, dof, 1.0, x, b);
-            // }
+            //Zerando linhas e colunas
+            MatZeroRowsColumns(A, ndir, dof, 1.0, x, b);
 
             //Create KSP context to solve the linear system
             ierr = KSPCreate(PETSC_COMM_WORLD, &ksp);
@@ -932,6 +1210,21 @@ int GlobalSolid::solveStaticProblem()
                 norm += val * val;
                 cp->incrementCurrentCoordinate(1, val);
             }
+            for (Node *node : nodes_)
+            {
+                int newIndex = node->getIndex();
+                Idof = 2 * newIndex;
+                ierr = VecGetValues(All, Ione, &Idof, &val);
+                CHKERRQ(ierr);
+                norm += val * val;
+                node->incrementCurrentCoordinate(0, val);
+
+                Idof = 2 * newIndex + 1;
+                ierr = VecGetValues(All, Ione, &Idof, &val);
+                CHKERRQ(ierr);
+                norm += val * val;
+                node->incrementCurrentCoordinate(1, val);
+            }
 
             boost::posix_time::ptime t2 =
                 boost::posix_time::microsec_clock::local_time();
@@ -965,6 +1258,15 @@ int GlobalSolid::solveStaticProblem()
 
         if (rank == 0)
         {
+            for (Node *n : nodes_)
+            {
+                n->setZeroStressState();
+            }
+
+            for (Element *el : elements_)
+            {
+                el->StressCalculate(planeState_);
+            }
             exportToParaview(loadStep);
             //file1 << (1.0 * loadStep) / (1.0 * numberOfSteps) << " " << -nodes_[0]->getCurrentCoordinate()[1] + nodes_[0]->getInitialCoordinate()[1] << std::endl;
         }
@@ -978,6 +1280,7 @@ void GlobalSolid::exportToParaview(const int &loadstep)
     matrix<double> qxsi2 = coordinatesForInterpolation(orderParaview_);
 
     int auxxx = (orderParaview_ + 1) * (orderParaview_ + 1);
+    int nIsoPoints = auxxx * cells_.size();
     std::stringstream text;
     text << "output" << loadstep << ".vtu";
     std::ofstream file(text.str());
@@ -989,8 +1292,8 @@ void GlobalSolid::exportToParaview(const int &loadstep)
          << "\n"
          << "  <UnstructuredGrid>"
          << "\n"
-         << "  <Piece NumberOfPoints=\"" << auxxx * cells_.size()
-         << "\"  NumberOfCells=\"" << cells_.size()
+         << "  <Piece NumberOfPoints=\"" << nIsoPoints + nodes_.size()
+         << "\"  NumberOfCells=\"" << cells_.size() + elements_.size()
          << "\">"
          << "\n";
     //nodal coordinates
@@ -1038,6 +1341,11 @@ void GlobalSolid::exportToParaview(const int &loadstep)
             file << xInt(i, 0) << " " << xInt(i, 1) << " " << 0.0 << std::endl;
         }
     }
+    for (Node *no : nodes_)
+    {
+        bounded_vector<double, 2> coord = no->getCurrentCoordinate();
+        file << coord(0) << " " << coord(1) << " " << 0.0 << "\n";
+    }
 
     file << "      </DataArray>"
          << "\n"
@@ -1060,6 +1368,15 @@ void GlobalSolid::exportToParaview(const int &loadstep)
         }
         file << std::endl;
     }
+    for (Element *el : elements_)
+    {
+        std::vector<Node *> conec = el->getConnection();
+        for (Node *no : conec)
+        {
+            file << no->getIndexFE() + nIsoPoints << " ";
+        }
+        file << "\n";
+    }
 
     file << "      </DataArray>"
          << "\n";
@@ -1073,6 +1390,12 @@ void GlobalSolid::exportToParaview(const int &loadstep)
         file << aux + auxxx << std::endl;
         aux += auxxx;
     }
+    for (Element *el : elements_)
+    {
+        int n = el->getConnection().size();
+        aux += n;
+        file << aux << "\n";
+    }
 
     file << "      </DataArray>"
          << "\n";
@@ -1084,6 +1407,10 @@ void GlobalSolid::exportToParaview(const int &loadstep)
     for (Cell *cell : cells_)
     {
         file << 70 << "\n";
+    }
+    for (Element *e : elements_)
+    {
+        file << 69 << "\n";
     }
 
     file << "      </DataArray>"
@@ -1136,6 +1463,13 @@ void GlobalSolid::exportToParaview(const int &loadstep)
             file << xInt(i, 0) << " " << xInt(i, 1) << std::endl;
         }
     }
+    for (Node *n : nodes_)
+    {
+        bounded_vector<double, 2> initial = n->getInitialCoordinate();
+        bounded_vector<double, 2> current = n->getCurrentCoordinate();
+
+        file << current(0) - initial(0) << " " << current(1) - initial(1) << "\n";
+    }
 
     file << "      </DataArray> "
          << "\n";
@@ -1179,6 +1513,11 @@ void GlobalSolid::exportToParaview(const int &loadstep)
             file << cauchy(0) << " " << cauchy(1) << " " << cauchy(2) << " " << cauchy(3) << std::endl;
         }
     }
+    for (Node *n : nodes_)
+    {
+        bounded_vector<double, 4> stress = n->getStressState(); //(x1, x2, x12, contador)
+        file << stress(0) / stress(3) << " " << stress(1) / stress(3) << " " << 0.0 << " " << stress(2) / stress(3) << "\n";
+    }
     file << "      </DataArray> "
          << "\n";
 
@@ -1200,6 +1539,11 @@ void GlobalSolid::exportToParaview(const int &loadstep)
             file << green(0) << " " << green(1) << " " << green(2) << " " << green(3) << std::endl;
         }
     }
+    for (Node *n : nodes_)
+    {
+        file << 0.0 << " " << 0.0 << " " << 0.0 << " " << 0.0 << std::endl;
+    }
+
     file << "      </DataArray> "
          << "\n";
 
@@ -1214,6 +1558,10 @@ void GlobalSolid::exportToParaview(const int &loadstep)
     for (Cell *el : cells_)
     {
         file << cellPartition_[el->getIndex()] << "\n";
+    }
+    for (Element *el : elements_)
+    {
+        file << elementPartition_[el->getIndex()] << "\n";
     }
     file << "      </DataArray> "
          << "\n";
@@ -1346,7 +1694,7 @@ matrix<double> GlobalSolid::coordinatesForInterpolation(const int &orderElememen
 void GlobalSolid::ISOdomainDecompositionMETIS()
 {
     std::string mirror2;
-    mirror2 = "domain_decomposition.txt";
+    mirror2 = "ISOdomain_decomposition.txt";
     std::ofstream mirrorData(mirror2.c_str());
 
     int size;
@@ -1403,6 +1751,65 @@ void GlobalSolid::ISOdomainDecompositionMETIS()
     }
 }
 
+void GlobalSolid::domainDecompositionMETIS(const std::string &elementType)
+{
+    std::string mirror2;
+    mirror2 = "FEdomain_decomposition.txt";
+    std::ofstream mirrorData(mirror2.c_str());
+
+    int size;
+
+    MPI_Comm_size(PETSC_COMM_WORLD, &size);
+
+    idx_t objval;
+    idx_t numEl = elements_.size();
+    idx_t numNd = nodes_.size();
+    idx_t ssize = size;
+    idx_t one = 1;
+    idx_t n;
+    if (elementType == "T3")
+        n = 3;
+    else if (elementType == "T6")
+        n = 6;
+    else if (elementType == "T10")
+        n = 10;
+    idx_t elem_start[numEl + 1], elem_connec[n * numEl];
+    elementPartition_ = new idx_t[numEl];
+    nodePartition_ = new idx_t[numNd];
+    for (idx_t i = 0; i < numEl + 1; i++)
+    {
+        elem_start[i] = n * i;
+    }
+    for (idx_t jel = 0; jel < numEl; jel++)
+    {
+        for (idx_t i = 0; i < n; i++)
+        {
+            int nodeIndex = elements_[jel]->getNode(i)->getIndexFE();
+            elem_connec[n * jel + i] = nodeIndex;
+        }
+    }
+    //Performs the domain decomposition
+    METIS_PartMeshDual(&numEl, &numNd, elem_start, elem_connec,
+                       NULL, NULL, &one, &ssize, NULL, NULL,
+                       &objval, elementPartition_, nodePartition_);
+
+    mirrorData << std::endl
+               << "DOMAIN DECOMPOSITION - ELEMENTS" << std::endl;
+    for (int i = 0; i < elements_.size(); i++)
+    {
+        mirrorData << "process = " << elementPartition_[i]
+                   << ", element = " << i << std::endl;
+    }
+
+    mirrorData << std::endl
+               << "DOMAIN DECOMPOSITION - NODES" << std::endl;
+    for (int i = 0; i < nodes_.size(); i++)
+    {
+        mirrorData << "process = " << nodePartition_[i]
+                   << ", node = " << i << std::endl;
+    }
+}
+
 int GlobalSolid::solveDynamicProblem()
 {
     firstAccelerationCalculation();
@@ -1421,14 +1828,14 @@ int GlobalSolid::solveDynamicProblem()
     MPI_Comm_rank(PETSC_COMM_WORLD, &rank);
 
     //int n = (order_ + 1) * (order_ + 2) / 2.0;
-    std::stringstream text1;
+    //std::stringstream text1;
 
     if (rank == 0)
     {
         exportToParaview(0);
-        text1 << "DeslocamentoxTempo.txt";
+        //text1 << "DeslocamentoxTempo.txt";
     }
-    std::ofstream file1(text1.str());
+    // std::ofstream file1(text1.str());
 
     double initialNorm = 0.0;
     for (ControlPoint *node : controlPoints_)
@@ -1437,13 +1844,27 @@ int GlobalSolid::solveDynamicProblem()
         double x2 = node->getInitialCoordinate()(1);
         initialNorm += x1 * x1 + x2 * x2;
     }
-
-    PetscMalloc1(dirichletConditions_.size(), &dof);
-    for (size_t i = 0; i < dirichletConditions_.size(); i++)
+    for (Node *node : nodes_)
     {
-        int indexNode = dirichletConditions_[i]->getControlPoint()->getIndex();
-        int direction = dirichletConditions_[i]->getDirection();
-        dof[i] = (2 * indexNode + direction);
+        double x1 = node->getInitialCoordinate()(0);
+        double x2 = node->getInitialCoordinate()(1);
+        initialNorm += x1 * x1 + x2 * x2;
+    }
+
+    int ndir = dirichletConditions_.size() + dirichletConditionsFE_.size();
+    PetscMalloc1(ndir, &dof);
+    int idir = 0;
+    for (DirichletCondition *dir : dirichletConditions_)
+    {
+        int indexNode = dir->getControlPoint()->getIndex();
+        int direction = dir->getDirection();
+        dof[idir++] = (2 * indexNode + direction);
+    }
+    for (DirichletConditionFE *dir : dirichletConditionsFE_)
+    {
+        int indexNode = dir->getNode()->getIndex();
+        int direction = dir->getDirection();
+        dof[idir++] = (2 * indexNode + direction);
     }
 
     for (int timeStep = 1; timeStep <= numberOfSteps_; timeStep++)
@@ -1492,6 +1913,15 @@ int GlobalSolid::solveDynamicProblem()
                     int dof = 2 * ind + dir;
                     ierr = VecSetValues(b, 1, &dof, &val1, ADD_VALUES);
                 }
+                for (NeumannConditionFE *con : neumannConditionsFE_)
+                {
+                    int ind = con->getNode()->getIndex();
+                    int dir = con->getDirection();
+                    double val1 = con->getValue();
+                    int dof = 2 * ind + dir;
+                    ierr = VecSetValues(b, 1, &dof, &val1, ADD_VALUES);
+                    // std::cout<<"NODE: "<<ind<<" DIRECTION: "<<dir<<" VALUE: "<<val1<<std::endl;
+                }
             }
 
             if (iteration == 0)
@@ -1503,6 +1933,14 @@ int GlobalSolid::solveDynamicProblem()
                     double val1 = (con->getValue()) / (1.0 * numberOfSteps_);
 
                     cp->incrementCurrentCoordinate(dir, val1);
+                }
+                for (DirichletConditionFE *con : dirichletConditionsFE_)
+                {
+                    Node *no = con->getNode();
+                    int dir = con->getDirection();
+                    double val1 = (con->getValue()) / (1.0 * numberOfSteps_);
+
+                    no->incrementCurrentCoordinate(dir, val1);
                 }
             }
 
@@ -1555,6 +1993,55 @@ int GlobalSolid::solveDynamicProblem()
                 }
             }
 
+            for (Element *el : elements_part)
+            {
+                std::pair<vector<double>, matrix<double>> elementMatrices;
+                elementMatrices = el->elementContributions(planeState_, "DYNAMIC", 1, 1, deltat_, beta_, gamma_);
+                int num = el->getConnection().size();
+
+                for (size_t i = 0; i < num; i++)
+                {
+                    if (fabs(elementMatrices.first(2 * i)) >= 1.0e-11)
+                    {
+                        int dof = 2 * el->getNode(i)->getIndex();
+                        ierr = VecSetValues(b, 1, &dof, &elementMatrices.first(2 * i), ADD_VALUES);
+                    }
+                    if (fabs(elementMatrices.first(2 * i + 1)) >= 1.0e-11)
+                    {
+                        int dof = 2 * el->getNode(i)->getIndex() + 1;
+                        ierr = VecSetValues(b, 1, &dof, &elementMatrices.first(2 * i + 1), ADD_VALUES);
+                    }
+
+                    for (size_t j = 0; j < num; j++)
+                    {
+                        if (fabs(elementMatrices.second(2 * i, 2 * j)) >= 1.e-11)
+                        {
+                            int dof1 = 2 * el->getNode(i)->getIndex();
+                            int dof2 = 2 * el->getNode(j)->getIndex();
+                            ierr = MatSetValues(A, 1, &dof1, 1, &dof2, &elementMatrices.second(2 * i, 2 * j), ADD_VALUES);
+                        }
+                        if (fabs(elementMatrices.second(2 * i + 1, 2 * j)) >= 1.e-11)
+                        {
+                            int dof1 = 2 * el->getNode(i)->getIndex() + 1;
+                            int dof2 = 2 * el->getNode(j)->getIndex();
+                            ierr = MatSetValues(A, 1, &dof1, 1, &dof2, &elementMatrices.second(2 * i + 1, 2 * j), ADD_VALUES);
+                        }
+                        if (fabs(elementMatrices.second(2 * i, 2 * j + 1)) >= 1.e-11)
+                        {
+                            int dof1 = 2 * el->getNode(i)->getIndex();
+                            int dof2 = 2 * el->getNode(j)->getIndex() + 1;
+                            ierr = MatSetValues(A, 1, &dof1, 1, &dof2, &elementMatrices.second(2 * i, 2 * j + 1), ADD_VALUES);
+                        }
+                        if (fabs(elementMatrices.second(2 * i + 1, 2 * j + 1)) >= 1.e-11)
+                        {
+                            int dof1 = 2 * el->getNode(i)->getIndex() + 1;
+                            int dof2 = 2 * el->getNode(j)->getIndex() + 1;
+                            ierr = MatSetValues(A, 1, &dof1, 1, &dof2, &elementMatrices.second(2 * i + 1, 2 * j + 1), ADD_VALUES);
+                        }
+                    }
+                }
+            }
+
             //Assemble matrices and vectors
             ierr = MatAssemblyBegin(A, MAT_FINAL_ASSEMBLY);
             CHKERRQ(ierr);
@@ -1566,7 +2053,7 @@ int GlobalSolid::solveDynamicProblem()
             ierr = VecAssemblyEnd(b);
             CHKERRQ(ierr);
 
-            MatZeroRowsColumns(A, dirichletConditions_.size(), dof, 1.0, x, b);
+            MatZeroRowsColumns(A, ndir, dof, 1.0, x, b);
 
             //Create KSP context to solve the linear system
             ierr = KSPCreate(PETSC_COMM_WORLD, &ksp);
@@ -1629,6 +2116,29 @@ int GlobalSolid::solveDynamicProblem()
                 vel = gamma_ * deltat_ * cp->getCurrentAcceleration() + cp->getPastVelocity() + deltat_ * (1.0 - gamma_) * cp->getPastAcceleration();
                 cp->setCurrentVelocity(vel);
             }
+            for (Node *node : nodes_)
+            {
+                int newIndex = node->getIndex();
+                Idof = 2 * newIndex;
+                ierr = VecGetValues(All, Ione, &Idof, &val);
+                CHKERRQ(ierr);
+                norm += val * val;
+                node->incrementCurrentCoordinate(0, val);
+
+                Idof = 2 * newIndex + 1;
+                ierr = VecGetValues(All, Ione, &Idof, &val);
+                CHKERRQ(ierr);
+                norm += val * val;
+                node->incrementCurrentCoordinate(1, val);
+
+                bounded_vector<double, 2> vel, accel;
+                accel = node->getCurrentCoordinate() / (beta_ * deltat_ * deltat_) - node->getPastCoordinate() / (beta_ * deltat_ * deltat_) -
+                        node->getPastVelocity() / (beta_ * deltat_) - node->getPastAcceleration() * (0.5 / beta_ - 1.0);
+                node->setCurrentAcceleration(accel);
+
+                vel = gamma_ * deltat_ * node->getCurrentAcceleration() + node->getPastVelocity() + deltat_ * (1.0 - gamma_) * node->getPastAcceleration();
+                node->setCurrentVelocity(vel);
+            }
 
             boost::posix_time::ptime t2 =
                 boost::posix_time::microsec_clock::local_time();
@@ -1662,28 +2172,47 @@ int GlobalSolid::solveDynamicProblem()
 
         if (rank == 0)
         {
+            for (Node *n : nodes_)
+            {
+                n->setZeroStressState();
+            }
+            for (Element *el : elements_)
+            {
+                el->StressCalculate(planeState_);
+            }
             exportToParaview(timeStep);
-            file1 << timeStep * deltat_ << " " << controlPoints_[1999]->getCurrentCoordinate()[1] - controlPoints_[1999]->getInitialCoordinate()[1] << " " << controlPoints_[1999]->getCurrentCoordinate()[0] - controlPoints_[1999]->getInitialCoordinate()[0] << std::endl;
+            // file1 << timeStep * deltat_ << " " << controlPoints_[1999]->getCurrentCoordinate()[1] - controlPoints_[1999]->getInitialCoordinate()[1] << " " << controlPoints_[1999]->getCurrentCoordinate()[0] - controlPoints_[1999]->getInitialCoordinate()[0] << std::endl;
         }
+
+        // for (ControlPoint *cp : controlPoints_)
+        // {
+        //     bounded_vector<double, 2> coordinate = cp->getCurrentCoordinate();
+        //     cp->setPastCoordinate(coordinate);
+        //     bounded_vector<double, 2> vel = cp->getCurrentVelocity();
+        //     cp->setPastVelocity(vel);
+        //     bounded_vector<double, 2> accel = cp->getCurrentAcceleration();
+        //     cp->setPastAcceleration(accel);
+        // }
 
         for (ControlPoint *cp : controlPoints_)
         {
-            bounded_vector<double, 2> coordinate = cp->getCurrentCoordinate();
-            cp->setPastCoordinate(coordinate);
-            bounded_vector<double, 2> vel = cp->getCurrentVelocity();
-            cp->setPastVelocity(vel);
-            bounded_vector<double, 2> accel = cp->getCurrentAcceleration();
-            cp->setPastAcceleration(accel);
-        }
-
-        for (ControlPoint *cp : controlPoints_)
-        {
+            cp->updatePastValue();
             bounded_vector<double, 2> vel, accel;
             accel = cp->getCurrentCoordinate() / (beta_ * deltat_ * deltat_) - cp->getPastCoordinate() / (beta_ * deltat_ * deltat_) -
                     cp->getPastVelocity() / (beta_ * deltat_) - cp->getPastAcceleration() * (0.5 / beta_ - 1.0);
             cp->setCurrentAcceleration(accel);
             vel = gamma_ * deltat_ * cp->getCurrentAcceleration() + cp->getPastVelocity() + deltat_ * (1.0 - gamma_) * cp->getPastAcceleration();
             cp->setCurrentVelocity(vel);
+        }
+        for (Node *node : nodes_)
+        {
+            node->updatePastValue();
+            bounded_vector<double, 2> vel, accel;
+            accel = node->getCurrentCoordinate() / (beta_ * deltat_ * deltat_) - node->getPastCoordinate() / (beta_ * deltat_ * deltat_) -
+                    node->getPastVelocity() / (beta_ * deltat_) - node->getPastAcceleration() * (0.5 / beta_ - 1.0);
+            node->setCurrentAcceleration(accel);
+            vel = gamma_ * deltat_ * node->getCurrentAcceleration() + node->getPastVelocity() + deltat_ * (1.0 - gamma_) * node->getPastAcceleration();
+            node->setCurrentVelocity(vel);
         }
     }
     PetscFree(dof);
@@ -1705,14 +2234,23 @@ int GlobalSolid::firstAccelerationCalculation()
 
     MPI_Comm_rank(PETSC_COMM_WORLD, &rank);
 
-    //Create PETSc sparse parallel matrix
-    PetscMalloc1(dirichletConditions_.size(), &dof);
-    for (size_t i = 0; i < dirichletConditions_.size(); i++)
+    int ndir = dirichletConditions_.size() + dirichletConditionsFE_.size();
+    PetscMalloc1(ndir, &dof);
+    int idir = 0;
+    for (DirichletCondition *dir : dirichletConditions_)
     {
-        int indexNode = dirichletConditions_[i]->getControlPoint()->getIndex();
-        int direction = dirichletConditions_[i]->getDirection();
-        dof[i] = (2 * indexNode + direction);
+        int indexNode = dir->getControlPoint()->getIndex();
+        int direction = dir->getDirection();
+        dof[idir++] = (2 * indexNode + direction);
     }
+    for (DirichletConditionFE *dir : dirichletConditionsFE_)
+    {
+        int indexNode = dir->getNode()->getIndex();
+        int direction = dir->getDirection();
+        dof[idir++] = (2 * indexNode + direction);
+    }
+
+    //Create PETSc sparse parallel matrix
     ierr = MatCreateAIJ(PETSC_COMM_WORLD, PETSC_DECIDE, PETSC_DECIDE,
                         2 * cpnumber_, 2 * cpnumber_,
                         100, NULL, 300, NULL, &A);
@@ -1743,6 +2281,14 @@ int GlobalSolid::firstAccelerationCalculation()
             int dof = 2 * ind + dir;
             ierr = VecSetValues(b, 1, &dof, &val1, ADD_VALUES);
         }
+        for (NeumannConditionFE *con : neumannConditionsFE_)
+        {
+            int ind = con->getNode()->getIndex();
+            int dir = con->getDirection();
+            double val1 = con->getValue();
+            int dof = 2 * ind + dir;
+            ierr = VecSetValues(b, 1, &dof, &val1, ADD_VALUES);
+        }
     }
 
     for (DirichletCondition *con : dirichletConditions_)
@@ -1751,6 +2297,14 @@ int GlobalSolid::firstAccelerationCalculation()
         double val1 = con->getValue();
 
         con->getControlPoint()->incrementCurrentCoordinate(dir, val1);
+    }
+    for (DirichletConditionFE *con : dirichletConditionsFE_)
+    {
+        Node *no = con->getNode();
+        int dir = con->getDirection();
+        double val1 = (con->getValue()) / (1.0 * numberOfSteps_);
+
+        no->incrementCurrentCoordinate(dir, val1);
     }
 
     for (Cell *el : cells_part)
@@ -1803,6 +2357,57 @@ int GlobalSolid::firstAccelerationCalculation()
             }
         }
     }
+    for (Element *el : elements_part)
+    {
+        std::pair<vector<double>, matrix<double>> elementMatrices;
+        elementMatrices = el->elementContributions(planeState_, "STATIC", 1, 1, deltat_, beta_, gamma_);
+        int n = elementMatrices.first.size();
+        matrix<double> massLocal;
+        massLocal = el->massMatrix();
+        int num = el->getConnection().size();
+
+        for (size_t i = 0; i < num; i++)
+        {
+            if (fabs(elementMatrices.first(2 * i)) >= 1.0e-15)
+            {
+                int dof = 2 * el->getNode(i)->getIndex();
+                ierr = VecSetValues(b, 1, &dof, &elementMatrices.first(2 * i), ADD_VALUES);
+            }
+            if (fabs(elementMatrices.first(2 * i + 1)) >= 1.0e-15)
+            {
+                int dof = 2 * el->getNode(i)->getIndex() + 1;
+                ierr = VecSetValues(b, 1, &dof, &elementMatrices.first(2 * i + 1), ADD_VALUES);
+            }
+
+            for (size_t j = 0; j < num; j++)
+            {
+                if (fabs(elementMatrices.second(2 * i, 2 * j)) >= 1.e-15)
+                {
+                    int dof1 = 2 * el->getNode(i)->getIndex();
+                    int dof2 = 2 * el->getNode(j)->getIndex();
+                    ierr = MatSetValues(A, 1, &dof1, 1, &dof2, &massLocal(2 * i, 2 * j), ADD_VALUES);
+                }
+                if (fabs(elementMatrices.second(2 * i + 1, 2 * j)) >= 1.e-15)
+                {
+                    int dof1 = 2 * el->getNode(i)->getIndex() + 1;
+                    int dof2 = 2 * el->getNode(j)->getIndex();
+                    ierr = MatSetValues(A, 1, &dof1, 1, &dof2, &massLocal(2 * i + 1, 2 * j), ADD_VALUES);
+                }
+                if (fabs(elementMatrices.second(2 * i, 2 * j + 1)) >= 1.e-15)
+                {
+                    int dof1 = 2 * el->getNode(i)->getIndex();
+                    int dof2 = 2 * el->getNode(j)->getIndex() + 1;
+                    ierr = MatSetValues(A, 1, &dof1, 1, &dof2, &massLocal(2 * i, 2 * j + 1), ADD_VALUES);
+                }
+                if (fabs(elementMatrices.second(2 * i + 1, 2 * j + 1)) >= 1.e-15)
+                {
+                    int dof1 = 2 * el->getNode(i)->getIndex() + 1;
+                    int dof2 = 2 * el->getNode(j)->getIndex() + 1;
+                    ierr = MatSetValues(A, 1, &dof1, 1, &dof2, &massLocal(2 * i + 1, 2 * j + 1), ADD_VALUES);
+                }
+            }
+        }
+    }
 
     //Assemble matrices and vectors
     ierr = MatAssemblyBegin(A, MAT_FINAL_ASSEMBLY);
@@ -1818,6 +2423,10 @@ int GlobalSolid::firstAccelerationCalculation()
 
     MatZeroRowsColumns(A, dirichletConditions_.size(), dof, 1.0, x, b);
 
+    // VecView(b, PETSC_VIEWER_STDOUT_WORLD);
+    // CHKERRQ(ierr);
+    // MatView(A, PETSC_VIEWER_STDOUT_WORLD);
+    // CHKERRQ(ierr);
     //Create KSP context to solve the linear system
     ierr = KSPCreate(PETSC_COMM_WORLD, &ksp);
     CHKERRQ(ierr);
@@ -1866,6 +2475,22 @@ int GlobalSolid::firstAccelerationCalculation()
         firstAccel(1) = val;
         cp->setCurrentAcceleration(firstAccel);
         cp->setPastAcceleration(firstAccel);
+    }
+    for (Node *node : nodes_)
+    {
+        bounded_vector<double, 2> firstAccel;
+        int i = node->getIndex();
+        Idof = 2 * i;
+        ierr = VecGetValues(All, Ione, &Idof, &val);
+        CHKERRQ(ierr);
+        firstAccel(0) = val;
+
+        Idof = 2 * i + 1;
+        ierr = VecGetValues(All, Ione, &Idof, &val);
+        CHKERRQ(ierr);
+        firstAccel(1) = val;
+        node->setCurrentAcceleration(firstAccel);
+        node->setPastAcceleration(firstAccel);
     }
 
     ierr = KSPDestroy(&ksp);

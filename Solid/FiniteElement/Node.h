@@ -1,25 +1,23 @@
 #pragma once
-
 #include <iostream>
 #include <boost/numeric/ublas/vector.hpp>
 #include <vector>
 
 using namespace boost::numeric::ublas;
 
-class ControlPoint
+class Node
 {
 public:
-	ControlPoint();
+	Node();
 
-	ControlPoint(const int &index,
-				 const bounded_vector<double, 2> &initialCoordinate,
-				 const double &weight);
+	Node(const int &index, const int &indexFE,
+		 const bounded_vector<double, 2> &initialCoordinate); //(nº do nó, {x1, x2})
 
-	~ControlPoint();
+	~Node();
 
 	int getIndex();
 
-	double getWeight();
+	int getIndexFE();
 
 	bounded_vector<double, 2> getInitialCoordinate();
 
@@ -35,11 +33,7 @@ public:
 
 	bounded_vector<double, 2> getCurrentAcceleration();
 
-	bounded_vector<int, 2> getINC();
-
-	bounded_vector<double, 2> getCurrentDisplacement();
-
-	// bounded_vector<double, 4> getStressState();2
+	bounded_vector<double, 4> getStressState();
 
 	void setPastCoordinate(const bounded_vector<double, 2> &pastCoordinate);
 
@@ -53,22 +47,23 @@ public:
 
 	void setCurrentAcceleration(const bounded_vector<double, 2> &currentAcceleration);
 
-	void incrementCurrentCoordinate(const int &direction, const double &value);
+	void setStressState(const bounded_vector<double, 3> &stressState);
 
-	void setINC(const bounded_vector<int, 2> inc);
+	void setZeroStressState();
 
-	void setIndex(const int &newIndex);
+	void incrementCurrentCoordinate(const int& direction, const double& value);
+
+	void setIndex(const int &index);
 
 	void updatePastValue();
 
-	// void setStressState(const bounded_vector<double, 3> &stressState);
+	//void setIndexFE(const int &index);
 
-	// void setZeroStressState();
 
 private:
 	int index_;
 
-	double weight_;
+	int indexFE_;
 
 	bounded_vector<double, 2> initialCoordinate_;
 
@@ -84,7 +79,5 @@ private:
 
 	bounded_vector<double, 2> currentAcceleration_;
 
-	bounded_vector<int, 2> inc_;
-
-	// bounded_vector<double, 4> stressState_; //{SigmaX1, SigmaX2, TalX1X2, contador}
+	bounded_vector<double, 4> stressState_; //{SigmaX1, SigmaX2, TalX1X2, contador}
 };

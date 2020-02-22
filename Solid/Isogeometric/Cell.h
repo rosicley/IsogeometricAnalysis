@@ -63,6 +63,16 @@ public:
                                                                         const vector<double> &wpc,
                                                                         const bounded_vector<double, 2> inc);
 
+    matrix<double> boundaryIsoQuadrature(const int &points);
+
+    std::pair<vector<double>, vector<double>> boundaryShapeFunctionAndDerivates(const double &xsi,
+                                                                        const vector<double> &wpc,
+                                                                        const bounded_vector<double, 2> inc, const int &curveNumber);
+
+    vector<double> computeDistribuitedLoads(const bounded_vector<double, 2> &value, const int &quadraturePoints, const int &curveNumber);
+
+    std::vector<ControlPoint * > getControlPointsOnSide(const int &side);
+
 private:
     int index_; //cell number //OK
 

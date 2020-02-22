@@ -8,6 +8,9 @@
 #include "BoundaryConditions/DirichletCondition.h"
 #include "BoundaryConditions/NeumannCondition.h"
 #include "Material.h"
+#include "FiniteElement/Element.h"
+#include "FiniteElement/Node.h"
+#include "FiniteElement/Mesh.h"
 #include <boost/timer.hpp>
 #include <boost/thread.hpp>
 #include <metis.h>
@@ -38,10 +41,32 @@ public:
                              const int &patchIndex,
                              const bounded_vector<double, 2> &values);
 
-    void addPatch(const int &index, 
-                  const int &npc, 
-                  const int &indexMaterial, 
+    void addDirichletConditionFE(const int &index,
+                                 const int &meshIndex,
+                                 const bounded_vector<int, 2> &free,
+                                 const bounded_vector<double, 2> &values);
+
+    void addNeumannConditionFE(const int &index,
+                               const int &meshIndex,
+                               const bounded_vector<double, 2> &values);
+
+    void addPatch(const int &index,
+                  const int &npc,
+                  const int &indexMaterial,
                   const double &thickness);
+
+    void addMesh(const int &index, const int &nnodes, const int &nelem,
+                 const int &indexMaterial, const double &thickness,
+                 const std::string &elementType);
+
+    void addNode(const int &index, const int &indexFE,
+                 const bounded_vector<double, 2> &initialCoordinate);
+
+    void addElement(const int &index,
+                    const std::vector<int> &nodesIndex,
+                    const int &materialIndex,
+                    const double &thickness,
+                    const std::string &elementType);
 
     int solveStaticProblem();
 
@@ -51,9 +76,10 @@ public:
 
     void exportToParaview(const int &loadstep);
 
-    void dataReading(const std::string &inputParameters, 
-                     const std::string &inputProperties, 
+    void dataReading(const std::string &inputParameters,
+                     const std::string &inputProperties,
                      const std::string &inputMeshIso,
+                     const std::string &inputMeshFE,
                      const bool &rhino);
 
     Material *getMaterial(const int &index);
@@ -68,17 +94,22 @@ public:
 
     void ISOdomainDecompositionMETIS();
 
+    void domainDecompositionMETIS(const std::string &elementType);
 
 private:
     std::vector<Patch *> patches_;
 
+    std::vector<Mesh *> meshes_;
+
     std::vector<DirichletCondition *> dirichletConditions_;
+
+    std::vector<DirichletConditionFE *> dirichletConditionsFE_;
 
     std::vector<NeumannCondition *> neumannConditions_;
 
-    std::vector<Material *> materials_;
+    std::vector<NeumannConditionFE *> neumannConditionsFE_;
 
-    //std::string elementType_;
+    std::vector<Material *> materials_;
 
     std::string planeState_;
 
@@ -92,13 +123,13 @@ private:
 
     bounded_vector<double, 2> shapeForces_;
 
-    //int numberOfHammer_;
-
-    //int order_;
-
     idx_t *cellPartition_;
 
     idx_t *pointsPartition_;
+
+    idx_t *elementPartition_;
+
+    idx_t *nodePartition_;
 
     int numberOfSteps_;
 
@@ -108,9 +139,15 @@ private:
 
     std::vector<Cell *> cells_;
 
+    std::vector<Element *> elements_;
+
     std::vector<Cell *> cells_part;
 
-    std::vector<ControlPoint *> controlPoints_; 
+    std::vector<Element *> elements_part;
+
+    std::vector<ControlPoint *> controlPoints_;
+
+    std::vector<Node *> nodes_;
 
     int orderParaview_;
 

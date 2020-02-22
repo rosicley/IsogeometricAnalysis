@@ -5,16 +5,10 @@ Cell::Cell() {}
 Cell::Cell(const int &index,
            Patch *patch,
            const std::vector<ControlPoint *> &controlPoints)
-//    const bounded_vector<int, 2> &order,
-//    Material *material,
-//    const double &thickness)
 {
     index_ = index;
     controlPoints_ = controlPoints;
-    // material_ = material;
-    // thickness_ = thickness;
     patch_ = patch;
-    // order_ = order;
     shapeForce_(0) = 0.0;
     shapeForce_(1) = 0.0;
 }
@@ -103,12 +97,6 @@ vector<double> Cell::shapeFunction(const bounded_vector<double, 2> &qxsi,
     const double xsi1 = ((u2 - u1) * qxsi(0) + (u2 + u1)) * 0.5;
     const double xsi2 = ((v2 - v1) * qxsi(1) + (v2 + v1)) * 0.5;
 
-    // for (int i = 0; i < numLocalBF; i++)
-    // {
-
-    //     wpc(i) = wpcs(i);
-    // }
-
     uBF(0, 0) = 1.0;
 
     for (int j = 1; j < (degm + 1); j++)
@@ -196,11 +184,6 @@ std::pair<vector<double>, matrix<double>> Cell::shapeFunctionAndDerivates(const 
     int npcm = patch_->getNpc_Dir(0);
     int npcn = patch_->getNpc_Dir(1);
 
-    // int degm = 2;
-    // int degn = 2;
-    // int npcm = 121;
-    // int npcn = 91;
-
     int dimu = degm + npcm + 1;
     int dimv = degn + npcn + 1;
     int numLocalBF = (degm + 1) * (degn + 1);
@@ -244,12 +227,6 @@ std::pair<vector<double>, matrix<double>> Cell::shapeFunctionAndDerivates(const 
     // relates integration space with the parametric one
     const double xsi1 = ((u2 - u1) * qxsi(0) + (u2 + u1)) * 0.5;
     const double xsi2 = ((v2 - v1) * qxsi(1) + (v2 + v1)) * 0.5;
-
-    // for (int i = 0; i < numLocalBF; i++)
-    // {
-
-    //     wpc(i) = wpcs(i);
-    // }
 
     uBF(0, 0) = 1.0;
 
@@ -482,12 +459,6 @@ std::pair<vector<double>, matrix<double>> Cell::shapeFunctionAndDerivates(const 
         dphiIso(1, i) = (1.0 / (sum * sum * 2 * auxiliar(1))) * (dphit(1, i) * wpc(i) * sum - phit(i) * wpc(i) * sum2);
     }
 
-    // for (int i = 0; i < numLocalBF; i++)
-    // {
-    //     dphiIso(0, i) = (1/394)*dphiIso(0, i);
-    //     dphiIso(1, i) = (1/14)*dphiIso(0, i);
-    // }
-
     return std::make_pair(phiIso, dphiIso);
 };
 
@@ -640,7 +611,6 @@ matrix<double> Cell::isoQuadrature(const int &points)
 
     if (points == 5)
     {
-
         pointCoordIso(0, 0) = 0.000000000000000;
         pointCoordIso(1, 0) = 0.000000000000000;
         pointCoordIso(2, 0) = 0.000000000000000;
@@ -966,36 +936,34 @@ bounded_vector<double, 4> Cell::getCauchStress(const bounded_vector<double, 2> &
     mat1 = prod(Ac, S);
     sigma = (1.0 / jac) * prod(mat1, trans(Ac));
 
-    if (sigma(0, 0) >= 10.0e-11 or sigma(0, 0) <= -10.0e-11)
-    {
-        cauchStress(0) = sigma(0, 0);
-    }
-    else
-    {
-        cauchStress(0) = 0.0;
-    }
+    // if (sigma(0, 0) >= 10.0e-11 or sigma(0, 0) <= -10.0e-11)
+    // {
+    //     cauchStress(0) = sigma(0, 0);
+    // }
+    // else
+    // {
+    //     cauchStress(0) = 0.0;
+    // }
+    // if (sigma(1, 1) >= 10.0e-11 or sigma(1, 1) <= -10.0e-11)
+    // {
+    //     cauchStress(1) = sigma(1, 1);
+    // }
+    // else
+    // {
+    //     cauchStress(1) = 0.0;
+    // }
+    // if (sigma(0, 1) >= 10.0e-11 or sigma(0, 1) <= -10.0e-11)
+    // {
+    //     cauchStress(3) = sigma(0, 1);
+    // }
+    // else
+    // {
+    //     cauchStress(3) = 0.0;
+    // }
 
-    if (sigma(1, 1) >= 10.0e-11 or sigma(1, 1) <= -10.0e-11)
-    {
-        cauchStress(1) = sigma(1, 1);
-    }
-    else
-    {
-        cauchStress(1) = 0.0;
-    }
-
-    if (sigma(0, 1) >= 10.0e-11 or sigma(0, 1) <= -10.0e-11)
-    {
-        cauchStress(3) = sigma(0, 1);
-    }
-    else
-    {
-        cauchStress(3) = 0.0;
-    }
-
-    //cauchStress(0) = sigma(0, 0);
-    //cauchStress(1) = sigma(1, 1);
-    //cauchStress(3) = sigma(0, 1);
+    cauchStress(0) = sigma(0, 0);
+    cauchStress(1) = sigma(1, 1);
+    cauchStress(3) = sigma(0, 1);
 
     if (ep == "EPD")
     {
@@ -1043,36 +1011,36 @@ bounded_vector<double, 4> Cell::getGreen(const bounded_vector<double, 2> &qxsi, 
     identity_matrix<double> I(2);                                                   //identity matrix
     bounded_matrix<double, 2, 2> Ec = 0.5 * (prod(trans(Ac), Ac) - I);              //current green strain tensor
 
-    if (Ec(0, 0) >= 10.0e-14 or Ec(0, 0) <= -10.0e-14)
-    {
-        green(0) = Ec(0, 0);
-    }
-    else
-    {
-        green(0) = 0.0;
-    }
+    // if (Ec(0, 0) >= 10.0e-14 or Ec(0, 0) <= -10.0e-14)
+    // {
+    //     green(0) = Ec(0, 0);
+    // }
+    // else
+    // {
+    //     green(0) = 0.0;
+    // }
 
-    if (Ec(1, 1) >= 10.0e-14 or Ec(1, 1) <= -10.0e-14)
-    {
-        green(1) = Ec(1, 1);
-    }
-    else
-    {
-        green(1) = 0.0;
-    }
+    // if (Ec(1, 1) >= 10.0e-14 or Ec(1, 1) <= -10.0e-14)
+    // {
+    //     green(1) = Ec(1, 1);
+    // }
+    // else
+    // {
+    //     green(1) = 0.0;
+    // }
 
-    if (Ec(0, 1) >= 10.0e-14 or Ec(0, 1) <= -10.0e-14)
-    {
-        green(3) = Ec(0, 1);
-    }
-    else
-    {
-        green(3) = 0.0;
-    }
+    // if (Ec(0, 1) >= 10.0e-14 or Ec(0, 1) <= -10.0e-14)
+    // {
+    //     green(3) = Ec(0, 1);
+    // }
+    // else
+    // {
+    //     green(3) = 0.0;
+    // }
 
-    // green(0) = Ec(0, 0);
-    // green(1) = Ec(1, 1);
-    // green(3) = Ec(0, 1);
+    green(0) = Ec(0, 0);
+    green(1) = Ec(1, 1);
+    green(3) = Ec(0, 1);
 
     if (ep == "EPD")
     {
@@ -1124,4 +1092,325 @@ matrix<double> Cell::massMatrix(const int &pointsQuadrature)
         }
     }
     return mass;
+}
+
+std::pair<vector<double>, vector<double>> Cell::boundaryShapeFunctionAndDerivates(const double &qxsi,
+                                                                                  const vector<double> &wpc,
+                                                                                  const bounded_vector<double, 2> inc,
+                                                                                  const int &curveNumber)
+{
+    int deg, npc, dim, numLocal, ind, auxiliar;
+    bounded_vector<int, 2> spans = patch_->getSpanNumber();
+    if (curveNumber == 0 or curveNumber == 2)
+    {
+        deg = patch_->getDegree(0);
+        npc = patch_->getNpc_Dir(0);
+        auxiliar = spans(0);
+    }
+    else
+    {
+        deg = patch_->getDegree(1);
+        npc = patch_->getNpc_Dir(1);
+        auxiliar = spans(1);
+    }
+
+    dim = deg + npc + 1;
+    numLocal = deg + 1;
+
+    vector<double> knot(dim);
+    vector<double> left(deg + 1);
+    vector<double> right(deg + 1);
+    vector<double> phiL(deg + 1);
+    matrix<double> aux(2, deg);
+    vector<double> dphiL(deg + 1);
+    vector<double> phiIso(numLocal);
+    vector<double> dphiIso(numLocal);
+
+    double saved, temp;
+
+    if (curveNumber == 0 or curveNumber == 2)
+    {
+        knot = patch_->getKnotVectorU();
+        ind = inc(0);
+    }
+    else
+    {
+        knot = patch_->getKnotVectorV();
+        ind = inc(1);
+    }
+
+    double uv1 = knot(ind);
+    double uv2 = knot(ind + 1);
+
+    const double xsi = ((uv2 - uv1) * qxsi + (uv2 + uv1)) * 0.5;
+    matrix<double> BF(deg + 1, deg + 1);
+
+    BF(0, 0) = 1.0;
+
+    for (int j = 1; j <= deg; j++)
+    {
+        left(j) = xsi - knot(ind + 1 - j);
+        right(j) = knot(ind + j) - xsi;
+        saved = 0.0;
+
+        for (int r = 0; r < j; r++)
+        {
+            //lower triangle (Piegl and Tiller pg. 68-71)
+            BF(j, r) = right(r + 1) + left(j - r);
+            temp = BF(r, j - 1) / BF(j, r);
+
+            //upper triangle
+            BF(r, j) = saved + right(r + 1) * temp;
+            saved = left(j - r) * temp;
+        }
+
+        BF(j, j) = saved;
+    }
+
+    for (int i = 0; i <= deg; i++)
+    {
+        phiL(i) = BF(i, deg);
+    }
+
+    double sum = 0.0;
+    for (int i = 0; i < numLocal; i++)
+    {
+        sum += phiL(i) * wpc(i);
+    }
+
+    for (int i = 0; i < numLocal; i++)
+    {
+        phiIso(i) = phiL(i) * wpc(i) / sum;
+    }
+
+    //DERIVATES
+
+    int s1, s2, k, rk, pk, j1, j2;
+    //int , cor;
+    double d;
+
+    for (int r = 0; r <= deg; r++)
+    {
+        s1 = 0;
+        s2 = 1;
+        aux(0, 0) = 1.0;
+        k = 1;
+        d = 0.0;
+        rk = r - k;
+        pk = deg - k;
+
+        if (r >= k)
+        {
+            aux(s2, 0) = aux(s1, 0) / BF(pk + 1, rk);
+            d = aux(s2, 0) * BF(rk, pk);
+        }
+
+        if (rk >= -1)
+        {
+            j1 = 1;
+        }
+        else
+        {
+            j1 = -rk;
+        }
+
+        if ((r - 1) <= pk)
+        {
+            j2 = k - 1;
+        }
+        else
+        {
+            j2 = deg - r;
+        }
+
+        for (int j = j1; j <= j2; j++)
+        {
+            aux(s2, j) = (aux(s1, j) - aux(s1, j - 1)) / BF(pk + 1, rk + j);
+            d = d + aux(s2, j) * BF(rk + j, pk);
+        }
+
+        if (r <= pk)
+        {
+            aux(s2, k) = -aux(s1, k - 1) / BF(pk + 1, r);
+            d = d + aux(s2, k) * BF(r, pk);
+        }
+
+        dphiL(r) = d;
+
+        int j = s1;
+        s1 = s2;
+        s2 = j;
+    }
+
+    for (int i = 0; i < (deg + 1); i++)
+    {
+        dphiL(i) = dphiL(i) * deg;
+    }
+
+    sum = 0.0;
+    double sum1 = 0.0;
+
+    for (int i = 0; i < numLocal; i++)
+    {
+        sum += phiL(i) * wpc(i);
+        sum1 += dphiL(i) * wpc(i);
+    }
+
+    for (int i = 0; i < numLocal; i++)
+    {
+        dphiIso(i) = (1.0 / (sum * sum * 2 * auxiliar)) * (wpc(i) * dphiL(i) * sum - wpc(i) * phiL(i) * sum1);
+    }
+
+    return std::make_pair(phiIso, dphiIso);
+};
+
+matrix<double> Cell::boundaryIsoQuadrature(const int &points)
+{
+    matrix<double> pointCoordIso(points, 2); //xsi1, xsi2, weight
+
+    if (points == 3)
+    {
+        pointCoordIso(0, 0) = -0.774596669241483;
+        pointCoordIso(0, 1) = 0.555555555555556;
+
+        pointCoordIso(1, 0) = 0.774596669241483;
+        pointCoordIso(1, 1) = 0.555555555555556;
+
+        pointCoordIso(2, 0) = 0.0;
+        pointCoordIso(2, 1) = 0.888888888888889;
+    }
+    else if (points == 4)
+    {
+        pointCoordIso(0, 0) = -0.861136311594053;
+        pointCoordIso(0, 1) = 0.347854845137454;
+
+        pointCoordIso(1, 0) = 0.861136311594053;
+        pointCoordIso(1, 1) = 0.347854845137454;
+
+        pointCoordIso(2, 0) = -0.339981043584856;
+        pointCoordIso(2, 1) = 0.652145154862546;
+
+        pointCoordIso(3, 0) = 0.339981043584856;
+        pointCoordIso(3, 1) = 0.652145154862546;
+    }
+
+    if (points == 5)
+    {
+        pointCoordIso(0, 0) = -0.906179845938664;
+        pointCoordIso(0, 1) = 0.236926885056189;
+
+        pointCoordIso(1, 0) = 0.906179845938664;
+        pointCoordIso(1, 1) = 0.236926885056189;
+
+        pointCoordIso(2, 0) = -0.538469310195683;
+        pointCoordIso(2, 1) = 0.478628670499366;
+
+        pointCoordIso(3, 0) = 0.538469310195683;
+        pointCoordIso(3, 1) = 0.478628670499366;
+
+        pointCoordIso(4, 0) = 0.0;
+        pointCoordIso(4, 1) = 0.568888888888889;
+    }
+
+    return pointCoordIso;
+}
+
+vector<double> Cell::computeDistribuitedLoads(const bounded_vector<double, 2> &value, const int &quadraturePoints, const int &curveNumber)
+{
+    std::vector<ControlPoint *> points = getControlPointsOnSide(curveNumber);
+    int npc = points.size();
+    vector<double> distribuitedLoad(2 * npc, 0.0);
+    matrix<double> integrationPoints(quadraturePoints, 2);
+    integrationPoints = boundaryIsoQuadrature(quadraturePoints);
+    vector<double> wpc(npc);
+    bounded_vector<int, 2> inc_;
+    double thickness = patch_->getThickness();
+
+    inc_ = points[npc - 1]->getINC();
+
+    for (int i = 0; i < npc; i++)
+    {
+        wpc(i) = points[i]->getWeight();
+    }
+
+    for (int iq = 0; iq < quadraturePoints; iq++)
+    {
+        double xsi = integrationPoints(iq, 0);
+        double weight = integrationPoints(iq, 1);
+
+        std::pair<vector<double>, vector<double>> functions = boundaryShapeFunctionAndDerivates(xsi, wpc, inc_, curveNumber);
+        bounded_vector<double, 2> tangent;
+        tangent(0)=0.0;
+        tangent(1)=0.0;
+        for (int ih = 0; ih < npc; ih++)
+        {
+            tangent(0) += functions.second(ih) * points[ih]->getCurrentCoordinate()(0);
+            tangent(1) += functions.second(ih) * points[ih]->getCurrentCoordinate()(1);
+        }
+
+		double jacobian = sqrt(pow(tangent(0), 2) + pow(tangent(1), 2));
+
+        double aux = 0.0;
+        for (int m = 0; m < npc; m++)
+        {
+            aux += functions.first(m);
+        }
+
+        for (int ih = 0; ih < npc; ih++)
+        {
+            distribuitedLoad(2 * ih) += value(0) * functions.first(ih) * weight * thickness*jacobian;
+            distribuitedLoad(2 * ih + 1) += value(1) * functions.first(ih) * weight * thickness*jacobian;
+        }
+    }
+    return distribuitedLoad;
+}
+
+std::vector<ControlPoint *> Cell::getControlPointsOnSide(const int &side)
+{
+    std::vector<ControlPoint *> points;
+    if (side == 0)
+    {
+        int numberOfPoints = patch_->getDegree(0) + 1;
+        for (int i = 0; i < numberOfPoints; i++)
+        {
+            points.push_back(controlPoints_[i]);
+        }
+    }
+    else if (side == 1)
+    {
+        int numberOfPoints = patch_->getDegree(1) + 1;
+        int aux = patch_->getDegree(0) + 1;
+        int j = aux - 1;
+
+        for (int i = 0; i < numberOfPoints; i++)
+        {
+            points.push_back(controlPoints_[j]);
+            j = j + aux;
+        }
+    }
+    else if (side == 2)
+    {
+        int numberOfPoints = patch_->getDegree(0) + 1;
+        int aux = patch_->getDegree(1);
+        int j = aux * numberOfPoints;
+
+        for (int i = 0; i < numberOfPoints; i++)
+        {
+            points.push_back(controlPoints_[j]);
+            j = j + 1;
+        }
+    }
+    else if (side == 3)
+    {
+        int numberOfPoints = patch_->getDegree(1) + 1;
+        int aux = patch_->getDegree(0) + 1;
+        int j = 0;
+
+        for (int i = 0; i < numberOfPoints; i++)
+        {
+            points.push_back(controlPoints_[j]);
+            j = j + aux;
+        }
+    }
+    return points;
 }

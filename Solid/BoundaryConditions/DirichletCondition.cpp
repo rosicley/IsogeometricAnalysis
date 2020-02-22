@@ -27,3 +27,32 @@ double DirichletCondition::getValue()
 {
     return value_;
 }
+
+
+DirichletConditionFE::DirichletConditionFE() {}
+
+DirichletConditionFE::DirichletConditionFE(Node *node,
+                                       const int &direction,
+                                       const double &value)
+{
+    node_ = node;
+    direction_ = direction;
+    value_ = value;
+}
+
+DirichletConditionFE::~DirichletConditionFE() {}
+
+Node *DirichletConditionFE::getNode()
+{
+    return node_;
+}
+
+int DirichletConditionFE::getDirection()
+{
+    return direction_;
+}
+
+double DirichletConditionFE::getValue()
+{
+    return value_;
+}
