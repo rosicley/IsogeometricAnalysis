@@ -1,0 +1,141 @@
+
+DOMAIN DECOMPOSITION - CELLS
+process = 0, cell = 0
+process = 1, cell = 1
+process = 0, cell = 2
+process = 1, cell = 3
+process = 1, cell = 4
+process = 0, cell = 5
+process = 1, cell = 6
+process = 1, cell = 7
+process = 1, cell = 8
+process = 0, cell = 9
+process = 0, cell = 10
+process = 0, cell = 11
+process = 2, cell = 12
+process = 0, cell = 13
+process = 2, cell = 14
+process = 2, cell = 15
+process = 2, cell = 16
+process = 2, cell = 17
+process = 2, cell = 18
+process = 3, cell = 19
+process = 3, cell = 20
+process = 3, cell = 21
+process = 3, cell = 22
+process = 3, cell = 23
+process = 3, cell = 24
+
+DOMAIN DECOMPOSITION - CONTROL POINTS
+process = 0, control point = 0
+process = 0, control point = 1
+process = 0, control point = 2
+process = 0, control point = 3
+process = 1, control point = 4
+process = 0, control point = 5
+process = 1, control point = 6
+process = 1, control point = 7
+process = 1, control point = 8
+process = 1, control point = 9
+process = 1, control point = 10
+process = 0, control point = 11
+process = 0, control point = 12
+process = 0, control point = 13
+process = 0, control point = 14
+process = 2, control point = 15
+process = 2, control point = 16
+process = 2, control point = 17
+process = 2, control point = 18
+process = 2, control point = 19
+process = 2, control point = 20
+process = 3, control point = 21
+process = 3, control point = 22
+process = 3, control point = 23
+process = 3, control point = 24
+process = 3, control point = 25
+process = 3, control point = 26
+process = 3, control point = 27
+process = 0, control point = 28
+process = 0, control point = 29
+process = 0, control point = 30
+process = 0, control point = 31
+process = 1, control point = 32
+process = 0, control point = 33
+process = 1, control point = 34
+process = 1, control point = 35
+process = 1, control point = 36
+process = 1, control point = 37
+process = 1, control point = 38
+process = 0, control point = 39
+process = 0, control point = 40
+process = 0, control point = 41
+process = 0, control point = 42
+process = 2, control point = 43
+process = 2, control point = 44
+process = 2, control point = 45
+process = 2, control point = 46
+process = 2, control point = 47
+process = 2, control point = 48
+process = 3, control point = 49
+process = 3, control point = 50
+process = 3, control point = 51
+process = 3, control point = 52
+process = 3, control point = 53
+process = 3, control point = 54
+process = 3, control point = 55
+process = 0, control point = 56
+process = 0, control point = 57
+process = 0, control point = 58
+process = 0, control point = 59
+process = 1, control point = 60
+process = 0, control point = 61
+process = 1, control point = 62
+process = 1, control point = 63
+process = 1, control point = 64
+process = 1, control point = 65
+process = 1, control point = 66
+process = 0, control point = 67
+process = 0, control point = 68
+process = 0, control point = 69
+process = 0, control point = 70
+process = 2, control point = 71
+process = 2, control point = 72
+process = 2, control point = 73
+process = 2, control point = 74
+process = 2, control point = 75
+process = 2, control point = 76
+process = 3, control point = 77
+process = 3, control point = 78
+process = 3, control point = 79
+process = 3, control point = 80
+process = 3, control point = 81
+process = 3, control point = 82
+process = 3, control point = 83
+process = 0, control point = 84
+process = 0, control point = 85
+process = 0, control point = 86
+process = 1, control point = 87
+process = 1, control point = 88
+process = 1, control point = 89
+process = 1, control point = 90
+process = 1, control point = 91
+process = 1, control point = 92
+process = 1, control point = 93
+process = 1, control point = 94
+process = 1, control point = 95
+process = 2, control point = 96
+process = 2, control point = 97
+process = 2, control point = 98
+process = 2, control point = 99
+process = 2, control point = 100
+process = 2, control point = 101
+process = 2, control point = 102
+process = 2, control point = 103
+process = 2, control point = 104
+process = 3, control point = 105
+process = 3, control point = 106
+process = 3, control point = 107
+process = 3, control point = 108
+process = 3, control point = 109
+process = 3, control point = 110
+process = 3, control point = 111

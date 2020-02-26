@@ -23,6 +23,11 @@ int Patch::getControlPointsNumber()
     return npc_;
 }
 
+int Patch::getIndex()
+{
+    return index_;
+}
+
 vector<double> Patch::getKnotVectorU()
 {
     return knotVectorU_;

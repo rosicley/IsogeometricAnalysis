@@ -11,6 +11,7 @@
 #include "FiniteElement/Element.h"
 #include "FiniteElement/Node.h"
 #include "FiniteElement/Mesh.h"
+#include "FiniteElement/BoundaryElement.h"
 #include <boost/timer.hpp>
 #include <boost/thread.hpp>
 #include <metis.h>
@@ -42,12 +43,10 @@ public:
                              const bounded_vector<double, 2> &values);
 
     void addDirichletConditionFE(const int &index,
-                                 const int &meshIndex,
                                  const bounded_vector<int, 2> &free,
                                  const bounded_vector<double, 2> &values);
 
     void addNeumannConditionFE(const int &index,
-                               const int &meshIndex,
                                const bounded_vector<double, 2> &values);
 
     void addPatch(const int &index,
@@ -55,18 +54,19 @@ public:
                   const int &indexMaterial,
                   const double &thickness);
 
-    void addMesh(const int &index, const int &nnodes, const int &nelem,
-                 const int &indexMaterial, const double &thickness,
+    void addMesh(const int &index, const int &indexMaterial, const double &thickness,
                  const std::string &elementType);
 
     void addNode(const int &index, const int &indexFE,
                  const bounded_vector<double, 2> &initialCoordinate);
 
-    void addElement(const int &index,
-                    const std::vector<int> &nodesIndex,
-                    const int &materialIndex,
-                    const double &thickness,
-                    const std::string &elementType);
+    // void addElement(const int &index,
+    // const std::vector<int> &nodesIndex,
+    // const int &materialIndex,
+    // const double &thickness,
+    // const std::string &elementType);
+
+    void addBoundaryFiniteElement(const int &lineNumber, const std::vector<int> &nodesIndex);
 
     int solveStaticProblem();
 
@@ -74,13 +74,19 @@ public:
 
     int firstAccelerationCalculation();
 
-    void exportToParaview(const int &loadstep);
+    void exportToParaviewISO(const int &loadstep);
+
+    void exportToParaviewFEM(const int &number);
+
+    void exportMirror();
 
     void dataReading(const std::string &inputParameters,
                      const std::string &inputProperties,
                      const std::string &inputMeshIso,
                      const std::string &inputMeshFE,
                      const bool &rhino);
+
+    void dataFromGmsh(const std::string &inputGmesh);
 
     Material *getMaterial(const int &index);
 
@@ -95,6 +101,8 @@ public:
     void ISOdomainDecompositionMETIS();
 
     void domainDecompositionMETIS(const std::string &elementType);
+
+    void teste();
 
 private:
     std::vector<Patch *> patches_;
@@ -149,9 +157,13 @@ private:
 
     std::vector<Node *> nodes_;
 
+    std::vector<BoundaryElement *> boundaryFE_;
+
     int orderParaview_;
 
     int quadrature_;
 
     int cpnumber_;
+
+    int cpaux_;
 };

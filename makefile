@@ -18,7 +18,7 @@ debug: $(CSOURCES:.cpp=.o)
 	@gdb debug
 
 clear:
-	@$ rm *.o *~ s *.vtu mirror* ISOdomain* FEdomain* *.mod *.dat ma26* tensao* esforc* saida omega.txt *.geo *.msh $(CURRENT_DIR)/src/*.gch
+	@$ rm *.o *~ s *.vtu mirror* ISOdomain* FEdomain* *.mod *.dat ma26* tensao* esforc* saida omega.txt *.geo $(CURRENT_DIR)/src/*.gch
 
 run1:
 	@$ mpirun -np 1 ./s

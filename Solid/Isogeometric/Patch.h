@@ -16,6 +16,8 @@ public:
 
     int getDegree(const int &dir);
 
+    int getIndex();
+
     bounded_vector<int, 2> getDegrees();
 
     int getNpc_Dir(const int &dir);

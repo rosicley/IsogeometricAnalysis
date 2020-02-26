@@ -33,7 +33,9 @@ public:
 
 	bounded_vector<double, 2> getCurrentAcceleration();
 
-	bounded_vector<double, 4> getStressState();
+	bounded_vector<double, 2> getCurrentDisplacement();
+
+	bounded_vector<double, 5> getStressState();
 
 	void setPastCoordinate(const bounded_vector<double, 2> &pastCoordinate);
 
@@ -47,7 +49,7 @@ public:
 
 	void setCurrentAcceleration(const bounded_vector<double, 2> &currentAcceleration);
 
-	void setStressState(const bounded_vector<double, 3> &stressState);
+	void setStressState(const bounded_vector<double, 4> &stressState);
 
 	void setZeroStressState();
 
@@ -79,5 +81,5 @@ private:
 
 	bounded_vector<double, 2> currentAcceleration_;
 
-	bounded_vector<double, 4> stressState_; //{SigmaX1, SigmaX2, TalX1X2, contador}
+	bounded_vector<double, 5> stressState_; //{SigmaX1, SigmaX2, TalX1X2, contador}
 };

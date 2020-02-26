@@ -58,30 +58,30 @@ void GlobalSolid::addNeumannCondition(const int &index, const int &patchIndex, c
     }
 }
 
-void GlobalSolid::addDirichletConditionFE(const int &index, const int &meshIndex, const bounded_vector<int, 2> &free, const bounded_vector<double, 2> &values)
+void GlobalSolid::addDirichletConditionFE(const int &index, const bounded_vector<int, 2> &free, const bounded_vector<double, 2> &values)
 {
     if (free(0) == 1)
     {
-        DirichletConditionFE *cond = new DirichletConditionFE(meshes_[meshIndex]->getNode(index), 0, values(0));
+        DirichletConditionFE *cond = new DirichletConditionFE(nodes_[index], 0, values(0));
         dirichletConditionsFE_.push_back(cond);
     }
     if (free(1) == 1)
     {
-        DirichletConditionFE *cond = new DirichletConditionFE(meshes_[meshIndex]->getNode(index), 1, values(1));
+        DirichletConditionFE *cond = new DirichletConditionFE(nodes_[index], 1, values(1));
         dirichletConditionsFE_.push_back(cond);
     }
 }
 
-void GlobalSolid::addNeumannConditionFE(const int &index, const int &meshIndex, const bounded_vector<double, 2> &values)
+void GlobalSolid::addNeumannConditionFE(const int &index, const bounded_vector<double, 2> &values)
 {
     if (values(0) != 0.0)
     {
-        NeumannConditionFE *cond = new NeumannConditionFE(meshes_[meshIndex]->getNode(index), 0, values(0));
+        NeumannConditionFE *cond = new NeumannConditionFE(nodes_[index], 0, values(0));
         neumannConditionsFE_.push_back(cond);
     }
     if (values(1) != 0.0)
     {
-        NeumannConditionFE *cond = new NeumannConditionFE(meshes_[meshIndex]->getNode(index), 1, values(1));
+        NeumannConditionFE *cond = new NeumannConditionFE(nodes_[index], 1, values(1));
         neumannConditionsFE_.push_back(cond);
     }
 }
@@ -92,10 +92,17 @@ void GlobalSolid::addPatch(const int &index, const int &npc, const int &indexMat
     patches_.push_back(patch);
 }
 
-void GlobalSolid::addMesh(const int &index, const int &nnodes, const int &nelem, const int &indexMaterial, const double &thickness, const std::string &elementType)
+void GlobalSolid::addMesh(const int &index, const int &indexMaterial, const double &thickness, const std::string &elementType)
 {
-    Mesh *mesh = new Mesh(index, nnodes, nelem, materials_[indexMaterial], thickness, elementType);
+    Mesh *mesh = new Mesh(index, materials_[indexMaterial], thickness, elementType);
     meshes_.push_back(mesh);
+}
+
+void GlobalSolid::addNode(const int &index, const int &indexFE,
+                          const bounded_vector<double, 2> &initialCoordinate)
+{
+    Node *node = new Node(index, indexFE, initialCoordinate);
+    nodes_.push_back(node);
 }
 
 void GlobalSolid::dataReading(const std::string &inputParameters, const std::string &inputProperties, const std::string &inputMeshIso, const std::string &inputMeshFE, const bool &rhino)
@@ -103,12 +110,11 @@ void GlobalSolid::dataReading(const std::string &inputParameters, const std::str
     std::ifstream parameters(inputParameters);
     std::ifstream properties(inputProperties);
     std::ifstream isogeometric(inputMeshIso);
-    std::ifstream feMesh(inputMeshFE);
     std::string line;
 
-    std::stringstream text1;
-    text1 << "mirror.txt";
-    std::ofstream mirror(text1.str());
+    //std::stringstream text1;
+    //text1 << "ISOmirror.txt";
+    //std::ofstream mirror(text1.str());
 
     int rank;
     MPI_Comm_rank(PETSC_COMM_WORLD, &rank);
@@ -165,20 +171,6 @@ void GlobalSolid::dataReading(const std::string &inputParameters, const std::str
     std::getline(parameters, line);
     parameters >> orderParaview_;
 
-    mirror << "TYPE OF ANALYSIS: " << problemType_ << std::endl;
-    mirror << "PLANE STATE: " << planeState_ << std::endl;
-    mirror << "NUMBER OF LOAD/TIME STEP: " << numberOfSteps_ << std::endl;
-    mirror << "TOLERANCE: " << tolerance_ << std::endl;
-    if (problemType_ == "DYNAMIC")
-    {
-        mirror << "DELTAT: " << deltat_ << std::endl;
-        mirror << "BETA: " << beta_ << std::endl;
-        mirror << "GAMMA: " << gamma_ << std::endl;
-    }
-    mirror << "NUMBER OF INTEGRATION POINTS: " << quadrature_ * quadrature_ << std::endl;
-    mirror << "DEGREE(PARAVIEW): " << orderParaview_ << std::endl;
-    mirror << std::endl;
-
     //READING SOLID PROPERTIES
     int nmaterial;
     double young, poisson, density;
@@ -206,7 +198,6 @@ void GlobalSolid::dataReading(const std::string &inputParameters, const std::str
     std::getline(isogeometric, line);
     isogeometric >> npatch;
     std::getline(isogeometric, line);
-    mirror << "NUMBER OF PATCHES: " << npatch << std::endl;
     for (int ipatch = 0; ipatch < npatch; ipatch++)
     {
         int npc, imaterial, dim_u, dim_v;
@@ -235,18 +226,11 @@ void GlobalSolid::dataReading(const std::string &inputParameters, const std::str
         std::getline(isogeometric, line);
         std::getline(isogeometric, line);
         std::getline(isogeometric, line);
-        mirror << "PATCH " << ipatch << std::endl;
-        mirror << "THICKNESS: " << thickness << std::endl;
-        mirror << "YOUNG: " << materials_[imaterial]->getYoung() << std::endl;
-        mirror << "POISSON: " << materials_[imaterial]->getPoisson() << std::endl;
-        mirror << "DENSITY: " << materials_[imaterial]->getDensity() << std::endl;
-        mirror << "CONTROL POINTS (" << npc << ")" << std::endl;
-        mirror << "INDEX  COORDINATES (X1, X2)  WEIGHT" << std::endl;
+
         //CREATE CONTROL POINTS IN PATCH
         matrix<double> auxil(npc, 3);
         if (rhino == true)
         {
-            mirror << "///CONTROL POINTS FROM RHINO///" << std::endl;
             for (int ipc = 0; ipc < npc; ipc++)
             {
                 double aux;
@@ -262,7 +246,6 @@ void GlobalSolid::dataReading(const std::string &inputParameters, const std::str
                 double aux, weight;
                 isogeometric >> coord(0) >> coord(1) >> aux >> weight;
                 patches_[ipatch]->addControlPoint(ipc, coord, weight);
-                mirror << ipc << " " << coord(0) << " " << coord(1) << " " << weight << std::endl;
                 std::getline(isogeometric, line);
             }
         }
@@ -283,7 +266,6 @@ void GlobalSolid::dataReading(const std::string &inputParameters, const std::str
                     coord(1) = auxil(i * npc_dir(1) + j, 1);
                     weight = auxil(i * npc_dir(1) + j, 2);
                     patches_[ipatch]->addControlPoint(j * npc_dir(0) + i, coord, weight);
-                    mirror << j * npc_dir(0) + i << " " << coord(0) << " " << coord(1) << " " << weight << std::endl;
                 }
             }
         }
@@ -372,7 +354,6 @@ void GlobalSolid::dataReading(const std::string &inputParameters, const std::str
         std::getline(isogeometric, line);
         std::getline(isogeometric, line);
         std::getline(isogeometric, line);
-        //std::vector<bounded_vector<double, 5>> dirichletCurve;
         for (int idirichlet = 0; idirichlet < ndirichlet; idirichlet++)
         {
             isogeometric >> typecond;
@@ -453,9 +434,6 @@ void GlobalSolid::dataReading(const std::string &inputParameters, const std::str
         }
         patches_[ipatch]->setSpanNumber(span);
 
-        mirror << "CELLS (" << span(0) * span(1) << ")" << std::endl;
-        mirror << "INDEX   {CONNECTION}" << std::endl;
-
         for (int j = 0; j < npc_dir(1); j++)
         {
             for (int i = 0; i < npc_dir(0); i++)
@@ -488,14 +466,10 @@ void GlobalSolid::dataReading(const std::string &inputParameters, const std::str
                             }
                         }
 
-                        mirror << cellCont << " { ";
-
                         for (int z = 0; z < auxUV; z++)
                         {
                             connection[z] = pointsPatch[connect(z)];
-                            mirror << connect(z) << " ";
                         }
-                        mirror << "}" << std::endl;
 
                         Cell *cell = new Cell(cellCont++, patches_[ipatch], connection);
                         cells_.push_back(cell);
@@ -570,7 +544,7 @@ void GlobalSolid::dataReading(const std::string &inputParameters, const std::str
 
                         for (int in = 0; in < contribuition.size(); in++)
                         {
-                            force(2*c + in) += contribuition(in);
+                            force(2 * c + in) += contribuition(in);
                         }
                     }
                     int aux = (npc_dir(1) - 1) * npc_dir(0);
@@ -614,21 +588,6 @@ void GlobalSolid::dataReading(const std::string &inputParameters, const std::str
     double dist = 1.0e-6;
     if (cells_.size() > 0)
     {
-        mirror << std::endl;
-        mirror << "DIRICHLET CONDITION (" << dirichletConditions_.size() << ")" << std::endl;
-        mirror << "INDEX POINT   DIRECTION   VALUE" << std::endl;
-        for (DirichletCondition *dir : dirichletConditions_)
-        {
-            mirror << dir->getControlPoint()->getIndex() << " " << dir->getDirection() << " " << dir->getValue() << std::endl;
-        }
-
-        mirror << "NEUMAN CONDITION (" << neumannConditions_.size() << ")" << std::endl;
-        mirror << "INDEX POINT   DIRECTION   VALUE" << std::endl;
-        for (NeumannCondition *dir : neumannConditions_)
-        {
-            mirror << dir->getControlPoint()->getIndex() << " " << dir->getDirection() << " " << dir->getValue() << std::endl;
-        }
-
         parameters.close();
         properties.close();
         isogeometric.close();
@@ -672,6 +631,8 @@ void GlobalSolid::dataReading(const std::string &inputParameters, const std::str
         }
 
         cpnumber_ = cpindex;
+        cpaux_ = cpnumber_;
+
         for (Patch *pat : patches_)
         {
             pat->removeControlPoints();
@@ -685,7 +646,6 @@ void GlobalSolid::dataReading(const std::string &inputParameters, const std::str
             }
             else if (rank != 0)
             {
-
                 delete cells_[i];
             }
         }
@@ -695,215 +655,431 @@ void GlobalSolid::dataReading(const std::string &inputParameters, const std::str
         }
     }
 
-    //LEITURA DAS MALHAS DE ELEMENTOS FINITOS
-    int nmesh;
-    int elemCont = 0;
-    int nodeCont = 0;
-    std::string type;
+    dataFromGmsh(inputMeshFE);
+}
+
+void GlobalSolid::dataFromGmsh(const std::string &inputGmesh)
+{
+    std::ifstream feMesh(inputGmesh);
+
+    std::stringstream text1;
+    text1 << "mirror.txt";
+    std::ofstream mirror(text1.str());
+
+    std::string line;
+    std::string elementType;
+    int nmesh, nnode, nelem, auxEl, auxBo;
+
+    int rank;
+    MPI_Comm_rank(PETSC_COMM_WORLD, &rank);
+
+    feMesh >> elementType;
+    if (elementType == "T3")
+    {
+        auxEl = 3;
+        auxBo = 2;
+    }
+    else if (elementType == "T6")
+    {
+        auxEl = 6;
+        auxBo = 3;
+    }
+    else if (elementType == "T10")
+    {
+        auxEl = 10;
+        auxBo = 4;
+    }
+    std::getline(feMesh, line);
+    std::getline(feMesh, line);
     std::getline(feMesh, line);
     std::getline(feMesh, line);
     std::getline(feMesh, line);
     feMesh >> nmesh;
     std::getline(feMesh, line);
-
-    for (int imesh = 0; imesh < nmesh; imesh++)
+    for (int i = 0; i < nmesh; i++)
     {
-        int nnodes, imaterial, nelem, nneuman, ndir;
+        int indexMaterial;
         double thickness;
         std::getline(feMesh, line);
         std::getline(feMesh, line);
         std::getline(feMesh, line);
         std::getline(feMesh, line);
-        feMesh >> type;
+        feMesh >> indexMaterial >> thickness;
+        addMesh(i, indexMaterial, thickness, elementType);
         std::getline(feMesh, line);
+    }
+    std::getline(feMesh, line);
+    std::getline(feMesh, line);
+    std::getline(feMesh, line);
+    std::getline(feMesh, line);
+    std::getline(feMesh, line);
+    feMesh >> nnode;
+    std::getline(feMesh, line);
+    int trash;
+    bounded_vector<double, 2> coord;
+    for (int inode = 0; inode < nnode; inode++)
+    {
+        feMesh >> trash >> coord(0) >> coord(1);
+        addNode(cpnumber_, inode, coord);
+        cpnumber_ = cpnumber_ + 1;
         std::getline(feMesh, line);
-        std::getline(feMesh, line);
-        std::getline(feMesh, line);
-        std::getline(feMesh, line);
-        feMesh >> imaterial;
-        std::getline(feMesh, line);
-        std::getline(feMesh, line);
-        std::getline(feMesh, line);
-        std::getline(feMesh, line);
-        std::getline(feMesh, line);
-        feMesh >> thickness;
-        std::getline(feMesh, line);
-        std::getline(feMesh, line);
-        std::getline(feMesh, line);
-        std::getline(feMesh, line);
-        std::getline(feMesh, line);
-        feMesh >> nnodes;
-        std::getline(feMesh, line);
-        std::getline(feMesh, line);
-        std::getline(feMesh, line);
-        std::getline(feMesh, line);
-        std::getline(feMesh, line);
-        feMesh >> nelem;
-        std::getline(feMesh, line);
-        std::getline(feMesh, line);
-        std::getline(feMesh, line);
-        std::getline(feMesh, line);
-        std::getline(feMesh, line);
+    }
+    std::getline(feMesh, line);
+    std::getline(feMesh, line);
+    feMesh >> nelem;
+    std::getline(feMesh, line);
 
-        addMesh(imesh, nnodes, nelem, imaterial, thickness, type);
-        mirror << "MESH " << imesh << std::endl;
-        mirror << "ELEMENT TYPE: " << type << std::endl;
-        mirror << "THICKNESS: " << thickness << std::endl;
-        mirror << "YOUNG: " << materials_[imaterial]->getYoung() << std::endl;
-        mirror << "POISSON: " << materials_[imaterial]->getPoisson() << std::endl;
-        mirror << "DENSITY: " << materials_[imaterial]->getDensity() << std::endl;
-        mirror << "NODES (" << nnodes << ")" << std::endl;
-        mirror << "INDEX  COORDINATES (X1, X2) " << std::endl;
-        for (int inode = 0; inode < nnodes; inode++)
+    int type, num, auxconec;
+    int elementCont = 0;
+    for (int ielem = 0; ielem < nelem; ielem++)
+    {
+        feMesh >> trash >> type >> trash >> trash >> num;
+        if (type == 1 or type == 8 or type == 26)
         {
-            double aux;
-            bounded_vector<double, 2> coord;
-            feMesh >> aux >> coord(0) >> coord(1);
-            meshes_[imesh]->addNode(inode, nodeCont++, coord);
-            mirror << inode << " " << coord(0) << " " << coord(1) << std::endl;
-            std::getline(feMesh, line);
-        }
-        std::getline(feMesh, line);
-        std::getline(feMesh, line);
-        std::getline(feMesh, line);
-        std::getline(feMesh, line);
-        int n;
-        if (type == "T3")
-        {
-            n = 3;
-        }
-        else if (type == "T6")
-        {
-            n = 6;
-        }
-        else if (type == "T10")
-        {
-            n = 10;
-        }
-        mirror << "ELEMENTS (" << nelem << ")" << std::endl;
-        mirror << "INDEX  CONNECTION " << n << std::endl;
-        for (int iel = 0; iel < nelem; iel++)
-        {
-            std::vector<int> nodesconec;
-            nodesconec.reserve(n);
-            mirror << iel << " ";
+            std::vector<Node *> conec;
 
-            for (int j = 0; j < n; j++)
+            for (int in = 0; in < auxBo; in++)
             {
-                feMesh >> nodesconec[j];
-                mirror << nodesconec[j] - 1 << " ";
-            }
-            mirror << std::endl;
-
-            std::vector<Node *> nodes;
-
-            for (int i = 0; i < n; i++)
-            {
-                nodes.push_back(meshes_[imesh]->getNode(nodesconec[i] - 1));
+                feMesh >> auxconec;
+                conec.push_back(nodes_[auxconec - 1]);
             }
 
-            Element *el = new Element(elemCont++, meshes_[imesh], nodes);
+            BoundaryElement *bfe = new BoundaryElement(num, conec);
+            boundaryFE_.push_back(bfe);
+        }
+        else if (type == 2 or type == 9 or type == 21)
+        {
+            std::vector<Node *> conec;
+
+            for (int in = 0; in < auxEl; in++)
+            {
+                feMesh >> auxconec;
+                conec.push_back(nodes_[auxconec - 1]);
+            }
+
+            Element *el = new Element(elementCont++, meshes_[num - 1], conec);
             elements_.push_back(el);
-            std::getline(feMesh, line);
         }
         std::getline(feMesh, line);
-        std::getline(feMesh, line);
-        std::getline(feMesh, line);
-        std::getline(feMesh, line);
-        feMesh >> nneuman;
-        std::getline(feMesh, line);
-        std::getline(feMesh, line);
-        std::getline(feMesh, line);
-        std::getline(feMesh, line);
-        std::getline(feMesh, line);
-        int inode;
-        bounded_vector<double, 2> value;
-        bounded_vector<int, 2> free;
-        for (int ineuman = 0; ineuman < nneuman; ineuman++)
+    }
+    std::getline(feMesh, line);
+    std::getline(feMesh, line);
+    std::getline(feMesh, line);
+    std::getline(feMesh, line);
+
+    int nneuman, ndirichlet, inode;
+    bounded_vector<double, 2> value;
+    bounded_vector<int, 2> free;
+    std::string typecond;
+
+    feMesh >> nneuman;
+    std::getline(feMesh, line);
+    std::getline(feMesh, line);
+    std::getline(feMesh, line);
+    std::getline(feMesh, line);
+    std::getline(feMesh, line);
+
+    for (int in = 0; in < nneuman; in++)
+    {
+        feMesh >> typecond;
+        if (typecond == "NODE")
         {
             feMesh >> inode >> value(0) >> value(1);
-            addNeumannConditionFE(inode, imesh, value);
+            if (fabs(value(0)) >= 1.0e-10)
+            {
+                NeumannConditionFE *neu0 = new NeumannConditionFE(nodes_[inode - 1], 0, value(0));
+                neumannConditionsFE_.push_back(neu0);
+            }
+            if (fabs(value(1)) >= 1.0e-10)
+            {
+                NeumannConditionFE *neu1 = new NeumannConditionFE(nodes_[inode - 1], 1, value(1));
+                neumannConditionsFE_.push_back(neu1);
+            }
             std::getline(feMesh, line);
         }
-        std::getline(feMesh, line);
-        std::getline(feMesh, line);
-        std::getline(feMesh, line);
-        std::getline(feMesh, line);
-        feMesh >> ndir;
-        std::getline(feMesh, line);
-        std::getline(feMesh, line);
-        std::getline(feMesh, line);
-        std::getline(feMesh, line);
-        std::getline(feMesh, line);
-        for (int idir = 0; idir < ndir; idir++)
+        else if (typecond == "LINE")
         {
-            feMesh >> inode >> free(0) >> free(1) >> value(0) >> value(1);
-            addDirichletConditionFE(inode, imesh, free, value);
+            feMesh >> inode >> value(0) >> value(1);
+
+            for (BoundaryElement *bound : boundaryFE_)
+            {
+                if (inode == bound->getBoundaryIndex())
+                {
+                    vector<double> force = bound->computeDistribuitedLoads(value, quadrature_);
+                    std::vector<Node *> conec = bound->getNodes();
+                    double value0, value1;
+                    for (int i = 0; i < conec.size(); i++)
+                    {
+                        value0 = force(2 * i);
+                        value1 = force(2 * i + 1);
+                        if (fabs(value(0)) >= 1.0e-10)
+                        {
+                            NeumannConditionFE *neu0 = new NeumannConditionFE(conec[i], 0, value0);
+                            neumannConditionsFE_.push_back(neu0);
+                        }
+                        if (fabs(value(1)) >= 1.0e-10)
+                        {
+                            NeumannConditionFE *neu1 = new NeumannConditionFE(conec[i], 1, value1);
+                            neumannConditionsFE_.push_back(neu1);
+                        }
+                    }
+                }
+            }
             std::getline(feMesh, line);
         }
     }
-    if (elements_.size() > 0)
+    std::getline(feMesh, line);
+    std::getline(feMesh, line);
+    std::getline(feMesh, line);
+    std::getline(feMesh, line);
+    feMesh >> ndirichlet;
+
+    std::getline(feMesh, line);
+    std::getline(feMesh, line);
+    std::getline(feMesh, line);
+    std::getline(feMesh, line);
+    std::getline(feMesh, line);
+
+    for (int id = 0; id < ndirichlet; id++)
     {
-        for (Mesh *mesh : meshes_)
+        feMesh >> typecond;
+        if (typecond == "NODE")
         {
-            std::vector<Node *> nodeaux = mesh->getNodes();
-
-            for (Node *node_mesh : nodeaux)
+            feMesh >> inode >> free(0) >> free(1) >> value(0) >> value(1);
+            if (free(0) != 0)
             {
-                bounded_vector<double, 2> coord_mesh = node_mesh->getInitialCoordinate();
-                int ver = -1;
-
-                for (Node *node_global : nodes_)
+                DirichletConditionFE *dir = new DirichletConditionFE(nodes_[inode - 1], 0, value(0));
+                dirichletConditionsFE_.push_back(dir);
+            }
+            if (free(1) != 0)
+            {
+                DirichletConditionFE *dir = new DirichletConditionFE(nodes_[inode - 1], 1, value(1));
+                dirichletConditionsFE_.push_back(dir);
+            }
+            std::getline(feMesh, line);
+        }
+        else if (typecond == "LINE")
+        {
+            feMesh >> inode >> free(0) >> free(1) >> value(0) >> value(1);
+            std::vector<int> nodexIndex;
+            for (BoundaryElement *bound : boundaryFE_)
+            {
+                if (inode == bound->getBoundaryIndex())
                 {
-                    bounded_vector<double, 2> coord_global = node_global->getInitialCoordinate();
-                    int index = node_global->getIndex();
+                    std::vector<Node *> conec = bound->getNodes();
 
-                    bounded_vector<double, 2> aux = coord_global - coord_mesh;
-                    double dist2 = aux(0) * aux(0) + aux(1) * aux(1);
-
-                    if (dist2 <= dist)
+                    for (Node *no : conec)
                     {
-                        ver = index;
-                        break;
+                        int existe = 0;
+                        for (int tes = 0; tes < nodexIndex.size(); tes++)
+                        {
+                            if (no->getIndexFE() == nodexIndex[tes])
+                            {
+                                existe = -1;
+                            }
+                        }
+                        if (existe == 0)
+                        {
+                            nodexIndex.push_back(no->getIndexFE());
+                        }
                     }
                 }
-                if (ver != -1)
-                {
-                    node_mesh->setIndex(ver);
-                    nodes_.push_back(node_mesh);
-                }
-                else
-                {
-                    node_mesh->setIndex(cpindex);
-                    nodes_.push_back(node_mesh);
-                    cpindex = cpindex + 1;
-                }
             }
-        }
-
-        cpnumber_ = cpindex;
-        for (Mesh *me : meshes_)
-        {
-            me->removeNodes();
-        }
-        domainDecompositionMETIS(type);
-
-        for (int i = 0; i < elements_.size(); i++)
-        {
-            if (rank == elementPartition_[i])
+            for (int i = 0; i < nodexIndex.size(); i++)
             {
-                elements_part.push_back(elements_[i]);
+                if (free(0) != 0)
+                {
+                    DirichletConditionFE *dir = new DirichletConditionFE(nodes_[nodexIndex[i]], 0, value(0));
+                    dirichletConditionsFE_.push_back(dir);
+                }
+                if (free(1) != 0)
+                {
+                    DirichletConditionFE *dir = new DirichletConditionFE(nodes_[nodexIndex[i]], 1, value(1));
+                    dirichletConditionsFE_.push_back(dir);
+                }
             }
-            else if (rank != 0)
-            {
+            std::getline(feMesh, line);
+        }
+    }
 
-                delete elements_[i];
-            }
-        }
-        if (rank != 0)
+    if (rank == 0)
+    {
+        exportMirror();
+    }
+
+    domainDecompositionMETIS(elementType);
+
+    for (int i = 0; i < elements_.size(); i++)
+    {
+        if (rank == elementPartition_[i])
         {
-            elements_.erase(elements_.begin(), elements_.begin() + elements_.size());
+            elements_part.push_back(elements_[i]);
         }
+        else if (rank != 1) //DEPOIS COLOCAR PARA O RANK 1 TER TODOS!!!
+        {
+            delete elements_[i];
+        }
+    }
+    if (rank != 1)
+    {
+        elements_.erase(elements_.begin(), elements_.begin() + elements_.size());
+    }
+}
+
+void GlobalSolid::exportMirror()
+{
+    std::stringstream name;
+    name << "mirror.txt";
+    std::ofstream mirror(name.str());
+
+    mirror << "TYPE OF ANALYSIS: " << problemType_ << std::endl;
+    mirror << "PLANE STATE: " << planeState_ << std::endl;
+    mirror << "NUMBER OF LOAD/TIME STEP: " << numberOfSteps_ << std::endl;
+    mirror << "TOLERANCE: " << tolerance_ << std::endl;
+    if (problemType_ == "DYNAMIC")
+    {
+        mirror << "DELTAT: " << deltat_ << std::endl;
+        mirror << "BETA: " << beta_ << std::endl;
+        mirror << "GAMMA: " << gamma_ << std::endl;
+    }
+    mirror << "NUMBER OF INTEGRATION POINTS: " << quadrature_ * quadrature_ << std::endl;
+    mirror << "DEGREE(PARAVIEW): " << orderParaview_ << std::endl;
+    mirror << std::endl;
+
+    mirror << std::endl;
+    mirror << "NUMBER OF FREEDOM DEGREE: " << cpnumber_ << std::endl;
+    mirror << "CONTROL POINTS: " << cpaux_ << std::endl;
+    mirror << "NODES: " << nodes_.size() << std::endl;
+    mirror << std::endl;
+
+    mirror << "NUMBER OF PATCHES: " << patches_.size() << std::endl;
+    for (Patch *pat : patches_)
+    {
+        double young, poisson, densisity;
+        pat->getMaterial()->setProperties(young, poisson, densisity);
+        mirror << "PATCH: " << pat->getIndex() << std::endl;
+        mirror << "THICKNESS: " << pat->getThickness() << std::endl;
+        mirror << "YOUNG: " << young << std::endl;
+        mirror << "POISSON: " << poisson << std::endl;
+        mirror << "DENSITY: " << densisity << std::endl;
+        mirror << "NUMBER OF CONTROL POINTS (U,V): " << pat->getNpc_Dir(0) << " " << pat->getNpc_Dir(1) << " (" << pat->getControlPointsNumber() << ")" << std::endl;
+        mirror << "NUMBER OF CELLS: " << pat->getNumberOfCells() << std::endl;
+        mirror << "DEGREE (U,V): " << pat->getDegree(0) << " " << pat->getDegree(1) << std::endl;
+        mirror << std::endl;
+    }
+
+    mirror << "NUMBER OF CONTROL POINTS: " << controlPoints_.size() << std::endl;
+    mirror << "GLOBAL INDEX   COORDINATES   WEIGHT" << std::endl;
+    for (ControlPoint *con : controlPoints_)
+    {
+        mirror << con->getIndex() << "   " << con->getInitialCoordinate()(0) << " " << con->getInitialCoordinate()(1) << "    " << con->getWeight() << std::endl;
+    }
+    mirror << std::endl;
+
+    mirror << "NUMBER OF CELLS: " << cells_.size() << std::endl;
+    mirror << "INDEX   PATCH   { CONNECTION }" << std::endl;
+    for (Cell *cell : cells_)
+    {
+        std::vector<ControlPoint *> conec = cell->getControlPoints();
+        mirror << cell->getIndex() << "    " << cell->getPatch()->getIndex() << "    { ";
+        for (ControlPoint *con : conec)
+        {
+            mirror << con->getIndex() << " ";
+        }
+        mirror << "}" << std::endl;
+    }
+    mirror << std::endl;
+
+    mirror << "NUMBER OF DIRICHLET CONDITION(ISO): " << dirichletConditions_.size() << std::endl;
+    mirror << "INDEX POINT   DIRECTION   VALUE" << std::endl;
+    for (DirichletCondition *dir : dirichletConditions_)
+    {
+        mirror << dir->getControlPoint()->getIndex() << "    " << dir->getDirection() << "    " << dir->getValue() << std::endl;
+    }
+    mirror << std::endl;
+
+    mirror << "NUMBER OF NEUMANN CONDITION(ISO): " << neumannConditions_.size() << std::endl;
+    mirror << "INDEX POINT   DIRECTION   VALUE" << std::endl;
+    for (NeumannCondition *dir : neumannConditions_)
+    {
+        mirror << dir->getControlPoint()->getIndex() << "    " << dir->getDirection() << "    " << dir->getValue() << std::endl;
+    }
+    mirror << std::endl;
+
+    //FEM
+    mirror << "NUMBER OF SURFACE: " << patches_.size() << std::endl;
+    for (Mesh *pat : meshes_)
+    {
+        double young, poisson, densisity;
+        pat->getMaterial()->setProperties(young, poisson, densisity);
+        mirror << "SURFACE: " << pat->getIndex() << std::endl;
+        mirror << "THICKNESS: " << pat->getThickness() << std::endl;
+        mirror << "YOUNG: " << young << std::endl;
+        mirror << "POISSON: " << poisson << std::endl;
+        mirror << "DENSITY: " << densisity << std::endl;
+        mirror << "ELEMENT TYPE: " << pat->getElementType() << std::endl;
+        mirror << std::endl;
+    }
+
+    mirror << "NUMBER OF NODES: " << nodes_.size() << std::endl;
+    mirror << "GLOBAL INDEX    FEM INDEX   COORDINATES" << std::endl;
+    for (Node *con : nodes_)
+    {
+        mirror << con->getIndex() << "   " << con->getIndexFE() << "   " << con->getInitialCoordinate()(0) << " " << con->getInitialCoordinate()(1) << std::endl;
+    }
+    mirror << std::endl;
+
+    mirror << "NUMBER OF ELEMENTS: " << elements_.size() << std::endl;
+    mirror << "INDEX   SURFACE   { CONNECTION }" << std::endl;
+    for (Element *el : elements_)
+    {
+        std::vector<Node *> conec = el->getConnection();
+        mirror << el->getIndex() << "    " << el->getMesh()->getIndex() << "    { ";
+        for (Node *con : conec)
+        {
+            mirror << con->getIndex() << " ";
+        }
+        mirror << "}" << std::endl;
+    }
+    mirror << std::endl;
+
+    mirror << "NUMBER OF DIRICHLET CONDITION(FEM): " << dirichletConditionsFE_.size() << std::endl;
+    mirror << "INDEX NODE   DIRECTION   VALUE" << std::endl;
+    for (DirichletConditionFE *dir : dirichletConditionsFE_)
+    {
+        mirror << dir->getNode()->getIndex() << "    " << dir->getDirection() << "    " << dir->getValue() << std::endl;
+    }
+    mirror << std::endl;
+
+    mirror << "NUMBER OF NEUMANN CONDITION(FEM): " << neumannConditionsFE_.size() << std::endl;
+    mirror << "INDEX NODE   DIRECTION   VALUE" << std::endl;
+    for (NeumannConditionFE *dir : neumannConditionsFE_)
+    {
+        mirror << dir->getNode()->getIndex() << "    " << dir->getDirection() << "    " << dir->getValue() << std::endl;
+    }
+    mirror << std::endl;
+}
+
+void GlobalSolid::teste()
+{
+    int rank;
+    MPI_Comm_rank(PETSC_COMM_WORLD, &rank);
+    std::cout << "RANK: " << rank << " NODES: " << nodes_.size() << std::endl;
+    std::cout << "RANK: " << rank << " Elements: " << elements_.size() << std::endl;
+    std::cout << "RANK: " << rank << " BoundaryElements: " << boundaryFE_.size() << std::endl;
+
+    if (rank == 0)
+    {
+        exportToParaviewISO(0);
+    }
+    else if (rank == 1)
+    {
+        exportToParaviewFEM(0);
+    }
+
+    for (Cell *cell : cells_part)
+    {
+        cell->computeDistanceFromFEBoundary(quadrature_, boundaryFE_);
     }
 }
 
@@ -933,12 +1109,15 @@ int GlobalSolid::solveStaticProblem()
     MPI_Comm_rank(PETSC_COMM_WORLD, &rank);
     MPI_Comm_size(PETSC_COMM_WORLD, &size);
 
-    std::stringstream text1;
+    //std::stringstream text1;
 
     if (rank == 0)
     {
-        exportToParaview(0);
-        //text1 << "ForcasInternas.txt";
+        exportToParaviewISO(0);
+    }
+    else if (rank == 1)
+    {
+        exportToParaviewFEM(0);
     }
     //std::ofstream file1(text1.str());
 
@@ -1258,31 +1437,33 @@ int GlobalSolid::solveStaticProblem()
 
         if (rank == 0)
         {
+            exportToParaviewISO(loadStep);
+        }
+        else if (rank == 1)
+        {
             for (Node *n : nodes_)
             {
                 n->setZeroStressState();
             }
-
             for (Element *el : elements_)
             {
                 el->StressCalculate(planeState_);
             }
-            exportToParaview(loadStep);
-            //file1 << (1.0 * loadStep) / (1.0 * numberOfSteps) << " " << -nodes_[0]->getCurrentCoordinate()[1] + nodes_[0]->getInitialCoordinate()[1] << std::endl;
+            exportToParaviewFEM(loadStep);
         }
     }
     PetscFree(dof);
     return 0;
 }
 
-void GlobalSolid::exportToParaview(const int &loadstep)
+void GlobalSolid::exportToParaviewISO(const int &loadstep)
 {
     matrix<double> qxsi2 = coordinatesForInterpolation(orderParaview_);
 
     int auxxx = (orderParaview_ + 1) * (orderParaview_ + 1);
     int nIsoPoints = auxxx * cells_.size();
     std::stringstream text;
-    text << "output" << loadstep << ".vtu";
+    text << "outputISO" << loadstep << ".vtu";
     std::ofstream file(text.str());
 
     //header
@@ -1292,8 +1473,8 @@ void GlobalSolid::exportToParaview(const int &loadstep)
          << "\n"
          << "  <UnstructuredGrid>"
          << "\n"
-         << "  <Piece NumberOfPoints=\"" << nIsoPoints + nodes_.size()
-         << "\"  NumberOfCells=\"" << cells_.size() + elements_.size()
+         << "  <Piece NumberOfPoints=\"" << nIsoPoints
+         << "\"  NumberOfCells=\"" << cells_.size()
          << "\">"
          << "\n";
     //nodal coordinates
@@ -1302,13 +1483,10 @@ void GlobalSolid::exportToParaview(const int &loadstep)
          << "      <DataArray type=\"Float64\" "
          << "NumberOfComponents=\"3\" format=\"ascii\">"
          << "\n";
-
     for (Cell *cell : cells_)
     {
-
         bounded_vector<double, 2> x, qxsi;
-
-        matrix<double> xInt(auxxx, 2, 0.0);
+        bounded_vector<double, 2> coord;
         bounded_vector<int, 2> INC_;
         std::vector<ControlPoint *> connection = cell->getControlPoints();
         vector<double> wpc2(connection.size());
@@ -1325,28 +1503,18 @@ void GlobalSolid::exportToParaview(const int &loadstep)
         {
             qxsi(0) = qxsi2(j, 0);
             qxsi(1) = qxsi2(j, 1);
+            phi2_ = cell->shapeFunction(qxsi, wpc2, INC_);
+            coord(0) = 0.0;
+            coord(1) = 0.0;
             for (int i = 0; i < connection.size(); i++)
             {
                 x = connection[i]->getCurrentCoordinate();
-
-                phi2_ = cell->shapeFunction(qxsi, wpc2, INC_);
-
-                xInt(j, 0) += phi2_(i) * x(0) / wpc2(i);
-                xInt(j, 1) += phi2_(i) * x(1) / wpc2(i);
+                coord(0) += phi2_(i) * x(0) / wpc2(i);
+                coord(1) += phi2_(i) * x(1) / wpc2(i);
             }
-        }
-
-        for (int i = 0; i < auxxx; i++)
-        {
-            file << xInt(i, 0) << " " << xInt(i, 1) << " " << 0.0 << std::endl;
+            file << coord(0) << " " << coord(1) << " " << 0.0 << std::endl;
         }
     }
-    for (Node *no : nodes_)
-    {
-        bounded_vector<double, 2> coord = no->getCurrentCoordinate();
-        file << coord(0) << " " << coord(1) << " " << 0.0 << "\n";
-    }
-
     file << "      </DataArray>"
          << "\n"
          << "    </Points>"
@@ -1358,7 +1526,6 @@ void GlobalSolid::exportToParaview(const int &loadstep)
          << "      <DataArray type=\"Int32\" "
          << "Name=\"connectivity\" format=\"ascii\">"
          << "\n";
-
     int Ncp = 0;
     for (Cell *cell : cells_)
     {
@@ -1368,51 +1535,30 @@ void GlobalSolid::exportToParaview(const int &loadstep)
         }
         file << std::endl;
     }
-    for (Element *el : elements_)
-    {
-        std::vector<Node *> conec = el->getConnection();
-        for (Node *no : conec)
-        {
-            file << no->getIndexFE() + nIsoPoints << " ";
-        }
-        file << "\n";
-    }
-
     file << "      </DataArray>"
          << "\n";
+
     //offsets
     file << "      <DataArray type=\"Int32\""
          << " Name=\"offsets\" format=\"ascii\">"
          << "\n";
-    int aux = 0;
+    int aux = auxxx;
     for (Cell *cell : cells_)
     {
-        file << aux + auxxx << std::endl;
+        file << aux << std::endl;
         aux += auxxx;
     }
-    for (Element *el : elements_)
-    {
-        int n = el->getConnection().size();
-        aux += n;
-        file << aux << "\n";
-    }
-
     file << "      </DataArray>"
          << "\n";
+
     //elements type
     file << "      <DataArray type=\"UInt8\" Name=\"types\" "
          << "format=\"ascii\">"
          << "\n";
-
     for (Cell *cell : cells_)
     {
         file << 70 << "\n";
     }
-    for (Element *e : elements_)
-    {
-        file << 69 << "\n";
-    }
-
     file << "      </DataArray>"
          << "\n"
          << "    </Cells>"
@@ -1425,12 +1571,10 @@ void GlobalSolid::exportToParaview(const int &loadstep)
     file << "      <DataArray type=\"Float64\" NumberOfComponents=\"2\" "
          << "Name=\"Displacement\" format=\"ascii\">"
          << "\n";
-
     for (Cell *cell : cells_)
     {
-        //matrix<double> qxsi2 = coordinatesForInterpolation(orderParaview_);
         bounded_vector<double, 2> x, qxsi;
-        matrix<double> xInt(auxxx, 2, 0.0);
+        bounded_vector<double, 2> disp;
         bounded_vector<int, 2> INC_;
         std::vector<ControlPoint *> connection = cell->getControlPoints();
         vector<double> wpc2(connection.size());
@@ -1447,53 +1591,20 @@ void GlobalSolid::exportToParaview(const int &loadstep)
         {
             qxsi(0) = qxsi2(j, 0);
             qxsi(1) = qxsi2(j, 1);
+            phi2_ = cell->shapeFunction(qxsi, wpc2, INC_);
+            disp(0) = 0.0;
+            disp(1) = 0.0;
             for (int i = 0; i < connection.size(); i++)
             {
                 x = connection[i]->getCurrentDisplacement();
-
-                phi2_ = cell->shapeFunction(qxsi, wpc2, INC_);
-
-                xInt(j, 0) += phi2_(i) * x(0);
-                xInt(j, 1) += phi2_(i) * x(1);
+                disp(0) += phi2_(i) * x(0);
+                disp(1) += phi2_(i) * x(1);
             }
-        }
-
-        for (int i = 0; i < auxxx; i++)
-        {
-            file << xInt(i, 0) << " " << xInt(i, 1) << std::endl;
+            file << disp(0) << " " << disp(1) << std::endl;
         }
     }
-    for (Node *n : nodes_)
-    {
-        bounded_vector<double, 2> initial = n->getInitialCoordinate();
-        bounded_vector<double, 2> current = n->getCurrentCoordinate();
-
-        file << current(0) - initial(0) << " " << current(1) - initial(1) << "\n";
-    }
-
     file << "      </DataArray> "
          << "\n";
-
-    // file << "      <DataArray type=\"Float64\" NumberOfComponents=\"2\" "
-    //      << "Name=\"Velocity\" format=\"ascii\">"
-    //      << "\n";
-    // for (Node *n : nodes_)
-    // {
-    //     bounded_vector<double, 2> currentVelocity = n->getCurrentVelocity();
-    //     file << currentVelocity(0) << " " << currentVelocity(1) << "\n";
-    // }
-    // file << "      </DataArray> "
-    //      << "\n";
-
-    // file << "      <DataArray type=\"Float64\" NumberOfComponents=\"2\" "
-    //      << "Name=\"Acceleration\" format=\"ascii\">"
-    //      << "\n";
-    // for (Node *n : nodes_)
-    // {
-    //     file << n->getCurrentAcceleration()(0) << " " << n->getCurrentAcceleration()(1) << "\n";
-    // }
-    // file << "      </DataArray> "
-    //      << "\n";
 
     file << "      <DataArray type=\"Float64\" NumberOfComponents=\"4\" "
          << "Name=\"CauchyStress\" format=\"ascii\">"
@@ -1502,53 +1613,39 @@ void GlobalSolid::exportToParaview(const int &loadstep)
     {
         bounded_vector<double, 2> qxsi;
         bounded_vector<double, 4> cauchy;
-
         for (int j = 0; j < auxxx; j++)
         {
             qxsi(0) = qxsi2(j, 0);
             qxsi(1) = qxsi2(j, 1);
-
             cauchy = cell->getCauchStress(qxsi, planeState_);
-
             file << cauchy(0) << " " << cauchy(1) << " " << cauchy(2) << " " << cauchy(3) << std::endl;
         }
     }
-    for (Node *n : nodes_)
-    {
-        bounded_vector<double, 4> stress = n->getStressState(); //(x1, x2, x12, contador)
-        file << stress(0) / stress(3) << " " << stress(1) / stress(3) << " " << 0.0 << " " << stress(2) / stress(3) << "\n";
-    }
-    file << "      </DataArray> "
-         << "\n";
-
-    file << "      <DataArray type=\"Float64\" NumberOfComponents=\"4\" "
-         << "Name=\"GreenStrain\" format=\"ascii\">"
-         << "\n";
-    for (Cell *cell : cells_)
-    {
-        bounded_vector<double, 2> qxsi;
-        bounded_vector<double, 4> green;
-
-        for (int j = 0; j < auxxx; j++)
-        {
-            qxsi(0) = qxsi2(j, 0);
-            qxsi(1) = qxsi2(j, 1);
-
-            green = cell->getGreen(qxsi, planeState_);
-
-            file << green(0) << " " << green(1) << " " << green(2) << " " << green(3) << std::endl;
-        }
-    }
-    for (Node *n : nodes_)
-    {
-        file << 0.0 << " " << 0.0 << " " << 0.0 << " " << 0.0 << std::endl;
-    }
 
     file << "      </DataArray> "
          << "\n";
+
+    // file << "      <DataArray type=\"Float64\" NumberOfComponents=\"4\" "
+    //      << "Name=\"GreenStrain\" format=\"ascii\">"
+    //      << "\n";
+    // for (Cell *cell : cells_)
+    // {
+    //     bounded_vector<double, 2> qxsi;
+    //     bounded_vector<double, 4> green;
+    //     for (int j = 0; j < auxxx; j++)
+    //     {
+    //         qxsi(0) = qxsi2(j, 0);
+    //         qxsi(1) = qxsi2(j, 1);
+    //         green = cell->getGreen(qxsi, planeState_);
+    //         file << green(0) << " " << green(1) << " " << green(2) << " " << green(3) << std::endl;
+    //     }
+    // }
+    // file << "      </DataArray> "
+    //      << "\n";
 
     file << "    </PointData>"
          << "\n";
+
     //elemental results
     file << "    <CellData>"
          << "\n";
@@ -1559,21 +1656,152 @@ void GlobalSolid::exportToParaview(const int &loadstep)
     {
         file << cellPartition_[el->getIndex()] << "\n";
     }
+    file << "      </DataArray> "
+         << "\n";
+    file << "    </CellData>"
+         << "\n";
+
+    //footnote
+    file << "  </Piece>"
+         << "\n"
+         << "  </UnstructuredGrid>"
+         << "\n"
+         << "</VTKFile>"
+         << "\n";
+}
+
+void GlobalSolid::exportToParaviewFEM(const int &num)
+{
+    std::stringstream name;
+    name << "outputFEM" << num << ".vtu";
+    std::ofstream file(name.str());
+
+    //header
+    file << "<?xml version=\"1.0\"?>"
+         << "\n"
+         << "<VTKFile type=\"UnstructuredGrid\">"
+         << "\n"
+         << "  <UnstructuredGrid>"
+         << "\n"
+         << "  <Piece NumberOfPoints=\"" << nodes_.size()
+         << "\"  NumberOfCells=\"" << elements_.size()
+         << "\">"
+         << "\n";
+
+    //nodal coordinates
+    file << "    <Points>"
+         << "\n"
+         << "      <DataArray type=\"Float64\" "
+         << "NumberOfComponents=\"3\" format=\"ascii\">"
+         << "\n";
+    for (Node *no : nodes_)
+    {
+        bounded_vector<double, 2> coord = no->getCurrentCoordinate();
+        file << coord(0) << " " << coord(1) << " " << 0.0 << "\n";
+    }
+    file << "      </DataArray>"
+         << "\n"
+         << "    </Points>"
+         << "\n";
+
+    //element connectivity
+    file << "    <Cells>"
+         << "\n"
+         << "      <DataArray type=\"Int32\" "
+         << "Name=\"connectivity\" format=\"ascii\">"
+         << "\n";
+    for (Element *el : elements_)
+    {
+        std::vector<Node *> conec = el->getConnection();
+        for (Node *no : conec)
+        {
+            file << no->getIndexFE() << " ";
+        }
+        file << "\n";
+    }
+    file << "      </DataArray>"
+         << "\n";
+
+    //offsets
+    file << "      <DataArray type=\"Int32\""
+         << " Name=\"offsets\" format=\"ascii\">"
+         << "\n";
+    int aux = 0;
+    for (Element *el : elements_)
+    {
+        int n = el->getConnection().size();
+        aux += n;
+        file << aux << "\n";
+    }
+    file << "      </DataArray>"
+         << "\n";
+
+    //elements type
+    file << "      <DataArray type=\"UInt8\" Name=\"types\" "
+         << "format=\"ascii\">"
+         << "\n";
+    for (Element *e : elements_)
+    {
+        file << 69 << "\n";
+    }
+    file << "      </DataArray>"
+         << "\n"
+         << "    </Cells>"
+         << "\n";
+
+    //nodal results
+    file << "    <PointData>"
+         << "\n";
+    file << "      <DataArray type=\"Float64\" NumberOfComponents=\"2\" "
+         << "Name=\"Displacement\" format=\"ascii\">"
+         << "\n";
+    for (Node *n : nodes_)
+    {
+        bounded_vector<double, 2> disp = n->getCurrentDisplacement();
+
+        file << disp(0) << " " << disp(1) << "\n";
+    }
+    file << "      </DataArray> "
+         << "\n";
+
+    file << "      <DataArray type=\"Float64\" NumberOfComponents=\"4\" "
+         << "Name=\"CauchyStress\" format=\"ascii\">"
+         << "\n";
+    for (Node *n : nodes_)
+    {
+        bounded_vector<double, 5> stress = n->getStressState(); //(x1, x2, x12, contador)
+        file << stress(0) / stress(4) << " " << stress(1) / stress(4) << " " << stress(2) / stress(4) << " " << stress(3) / stress(4) << "\n";
+    }
+    file << "      </DataArray> "
+         << "\n";
+
+    // file << "      <DataArray type=\"Float64\" NumberOfComponents=\"4\" "
+    //      << "Name=\"GreenStrain\" format=\"ascii\">"
+    //      << "\n";
+
+    // for (Node *n : nodes_)
+    // {
+    //     file << 0.0 << " " << 0.0 << " " << 0.0 << " " << 0.0 << std::endl;
+    // }
+
+    // file << "      </DataArray> "
+    //      << "\n";
+
+    file << "    </PointData>"
+         << "\n";
+    //elemental results
+    file << "    <CellData>"
+         << "\n";
+
+    file << "      <DataArray type=\"Float64\" NumberOfComponents=\"1\" "
+         << "Name=\"Process\" format=\"ascii\">" << std::endl;
+
     for (Element *el : elements_)
     {
         file << elementPartition_[el->getIndex()] << "\n";
     }
     file << "      </DataArray> "
          << "\n";
-
-    // file << "      <DataArray type=\"Float64\" NumberOfComponents=\"1\" "
-    //      << "Name=\"ElementType\" format=\"ascii\">" << std::endl;
-    // for (Element *el : elements_)
-    // {
-    //     file << 0 << "\n";
-    // }
-    // file << "      </DataArray> "
-    //      << "\n";
 
     file << "    </CellData>"
          << "\n";
@@ -1832,8 +2060,12 @@ int GlobalSolid::solveDynamicProblem()
 
     if (rank == 0)
     {
-        exportToParaview(0);
+        exportToParaviewISO(0);
         //text1 << "DeslocamentoxTempo.txt";
+    }
+    else if (rank == 1)
+    {
+        exportToParaviewFEM(0);
     }
     // std::ofstream file1(text1.str());
 
@@ -2172,6 +2404,11 @@ int GlobalSolid::solveDynamicProblem()
 
         if (rank == 0)
         {
+            exportToParaviewISO(timeStep);
+            // file1 << timeStep * deltat_ << " " << controlPoints_[1999]->getCurrentCoordinate()[1] - controlPoints_[1999]->getInitialCoordinate()[1] << " " << controlPoints_[1999]->getCurrentCoordinate()[0] - controlPoints_[1999]->getInitialCoordinate()[0] << std::endl;
+        }
+        else if (rank == 1)
+        {
             for (Node *n : nodes_)
             {
                 n->setZeroStressState();
@@ -2180,8 +2417,7 @@ int GlobalSolid::solveDynamicProblem()
             {
                 el->StressCalculate(planeState_);
             }
-            exportToParaview(timeStep);
-            // file1 << timeStep * deltat_ << " " << controlPoints_[1999]->getCurrentCoordinate()[1] - controlPoints_[1999]->getInitialCoordinate()[1] << " " << controlPoints_[1999]->getCurrentCoordinate()[0] - controlPoints_[1999]->getInitialCoordinate()[0] << std::endl;
+            exportToParaviewFEM(timeStep);
         }
 
         // for (ControlPoint *cp : controlPoints_)

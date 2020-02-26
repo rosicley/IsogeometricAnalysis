@@ -28,7 +28,9 @@ public:
 
     Node *getNode(int index);
 
-    Material *getMaterial();
+    Mesh *getMesh();
+
+    //Material *getMaterial();
 
     vector<double> domainShapeFunction(const double &xsi1, const double &xsi2);
 

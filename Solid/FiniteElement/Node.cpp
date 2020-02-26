@@ -15,10 +15,12 @@ Node::Node(const int &index, const int &indexFE, const bounded_vector<double, 2>
         currentAcceleration_(i) = 0.0;
         pastVelocity_(i) = 0.0;
         pastAcceleration_(i) = 0.0;
-        stressState_(i) = 0.0;
-        stressState_(i + 2) = 0.0;
     }
-    stressState_(3) = 1.0;
+    stressState_(0) = 0.0;
+    stressState_(1) = 0.0;
+    stressState_(2) = 0.0;
+    stressState_(3) = 0.0;
+    stressState_(4) = 1.0;
 }
 
 Node::~Node() {}
@@ -68,7 +70,12 @@ bounded_vector<double, 2> Node::getCurrentAcceleration()
     return currentAcceleration_;
 }
 
-bounded_vector<double, 4> Node::getStressState()
+bounded_vector<double, 2> Node::getCurrentDisplacement()
+{
+    return (currentCoordinate_ - initialCoordinate_);
+}
+
+bounded_vector<double, 5> Node::getStressState()
 {
     return stressState_;
 }
@@ -103,12 +110,13 @@ void Node::setCurrentAcceleration(const bounded_vector<double, 2> &currentAccele
     currentAcceleration_ = currentAcceleration;
 }
 
-void Node::setStressState(const bounded_vector<double, 3> &stressState)
+void Node::setStressState(const bounded_vector<double, 4> &stressState)
 {
     stressState_(0) = stressState_(0) + stressState(0);
     stressState_(1) = stressState_(1) + stressState(1);
     stressState_(2) = stressState_(2) + stressState(2);
-    stressState_(3) = stressState_(3) + 1.0;
+    stressState_(3) = stressState_(3) + stressState(3);
+    stressState_(4) = stressState_(4) + 1.0;
 }
 
 void Node::setZeroStressState()
@@ -117,6 +125,7 @@ void Node::setZeroStressState()
     stressState_(1) = 0.0;
     stressState_(2) = 0.0;
     stressState_(3) = 0.0;
+    stressState_(4) = 0.0;
 }
 
 void Node::incrementCurrentCoordinate(const int &direction, const double &value)

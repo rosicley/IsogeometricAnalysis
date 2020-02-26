@@ -16,16 +16,18 @@ int main(int argc, char **args)
 
     GlobalSolid *problem = new GlobalSolid;
 
-    problem->dataReading("parameters.txt", "properties.txt", "teste.txt", "fe2.txt", true);
+    problem->dataReading("parameters.txt", "properties.txt", "iso1.txt", "200x10.msh", true);
 
     std::string planeState = problem->getPlaneState(); //EPD OR EPT
     std::string type = problem->getAnalysisType();     //DYNAMIC OR STATIC
+
+   // problem->teste();
 
     if (planeState == "EPD" or planeState == "EPT")
     {
         if (type == "STATIC")
         {
-            problem->solveStaticProblem();
+           problem->solveStaticProblem();
         }
         else if (type == "DYNAMIC")
         {

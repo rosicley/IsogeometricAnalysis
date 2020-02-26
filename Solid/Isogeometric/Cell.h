@@ -7,6 +7,7 @@
 #include "ControlPoint.h"
 #include "../Material.h"
 #include "Patch.h"
+#include "../FiniteElement/BoundaryElement.h"
 // #include "ShapeFunction.h"
 #include <boost/numeric/ublas/matrix.hpp>
 #include <boost/numeric/ublas/vector.hpp>
@@ -73,6 +74,8 @@ public:
 
     std::vector<ControlPoint * > getControlPointsOnSide(const int &side);
 
+    void computeDistanceFromFEBoundary(const int &pointsQuadrature, std::vector<BoundaryElement *> boundaryFE);
+
 private:
     int index_; //cell number //OK
 
@@ -81,4 +84,6 @@ private:
     std::vector<ControlPoint *> controlPoints_; //OK
 
     Patch *patch_; //OK
+
+    std::vector<double> distanceFE_;
 };

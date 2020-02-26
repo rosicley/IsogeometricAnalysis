@@ -8,7 +8,8 @@ Element::Element(const int &index,
 {
     index_ = index;
     connection_ = connection;
-    //shapeForce_ = 0.0;
+    shapeForce_(0) = 0.0;
+    shapeForce_(1) = 0.0;
     mesh_ = mesh;
     std::string elementType = mesh->getElementType();
     if (elementType == "T3")
@@ -46,6 +47,11 @@ Node *Element::getNode(int index)
     return connection_[index];
 }
 
+Mesh *Element::getMesh()
+{
+    return mesh_;
+}
+
 void Element::setShapeForce(const bounded_vector<double, 2> &shapeForce)
 {
     shapeForce_ = shapeForce;
@@ -55,7 +61,7 @@ vector<double> Element::domainShapeFunction(const double &xsi1, const double &xs
 {
     int n = (order_ + 1) * (order_ + 2) / 2.0; //number of nodes per element
     vector<double> phi(n, 0.0);
-    
+
     if (order_ == 1)
     {
         phi(0) = xsi1;
@@ -560,13 +566,22 @@ void Element::StressCalculate(const std::string &ep)
             mat1 = prod(Ac, S);
             sigma = (1.0 / jac) * prod(mat1, trans(Ac));
 
-            bounded_vector<double, 3> cauchy;
+            bounded_vector<double, 4> cauchStress;
 
-            cauchy(0) = sigma(0, 0);
-            cauchy(1) = sigma(1, 1);
-            cauchy(2) = sigma(0, 1);
+            cauchStress(0) = sigma(0, 0);
+            cauchStress(1) = sigma(1, 1);
+            cauchStress(3) = sigma(0, 1);
 
-            getConnection()[i]->setStressState(cauchy);
+            if (ep == "EPD")
+            {
+                cauchStress(2) = poisson * (cauchStress(0) + cauchStress(1));
+            }
+            else //EPT
+            {
+                cauchStress(2) = 0.0;
+            }
+
+            connection_[i]->setStressState(cauchStress);
         }
     }
     else if (order_ == 1)
@@ -619,13 +634,22 @@ void Element::StressCalculate(const std::string &ep)
             mat1 = prod(Ac, S);
             sigma = (1.0 / jac) * prod(mat1, trans(Ac));
 
-            bounded_vector<double, 3> cauchy;
+            bounded_vector<double, 4> cauchStress;
 
-            cauchy(0) = sigma(0, 0);
-            cauchy(1) = sigma(1, 1);
-            cauchy(2) = sigma(0, 1);
+            cauchStress(0) = sigma(0, 0);
+            cauchStress(1) = sigma(1, 1);
+            cauchStress(3) = sigma(0, 1);
 
-            getConnection()[i]->setStressState(cauchy);
+            if (ep == "EPD")
+            {
+                cauchStress(2) = poisson * (cauchStress(0) + cauchStress(1));
+            }
+            else //EPT
+            {
+                cauchStress(2) = 0.0;
+            }
+
+            connection_[i]->setStressState(cauchStress);
         }
     }
     else if (order_ == 3)
@@ -699,13 +723,22 @@ void Element::StressCalculate(const std::string &ep)
             mat1 = prod(Ac, S);
             sigma = (1.0 / jac) * prod(mat1, trans(Ac));
 
-            bounded_vector<double, 3> cauchy;
+            bounded_vector<double, 4> cauchStress;
 
-            cauchy(0) = sigma(0, 0);
-            cauchy(1) = sigma(1, 1);
-            cauchy(2) = sigma(0, 1);
+            cauchStress(0) = sigma(0, 0);
+            cauchStress(1) = sigma(1, 1);
+            cauchStress(3) = sigma(0, 1);
 
-            getConnection()[i]->setStressState(cauchy);
+            if (ep == "EPD")
+            {
+                cauchStress(2) = poisson * (cauchStress(0) + cauchStress(1));
+            }
+            else //EPT
+            {
+                cauchStress(2) = 0.0;
+            }
+
+            connection_[i]->setStressState(cauchStress);
         }
     }
 }

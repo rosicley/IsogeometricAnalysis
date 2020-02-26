@@ -1340,26 +1340,26 @@ vector<double> Cell::computeDistribuitedLoads(const bounded_vector<double, 2> &v
 
         std::pair<vector<double>, vector<double>> functions = boundaryShapeFunctionAndDerivates(xsi, wpc, inc_, curveNumber);
         bounded_vector<double, 2> tangent;
-        tangent(0)=0.0;
-        tangent(1)=0.0;
+        tangent(0) = 0.0;
+        tangent(1) = 0.0;
         for (int ih = 0; ih < npc; ih++)
         {
             tangent(0) += functions.second(ih) * points[ih]->getCurrentCoordinate()(0);
             tangent(1) += functions.second(ih) * points[ih]->getCurrentCoordinate()(1);
         }
 
-		double jacobian = sqrt(pow(tangent(0), 2) + pow(tangent(1), 2));
+        double jacobian = sqrt(pow(tangent(0), 2) + pow(tangent(1), 2));
 
-        double aux = 0.0;
-        for (int m = 0; m < npc; m++)
-        {
-            aux += functions.first(m);
-        }
+        // double aux = 0.0;
+        // for (int m = 0; m < npc; m++)
+        // {
+        //     aux += functions.first(m);
+        // }
 
         for (int ih = 0; ih < npc; ih++)
         {
-            distribuitedLoad(2 * ih) += value(0) * functions.first(ih) * weight * thickness*jacobian;
-            distribuitedLoad(2 * ih + 1) += value(1) * functions.first(ih) * weight * thickness*jacobian;
+            distribuitedLoad(2 * ih) += value(0) * functions.first(ih) * weight * thickness * jacobian;
+            distribuitedLoad(2 * ih + 1) += value(1) * functions.first(ih) * weight * thickness * jacobian;
         }
     }
     return distribuitedLoad;
@@ -1413,4 +1413,143 @@ std::vector<ControlPoint *> Cell::getControlPointsOnSide(const int &side)
         }
     }
     return points;
+}
+
+void Cell::computeDistanceFromFEBoundary(const int &pointsQuadrature, std::vector<BoundaryElement *> boundaryFE)
+{
+    int npc = controlPoints_.size();
+    matrix<double> domainIntegrationPoints_ = isoQuadrature(pointsQuadrature);
+    bounded_vector<int, 2> inc_;
+    vector<double> wpc2(npc);
+    vector<double> phi;
+
+    inc_ = controlPoints_[npc - 1]->getINC();
+    for (int i = 0; i < npc; i++)
+    {
+        wpc2(i) = controlPoints_[i]->getWeight();
+    }
+
+    if (distanceFE_.size() > 1)
+    {
+        distanceFE_.erase(distanceFE_.begin(), distanceFE_.begin() + distanceFE_.size());
+    }
+
+    distanceFE_.reserve(domainIntegrationPoints_.size1());
+
+    for (int ip = 0; ip < domainIntegrationPoints_.size1(); ip++)
+    {
+        distanceFE_[ip] = 100000000000.0;
+        bounded_vector<double, 2> xsi, coordIP;
+        coordIP(0) = 0.0;
+        coordIP(1) = 0.0;
+        xsi(0) = domainIntegrationPoints_(ip, 0);
+        xsi(1) = domainIntegrationPoints_(ip, 1);
+        //double weight = domainIntegrationPoints_(ip, 2);
+        phi = shapeFunction(xsi, wpc2, inc_);
+        double distance;
+        for (int cp = 0; cp < npc; cp++) //calculando coordenadas globais dos pontos de integração
+        {
+            bounded_vector<double, 2> coordinateCP = controlPoints_[cp]->getCurrentCoordinate();
+            coordIP(0) += phi(cp) * coordinateCP(0) / wpc2(cp);
+            coordIP(1) += phi(cp) * coordinateCP(1) / wpc2(cp);
+        }
+        std::cout << "COORD: " << coordIP(0) << " " << coordIP(1) << std::endl;
+        for (BoundaryElement *bound : boundaryFE)
+        {
+            double xsiBoundary = 0.0; //primeira tentativa
+            double deltaxsi = 1000.0;
+            std::vector<Node *> boundaryNodes = bound->getNodes();
+
+            int cont = 0;
+            bounded_vector<double, 2> coordBoundary;
+            bounded_vector<double, 2> firstDerivate;
+            bounded_vector<double, 2> secondDerivate;
+
+            while (fabs(deltaxsi) >= 1.0e-06 and xsiBoundary >= -1.0 and xsiBoundary <= 1.0 and cont <= 15)
+            {
+                matrix<double> boundaryFunctions = bound->shapeFunctionsAndDerivates(xsiBoundary); //PHI, PHI', PHI''
+                coordBoundary(0) = 0.0;
+                coordBoundary(1) = 0.0;
+                firstDerivate(0) = 0.0;
+                firstDerivate(1) = 0.0;
+                secondDerivate(0) = 0.0;
+                secondDerivate(1) = 0.0;
+                int aux = 0;
+                bounded_vector<double, 2> coordinateNode;
+                for (Node *node : boundaryNodes)
+                {
+                    coordinateNode = node->getCurrentCoordinate();
+
+                    coordBoundary(0) += boundaryFunctions(aux, 0) * coordinateNode(0);
+                    coordBoundary(1) += boundaryFunctions(aux, 0) * coordinateNode(1);
+
+                    firstDerivate(0) += boundaryFunctions(aux, 1) * coordinateNode(0);
+                    firstDerivate(1) += boundaryFunctions(aux, 1) * coordinateNode(1);
+
+                    secondDerivate(0) += boundaryFunctions(aux, 2) * coordinateNode(0);
+                    secondDerivate(1) += boundaryFunctions(aux, 2) * coordinateNode(1);
+                    aux = aux + 1;
+                }
+                double h = -((coordIP(0) - coordBoundary(0)) * (-firstDerivate(0)) + (coordIP(1) - coordBoundary(1)) * (-firstDerivate(1)));
+                double dh_dxsi = (-firstDerivate(0)) * (-firstDerivate(0)) + (-secondDerivate(0)) * (coordIP(0) - coordBoundary(0)) +
+                                 (-firstDerivate(1)) * (-firstDerivate(1)) + (-secondDerivate(1)) * (coordIP(1) - coordBoundary(1));
+
+                deltaxsi = h / dh_dxsi;
+
+                xsiBoundary = xsiBoundary + deltaxsi;
+
+                cont++;
+            }
+
+            if (xsiBoundary >= -1.0 and xsiBoundary <= 1.0)
+            {
+                distance = sqrt((coordIP(0) - coordBoundary(0)) * (coordIP(0) - coordBoundary(0)) + (coordIP(1) - coordBoundary(1)) * (coordIP(1) - coordBoundary(1)));
+            }
+            else if (xsiBoundary <= -1.0)
+            {
+                matrix<double> boundaryFunctions = bound->shapeFunctionsAndDerivates(-1.0); //PHI, PHI', PHI''
+                int aux = 0;
+                bounded_vector<double, 2> coordinateNode;
+                coordBoundary(0) = 0.0;
+                coordBoundary(1) = 0.0;
+                for (Node *node : boundaryNodes)
+                {
+                    coordinateNode = node->getCurrentCoordinate();
+                    coordBoundary(0) += boundaryFunctions(aux, 0) * coordinateNode(0);
+                    coordBoundary(1) += boundaryFunctions(aux, 0) * coordinateNode(1);
+                    aux = aux + 1;
+                }
+                distance = sqrt((coordIP(0) - coordBoundary(0)) * (coordIP(0) - coordBoundary(0)) + (coordIP(1) - coordBoundary(1)) * (coordIP(1) - coordBoundary(1)));
+            }
+            else if (xsiBoundary >= 1.0)
+            {
+                matrix<double> boundaryFunctions = bound->shapeFunctionsAndDerivates(1.0); //PHI, PHI', PHI''
+                int aux = 0;
+                bounded_vector<double, 2> coordinateNode;
+                coordBoundary(0) = 0.0;
+                coordBoundary(1) = 0.0;
+                for (Node *node : boundaryNodes)
+                {
+                    coordinateNode = node->getCurrentCoordinate();
+                    coordBoundary(0) += boundaryFunctions(aux, 0) * coordinateNode(0);
+                    coordBoundary(1) += boundaryFunctions(aux, 0) * coordinateNode(1);
+                    aux = aux + 1;
+                }
+                distance = sqrt((coordIP(0) - coordBoundary(0)) * (coordIP(0) - coordBoundary(0)) + (coordIP(1) - coordBoundary(1)) * (coordIP(1) - coordBoundary(1)));
+            }
+            if (distance < distanceFE_[ip])
+            {
+                distanceFE_[ip] = distance;
+            }
+        }
+        std::cout << "DISTANCE: " << distanceFE_[ip] << std::endl;
+        std::cout << std::endl;
+    }
+
+    // std::cout<<"DISTANCE: ";
+    // for(int i = 0; i<16; i++)
+    // {
+    //     std::cout<<distanceFE_[i]<<" ";
+    // }
+    // std::cout<<std::endl;
 }
