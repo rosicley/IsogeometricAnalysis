@@ -1,0 +1,12 @@
+------------------------- LOAD STEP = 1 -------------------------
+Iteration = 0 (1)   x Norm = 6.462278e-03  Time (s) = 0.942000
+Iteration = 1 (1)   x Norm = 1.295512e-03  Time (s) = 1.909000
+Iteration = 2 (1)   x Norm = 1.722169e-05  Time (s) = 2.819000
+Iteration = 3 (1)   x Norm = 5.877033e-08  Time (s) = 3.705000
+------------------------- LOAD STEP = 2 -------------------------
+Iteration = 0 (2)   x Norm = 6.150792e-03  Time (s) = 0.896000
+Iteration = 1 (2)   x Norm = 1.013232e-04  Time (s) = 1.863000
+Iteration = 2 (2)   x Norm = 1.886148e-06  Time (s) = 2.817000
+Iteration = 3 (2)   x Norm = 7.811544e-11  Time (s) = 3.729000
+[mpiexec@rosicley] Sending Ctrl-C to processes as requested
+[mpiexec@rosicley] Press Ctrl-C again to force abort

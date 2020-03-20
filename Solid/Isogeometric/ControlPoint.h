@@ -61,6 +61,12 @@ public:
 
 	void updatePastValue();
 
+	void setInsideLocal(const bool &inside);
+
+	bool getInsideLocal();
+
+
+
 	// void setStressState(const bounded_vector<double, 3> &stressState);
 
 	// void setZeroStressState();
@@ -85,6 +91,8 @@ private:
 	bounded_vector<double, 2> currentAcceleration_;
 
 	bounded_vector<int, 2> inc_;
+
+	// bool insideLocal_;
 
 	// bounded_vector<double, 4> stressState_; //{SigmaX1, SigmaX2, TalX1X2, contador}
 };

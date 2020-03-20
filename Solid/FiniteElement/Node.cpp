@@ -80,6 +80,11 @@ bounded_vector<double, 5> Node::getStressState()
     return stressState_;
 }
 
+double Node::getDistanceToBoundary()
+{
+    return distanceToBoundary_;
+}
+
 void Node::setPastCoordinate(const bounded_vector<double, 2> &pastCoordinate)
 {
     pastCoordinate_ = pastCoordinate;
@@ -143,6 +148,11 @@ void Node::updatePastValue()
     pastAcceleration_ = currentAcceleration_;
     pastCoordinate_ = currentCoordinate_;
     pastVelocity_ = currentVelocity_;
+}
+
+void Node::setDistanceToBoundary(const double &distance)
+{
+    distanceToBoundary_ = distance;
 }
 
 // void Node::setIndexFE(const int &index)

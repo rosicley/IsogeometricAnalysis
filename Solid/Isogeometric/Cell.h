@@ -11,6 +11,7 @@
 // #include "ShapeFunction.h"
 #include <boost/numeric/ublas/matrix.hpp>
 #include <boost/numeric/ublas/vector.hpp>
+//#include "../FiniteElement/Element.h"
 
 using namespace boost::numeric::ublas;
 
@@ -31,9 +32,9 @@ public:
 
     ControlPoint *getControlPoint(const int &index);
 
-    bounded_matrix<double, 2, 2> referenceJacobianMatrix(const matrix<double> &dphi_dxsi, const vector<double> &wpc);
+    bounded_matrix<double, 2, 2> referenceJacobianMatrix(const matrix<double> &dphi_dxsi);//, const vector<double> &wpc);
 
-    bounded_matrix<double, 2, 2> currentJacobianMatrix(const matrix<double> &dphi_dxsi, const vector<double> &wpc);
+    bounded_matrix<double, 2, 2> currentJacobianMatrix(const matrix<double> &dphi_dxsi);//, const vector<double> &wpc);
 
     double jacobianDeterminant(const bounded_matrix<double, 2, 2> &jacobianMatrix);
 
@@ -60,9 +61,9 @@ public:
                                  const vector<double> &wpc,
                                  const bounded_vector<double, 2> inc);
 
-    std::pair<vector<double>, matrix<double>> shapeFunctionAndDerivates(const bounded_vector<double, 2> &qxsi,
-                                                                        const vector<double> &wpc,
-                                                                        const bounded_vector<double, 2> inc);
+    std::pair<vector<double>, matrix<double>> shapeFunctionAndDerivates(const bounded_vector<double, 2> &qxsi);
+                                                                        // const vector<double> &wpc,
+                                                                        // const bounded_vector<double, 2> inc);
 
     matrix<double> boundaryIsoQuadrature(const int &points);
 
@@ -75,6 +76,12 @@ public:
     std::vector<ControlPoint * > getControlPointsOnSide(const int &side);
 
     void computeDistanceFromFEBoundary(const int &pointsQuadrature, std::vector<BoundaryElement *> boundaryFE);
+
+    void setDistanceFromFEBoundary(const std::vector<double> &distance);
+
+    bounded_vector<double, 2> calculateGlobalCoordinate(const bounded_vector<double, 2> &qxsi);
+
+    vector<double> diagonalMass(const int &points);
 
 private:
     int index_; //cell number //OK

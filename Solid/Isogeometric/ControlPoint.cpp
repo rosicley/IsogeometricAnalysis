@@ -25,6 +25,16 @@ ControlPoint::ControlPoint(const int &index,
 
 ControlPoint::~ControlPoint() {}
 
+// void ControlPoint::setInsideLocal(const bool &inside)
+// {
+//     insideLocal_ = inside;
+// }
+
+// bool ControlPoint::getInsideLocal()
+// {
+//     return insideLocal_;
+// }
+
 int ControlPoint::getIndex()
 {
     return index_;
@@ -129,7 +139,6 @@ void ControlPoint::setIndex(const int &newIndex)
 {
     index_ = newIndex;
 }
-
 
 void ControlPoint::updatePastValue()
 {

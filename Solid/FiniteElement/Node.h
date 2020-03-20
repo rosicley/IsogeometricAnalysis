@@ -37,6 +37,8 @@ public:
 
 	bounded_vector<double, 5> getStressState();
 
+	double getDistanceToBoundary();
+
 	void setPastCoordinate(const bounded_vector<double, 2> &pastCoordinate);
 
 	void setPastVelocity(const bounded_vector<double, 2> &pastVelocity);
@@ -53,14 +55,15 @@ public:
 
 	void setZeroStressState();
 
-	void incrementCurrentCoordinate(const int& direction, const double& value);
+	void incrementCurrentCoordinate(const int &direction, const double &value);
 
 	void setIndex(const int &index);
 
 	void updatePastValue();
 
-	//void setIndexFE(const int &index);
+	void setDistanceToBoundary(const double &distance);
 
+	//void setIndexFE(const int &index);
 
 private:
 	int index_;
@@ -82,4 +85,6 @@ private:
 	bounded_vector<double, 2> currentAcceleration_;
 
 	bounded_vector<double, 5> stressState_; //{SigmaX1, SigmaX2, TalX1X2, contador}
+
+	double distanceToBoundary_;
 };

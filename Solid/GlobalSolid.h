@@ -12,6 +12,7 @@
 #include "FiniteElement/Node.h"
 #include "FiniteElement/Mesh.h"
 #include "FiniteElement/BoundaryElement.h"
+#include "FiniteElement/BlendZone.h"
 #include <boost/timer.hpp>
 #include <boost/thread.hpp>
 #include <metis.h>
@@ -96,13 +97,29 @@ public:
 
     std::string getPlaneState();
 
+    bounded_vector<double, 2> blendFunction(const double &DA);
+
     matrix<double> coordinatesForInterpolation(const int &orderElemement);
+
+    bounded_matrix<double, 2, 2> inverseMatrix(const bounded_matrix<double, 2, 2> &matrix);
 
     void ISOdomainDecompositionMETIS();
 
     void domainDecompositionMETIS(const std::string &elementType);
 
+    void incidenceLocalxGlobal();
+
+    void computeDistanceFromFEBoundary();
+
+    void checkInactivesCPs();
+
+    void testeParaviewFE();
+
+    void testeParaviewISO();
+
     void teste();
+
+    vector<double> diagonalMassMatrix();
 
 private:
     std::vector<Patch *> patches_;
@@ -113,9 +130,13 @@ private:
 
     std::vector<DirichletConditionFE *> dirichletConditionsFE_;
 
+    std::vector<DirichletCondition *> cpOutsideDomain_;
+
     std::vector<NeumannCondition *> neumannConditions_;
 
     std::vector<NeumannConditionFE *> neumannConditionsFE_;
+
+    std::vector<CP_BlendingZone *> cpsInsideBledingZone_;
 
     std::vector<Material *> materials_;
 
@@ -128,6 +149,8 @@ private:
     double gamma_;
 
     double beta_;
+
+    double blendZoneThickness_;
 
     bounded_vector<double, 2> shapeForces_;
 
@@ -154,6 +177,8 @@ private:
     std::vector<Element *> elements_part;
 
     std::vector<ControlPoint *> controlPoints_;
+
+    std::vector<ControlPoint *> inactiveCPs_;
 
     std::vector<Node *> nodes_;
 
