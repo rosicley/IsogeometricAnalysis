@@ -755,8 +755,7 @@ std::pair<vector<double>, matrix<double>> Element::elementContributions(const st
 {
     std::vector<Cell *> cellAux; //vetor para identificar a quantidade de células diferentes em que o elemento está incidindo
     std::vector<int> freedom;
-    int freedomDegree = connection_.size(); 
-
+    int freedomDegree = connection_.size();
     for (Cell *cell : incidenceCell_)
     {
         bool teste = false;
@@ -774,14 +773,14 @@ std::pair<vector<double>, matrix<double>> Element::elementContributions(const st
             freedomDegree += cell->getControlPoints().size();
         }
     }
-
     //a variável freedomDegree é = nº de nós do elemento finito + nº pontos de controle * (quantidade de células diferentes que estão sob o elemento finito triangular);
-
-    int auxiliar = 0; //auxiliar pegar distancia e cell
+    int auxiliar = 0; //auxiliar pegar distancia e cell quando o ponto de hammer está na blend zone
 
     vector<double> rhs(2 * freedomDegree, 0.0);
     matrix<double> tangent(2 * freedomDegree, 2 * freedomDegree, 0.0);
-    matrix<double> domainIntegrationPoints_ = hammerQuadrature(); 
+    vector<double> test(2 * freedomDegree, 0.0);
+    bool test2 = false;
+    matrix<double> domainIntegrationPoints_ = hammerQuadrature();
     double young, poisson, density;
     mesh_->getMaterial()->setProperties(young, poisson, density);
     if (typeAnalyze == "STATIC")
@@ -947,6 +946,7 @@ std::pair<vector<double>, matrix<double>> Element::elementContributions(const st
         }
         else //insideBlendZone_[ih] == true, logo, o ponto de hammer está na blend zone
         {
+            test2 = true;
             //os próximos 4 intens foram calculados em GlobalSolid::incidenceLocalxGlobal() e enviados para cada elemento;
             //os vetores utilizados abaixo possuem tamanho igual a quantidade de pontos de hammer que estão dentro da blend zone, por isso o uso da variável "auxiliar"...
             Cell *cell = incidenceCell_[auxiliar];                                   //célula em que o ponto de hammer está inserido
@@ -971,6 +971,15 @@ std::pair<vector<double>, matrix<double>> Element::elementContributions(const st
             bounded_matrix<double, 2, 2> JGlobalI = inverseMatrix(cell->referenceJacobianMatrix(functionsGlobal.second));
             bounded_matrix<double, 2, 2> M = trans(prod(JGlobalI, Jlocal)); //para transforma dPhiGlobal_dXsiGlobal em dPhiGlobal_dXsiLocal
 
+            // double da1=0.0, da2=0.0;
+            // for(int i = 0; i<connection_.size();i++)
+            // {
+            //     double n = connection_[i]->getDistanceToBoundary();
+            //     da1 += dphi_dxsiLocal(0,i)*n;
+            //     da2 += dphi_dxsiLocal(1,i)*n;
+            // }
+            // std::cout<<index_<<" "<<ih<< " "<<da1<<" "<<da2<<std::endl;
+
             //Teste para ver se dPhiGlobal_dXsiLocal estava certo...
             // bounded_matrix<double, 2, 2> teste;
             // teste(0, 0) = 0.0;
@@ -993,10 +1002,10 @@ std::pair<vector<double>, matrix<double>> Element::elementContributions(const st
             // std::cout << std::fixed;
             // std::cout << Jlocal(0, 0) - teste(0, 0) << " " << Jlocal(0, 1) - teste(0, 1) << " " << Jlocal(1, 0) - teste(1, 0) << " " << Jlocal(1, 1) - teste(1, 1) << std::endl;
 
-            int nlocal = connection_.size(); //poderia estar de fora...
-            int nglobal = cps.size(); //quantidade de pontos de controle que definem a célula em que o ponto de hammer está inserido
-            int nnum = nlocal + nglobal; //novo número funções de forma que definem o elemento na blend zone
-            vector<double> phiBlended(nnum, 0.0); //novas funções de forma que definem o elemento
+            int nlocal = connection_.size();               //poderia estar de fora...
+            int nglobal = cps.size();                      //quantidade de pontos de controle que definem a célula em que o ponto de hammer está inserido
+            int nnum = nlocal + nglobal;                   //novo número funções de forma que definem o elemento na blend zone
+            vector<double> phiBlended(nnum, 0.0);          //novas funções de forma que definem o elemento
             matrix<double> dphi_dxsiBlended(2, nnum, 0.0); //derivadas das novas funções de forma em relação a xsi local
 
             //novas funções de forma relacionadas as funções do elemento local
@@ -1020,6 +1029,28 @@ std::pair<vector<double>, matrix<double>> Element::elementContributions(const st
                 dphi_dxsiBlended(0, nlocal + i) = dblend_dxsi(0) * functionsGlobal.first(i) + blend * dPhiG_dxsiL(0);
                 dphi_dxsiBlended(1, nlocal + i) = dblend_dxsi(1) * functionsGlobal.first(i) + blend * dPhiG_dxsiL(1);
             }
+            // std::cout<<index_<<" "<<ih<<std::endl;
+            // for(int i = 0; i<nnum; i++)
+            // {
+            //     std::cout<<phiBlended(i)<<" ";
+            // }
+            // std::cout<<std::endl;
+            // for(int i = 0; i<nnum; i++)
+            // {
+            //     std::cout<<dphi_dxsiBlended(0, i)<<" ";
+            // }
+            // std::cout<<std::endl;
+            // for(int i = 0; i<nnum; i++)
+            // {
+            //     std::cout<<dphi_dxsiBlended(1, i)<<" ";
+            // }
+            
+            // std::cout<<std::endl;
+            // std::cout<<blend<<" " <<dblend_dxsi(0)<<" "<<dblend_dxsi(1)<<std::endl;
+            // std::cout<<std::endl;
+
+
+
 
             int aux;
             for (int iaux = 0; iaux < cellAux.size(); iaux++)
@@ -1033,12 +1064,12 @@ std::pair<vector<double>, matrix<double>> Element::elementContributions(const st
 
             bounded_matrix<double, 2, 2> A0 = referenceJacobianMatrixBlendZone(dphi_dxsiBlended, cps); //mapeamento da configuração inicial
             bounded_matrix<double, 2, 2> A1 = currentJacobianMatrixBlendZone(dphi_dxsiBlended, cps);   //mapeamento da configuração atual
-            bounded_matrix<double, 2, 2> A0I = inverseMatrix(A0); //inverse initial configuration map
-            bounded_matrix<double, 2, 2> Ac = prod(A1, A0I); //gradiente da função mudança de configuração
-            identity_matrix<double> I(2);                                      //identity matrix
-            bounded_matrix<double, 2, 2> Ec = 0.5 * (prod(trans(Ac), Ac) - I); //current green strain tensor
-            bounded_matrix<double, 2, 2> S;                                    //second piola kirchhoff stress tensor
-            double j0 = jacobianDeterminant(Jlocal);                           //para multiplicar com o peso
+            bounded_matrix<double, 2, 2> A0I = inverseMatrix(A0);                                      //inverse initial configuration map
+            bounded_matrix<double, 2, 2> Ac = prod(A1, A0I);                                           //gradiente da função mudança de configuração
+            identity_matrix<double> I(2);                                                              //identity matrix
+            bounded_matrix<double, 2, 2> Ec = 0.5 * (prod(trans(Ac), Ac) - I);                         //current green strain tensor
+            bounded_matrix<double, 2, 2> S;                                                            //second piola kirchhoff stress tensor
+            double j0 = jacobianDeterminant(Jlocal);                                                   //para multiplicar com o peso
 
             if (ep == "EPD")
             {
@@ -1055,8 +1086,68 @@ std::pair<vector<double>, matrix<double>> Element::elementContributions(const st
                 S(0, 1) = (young / (1.0 + poisson)) * Ec(0, 1);
             }
 
-            bounded_matrix<double, 2, 2> dA_dy; //deriavada de A1 em relação a y
+            bounded_matrix<double, 2, 2> dA_dy;  //deriavada de A1 em relação a y
             bounded_matrix<double, 2, 2> dA_dy2; //deriavada de A1 em relação a y
+
+            // for (int i = 0; i < 6; i++)
+            // {
+            //     for (int j = 0; j < 2; j++)
+            //     {
+            //         if (j == 0)
+            //         {
+            //             dA_dy(0, 0) = dphi_dxsiBlended(0, i);
+            //             dA_dy(0, 1) = dphi_dxsiBlended(1, i);
+            //             dA_dy(1, 0) = 0.0;
+            //             dA_dy(1, 1) = 0.0;
+            //         }
+            //         else
+            //         {
+            //             dA_dy(1, 0) = dphi_dxsiBlended(0, i);
+            //             dA_dy(1, 1) = dphi_dxsiBlended(1, i);
+            //             dA_dy(0, 0) = 0.0;
+            //             dA_dy(0, 1) = 0.0;
+            //         }
+
+            //         bounded_matrix<double, 2, 2> mat1 = prod(trans(A0I), trans(dA_dy));
+            //         bounded_matrix<double, 2, 2> mat2 = prod(dA_dy, A0I);
+
+            //         bounded_matrix<double, 2, 2> dE_dy = 0.5 * (prod(mat1, Ac) + prod(trans(Ac), mat2)); //first derivative of E regarding i,j
+
+            //         double r = dE_dy(0, 0) * S(0, 0) + dE_dy(1, 1) * S(1, 1) + dE_dy(0, 1) * S(0, 1) + dE_dy(1, 0) * S(1, 0); //internal force
+
+            //         test(2 * i + j) -= r * j0 * weight * thickness;
+            //     }
+            // }
+
+            // for (int i = 6; i < 15; i++)
+            // {
+            //     for (int j = 0; j < 2; j++)
+            //     {
+            //         if (j == 0)
+            //         {
+            //             dA_dy(0, 0) = dphi_dxsiBlended(0, i);
+            //             dA_dy(0, 1) = dphi_dxsiBlended(1, i);
+            //             dA_dy(1, 0) = 0.0;
+            //             dA_dy(1, 1) = 0.0;
+            //         }
+            //         else
+            //         {
+            //             dA_dy(1, 0) = dphi_dxsiBlended(0, i);
+            //             dA_dy(1, 1) = dphi_dxsiBlended(1, i);
+            //             dA_dy(0, 0) = 0.0;
+            //             dA_dy(0, 1) = 0.0;
+            //         }
+
+            //         bounded_matrix<double, 2, 2> mat1 = prod(trans(A0I), trans(dA_dy));
+            //         bounded_matrix<double, 2, 2> mat2 = prod(dA_dy, A0I);
+
+            //         bounded_matrix<double, 2, 2> dE_dy = 0.5 * (prod(mat1, Ac) + prod(trans(Ac), mat2)); //first derivative of E regarding i,j
+
+            //         double r = dE_dy(0, 0) * S(0, 0) + dE_dy(1, 1) * S(1, 1) + dE_dy(0, 1) * S(0, 1) + dE_dy(1, 0) * S(1, 0); //internal force
+
+            //         test(2 * (aux + i - nlocal) + j) -= r * j0 * weight * thickness;
+            //     }
+            // }
 
             for (int i = 0; i < nnum; i++)
             {
@@ -1101,6 +1192,9 @@ std::pair<vector<double>, matrix<double>> Element::elementContributions(const st
                     double m = density * phiBlended(i) * accel; //inertial force
 
                     double shape = (shapeForce_(j) * step) / (thickness * numberOfStep) * phiBlended(i);
+
+                    m = 0.0;
+                    shape = 0.0;
 
                     if (i < nlocal)
                     {
@@ -1190,6 +1284,18 @@ std::pair<vector<double>, matrix<double>> Element::elementContributions(const st
             auxiliar += 1;
         }
     }
+
+    // if (test2 == true)
+    // {
+
+    //     for (int i = 0; i < 2 * freedomDegree; i++)
+    //     {
+    //         std::cout.precision(5);
+    //         std::cout << std::fixed;
+    //         std::cout << rhs(i) << " ";
+    //     }
+    //     std::cout << std::endl;
+    // }
 
     return std::make_pair(rhs, tangent);
 }

@@ -2789,8 +2789,8 @@ int GlobalSolid::firstAccelerationCalculation()
 
 void GlobalSolid::incidenceLocalxGlobal()
 {
-    // int rank;
-    // MPI_Comm_rank(PETSC_COMM_WORLD, &rank);
+    int rank;
+    MPI_Comm_rank(PETSC_COMM_WORLD, &rank);
 
     /*Looping para:
         -Encontrar pontos de hammer dentro da blending zone;
@@ -2887,13 +2887,16 @@ void GlobalSolid::incidenceLocalxGlobal()
                         for (int i = 0; i < conec.size(); i++)
                         {
                             double DAnode = conec[i]->getDistanceToBoundary();
-                            dDA_dxsi(0) = dphi_dxsi(0, i) * DAnode; //dDAhammer_dxsiLocal1
-                            dDA_dxsi(1) = dphi_dxsi(1, i) * DAnode; //dDAhammer_dxsiLocal1
+                            dDA_dxsi(0) += dphi_dxsi(0, i) * DAnode; //dDAhammer_dxsiLocal1
+                            dDA_dxsi(1) += dphi_dxsi(1, i) * DAnode; //dDAhammer_dxsiLocal1
                         }
-                        bounded_vector<double, 2> db_dxsi; 
+                        bounded_vector<double, 2> db_dxsi;
                         db_dxsi(0) = blend(1) * dDA_dxsi(0); //(db_dxsiLocal1)
-                        db_dxsi(1) = blend(1) * dDA_dxsi(1); //(db_dxsiLocal2) 
+                        db_dxsi(1) = blend(1) * dDA_dxsi(1); //(db_dxsiLocal2)
                         db_dxsiValue.push_back(db_dxsi);
+
+                        // if (rank == 0)
+                        //     std::cout << el->getIndex() << " " << ih << " " << blend(1) << " " << dDA_dxsi(0) << " " << dDA_dxsi(1) << std::endl;
 
                         break;
                     }
@@ -3818,14 +3821,14 @@ void GlobalSolid::checkInactivesCPs()
     {
         if (pseudoDiagonal(i) < 5.0e-06)
         {
-            ControlPoint *cp=controlPoints_[i];
+            ControlPoint *cp = controlPoints_[i];
             bounded_vector<double, 2> coord = cp->getCurrentCoordinate();
             DirichletCondition *dir0 = new DirichletCondition(cp, 0, 0.0);
             cpOutsideDomain_.push_back(dir0);
 
             DirichletCondition *dir1 = new DirichletCondition(cp, 1, 0.0);
             cpOutsideDomain_.push_back(dir1);
-            std::cout<<"CP "<<cp->getIndex()<<" foi desativado..."<<std::endl;
+            std::cout << "CP " << cp->getIndex() << " foi desativado..." << std::endl;
 
             for (Element *el : elements_)
             {
@@ -3994,6 +3997,6 @@ void GlobalSolid::checkInactivesCPs()
     //             }
     //         }
     //     }
-        
+
     // }
 }

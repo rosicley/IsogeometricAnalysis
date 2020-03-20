@@ -16,7 +16,7 @@ int main(int argc, char **args)
 
     GlobalSolid *problem = new GlobalSolid;
 
-    problem->dataReading("parameters.txt", "properties.txt", "overlapISO3.txt", "overlapFE3.msh", true);
+    problem->dataReading("parameters.txt", "properties.txt", "overlapISO3.txt", "overlapFE3_3.msh", true);
 
     std::string planeState = problem->getPlaneState(); //EPD OR EPT
     std::string type = problem->getAnalysisType();     //DYNAMIC OR STATIC
