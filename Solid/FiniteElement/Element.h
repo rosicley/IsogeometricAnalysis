@@ -38,7 +38,7 @@ public:
 
     matrix<double> domainDerivativeShapeFunction(const double &xsi1, const double &xsi2);
 
-    matrix<double> hammerQuadrature();
+    matrix<double> hammerQuadrature(const int &nH);
 
     bounded_matrix<double, 2, 2> referenceJacobianMatrix(const double &xsi1, const double &xsi2);
 
@@ -48,7 +48,8 @@ public:
 
     std::pair<vector<double>, matrix<double>> elementContributions(const std::string &ep, const std::string &typeAnalyze,
                                                                    const int &step, const int &numberOfStep, const double &deltat,
-                                                                   const double &beta, const double &gama);
+                                                                   const double &beta, const double &gama,
+                                                                   const int &nHammer, const int &nHammerBlendZone);
 
     void setShapeForce(const bounded_vector<double, 2> &shapeForce);
 
@@ -56,7 +57,7 @@ public:
 
     void StressCalculate(const std::string &ep);
 
-    matrix<double> massMatrix();
+    matrix<double> massMatrix(const int &nHammer, const int &nHammerBlendZone);
 
     //void computeDistanceFromFEBoundary(std::vector<BoundaryElement *> boundaryFE);
 
@@ -101,7 +102,7 @@ public:
 
     std::vector<double> getBlendValue();
 
-    vector<double> diagonalMass();
+    vector<double> diagonalMass(const int &nHammer, const int &nHammerBlendZone);
 
 
 private:

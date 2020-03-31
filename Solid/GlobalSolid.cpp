@@ -169,6 +169,12 @@ void GlobalSolid::dataReading(const std::string &inputParameters, const std::str
     std::getline(parameters, line);
     std::getline(parameters, line);
     std::getline(parameters, line);
+    parameters >> hammerPoints_ >> hammerPointsBlendZone_;
+    std::getline(parameters, line);
+    std::getline(parameters, line);
+    std::getline(parameters, line);
+    std::getline(parameters, line);
+    std::getline(parameters, line);
     parameters >> orderParaview_;
     std::getline(parameters, line);
     std::getline(parameters, line);
@@ -650,15 +656,7 @@ void GlobalSolid::dataReading(const std::string &inputParameters, const std::str
             {
                 cells_part.push_back(cells_[i]);
             }
-            // else if (rank != 0)
-            // {
-            //     delete cells_[i];
-            // }
         }
-        // if (rank != 0)
-        // {
-        //     cells_.erase(cells_.begin(), cells_.begin() + cells_.size());
-        // }
     }
 
     dataFromGmsh(inputMeshFE);
@@ -921,12 +919,12 @@ void GlobalSolid::dataFromGmsh(const std::string &inputGmesh)
         {
             elements_part.push_back(elements_[i]);
         }
-        // else if (rank != 1) //DEPOIS COLOCAR PARA O RANK 1 TER TODOS!!!
+        // else if (rank != 0)
         // {
         //     delete elements_[i];
         // }
-    } //DESCOMENTAR AQUI
-    // if (rank != 1)
+    }
+    // if (rank != 0)
     // {
     //     elements_.erase(elements_.begin(), elements_.begin() + elements_.size());
     // }
@@ -1079,24 +1077,28 @@ void GlobalSolid::teste()
     //computeDistanceFromFEBoundary();
     // std::cout << "teste... " << std::endl;
     // incidenceLocalxGlobal();
+    computeDistanceFromFEBoundary();
+    incidenceLocalxGlobal();
+    checkInactivesCPandNode();
+    firstAccelerationCalculation();
 
-    if (rank == 0)
-    {
-        computeDistanceFromFEBoundary();
-        incidenceLocalxGlobal();
+    // if (rank == 0)
+    // {
+    //     computeDistanceFromFEBoundary();
+    //     incidenceLocalxGlobal();
 
-        vector<double> mass = diagonalMassMatrix();
-        std::cout << "GLOBAL: " << std::endl;
-        for (int i = 0; i < controlPoints_.size(); i++)
-        {
-            std::cout << mass(i) << std::endl;
-        }
-        std::cout << "LOCAL: " << std::endl;
-        for (int i = controlPoints_.size(); i < cpnumber_; i++)
-        {
-            std::cout << mass(i) << std::endl;
-        }
-    }
+    //     vector<double> mass = diagonalMassMatrix();
+    //     std::cout << "GLOBAL: " << std::endl;
+    //     for (int i = 0; i < controlPoints_.size(); i++)
+    //     {
+    //         std::cout << mass(i) << std::endl;
+    //     }
+    //     std::cout << "LOCAL: " << std::endl;
+    //     for (int i = controlPoints_.size(); i < cpnumber_; i++)
+    //     {
+    //         std::cout << mass(i) << std::endl;
+    //     }
+    // }
     // else if (rank == 1)
     // {
     //     exportToParaviewFEM(0);
@@ -1144,9 +1146,6 @@ int GlobalSolid::solveStaticProblem()
     if (rank == 0)
     {
         exportToParaviewISO(0);
-    }
-    else if (rank == 1)
-    {
         exportToParaviewFEM(0);
     }
     //std::ofstream file1(text1.str());
@@ -1168,15 +1167,15 @@ int GlobalSolid::solveStaticProblem()
     //////REVER QUANDO RECONSTRUIR MALHA!
     computeDistanceFromFEBoundary();
     incidenceLocalxGlobal();
-    checkInactivesCPs();
+    checkInactivesCPandNode();
     // checkControlPointsOutsideTheDomain();
-    if (rank == 1)
-    {
-        testeParaviewFE();
-    }
+    // if (rank == 1)
+    // {
+    //     testeParaviewFE();
+    // }
     /////
 
-    int ndir = dirichletConditions_.size() + dirichletConditionsFE_.size() + cpOutsideDomain_.size();
+    int ndir = dirichletConditions_.size() + dirichletConditionsFE_.size() + 2 * inactiveCPandNode_.size();
     PetscMalloc1(ndir, &dof);
     int idir = 0;
     for (DirichletCondition *dir : dirichletConditions_)
@@ -1191,12 +1190,10 @@ int GlobalSolid::solveStaticProblem()
         int direction = dir->getDirection();
         dof[idir++] = (2 * indexNode + direction);
     }
-    for (DirichletCondition *dir : cpOutsideDomain_)
+    for (int index : inactiveCPandNode_)
     {
-        int indexNode = dir->getControlPoint()->getIndex();
-        int direction = dir->getDirection();
-        // std::cout << "CP: " << indexNode << " DIRECTION: " << direction << std::endl;
-        dof[idir++] = (2 * indexNode + direction);
+        dof[idir++] = 2 * index;
+        dof[idir++] = 2 * index + 1;
     }
 
     for (int loadStep = 1; loadStep <= numberOfSteps_; loadStep++)
@@ -1250,7 +1247,6 @@ int GlobalSolid::solveStaticProblem()
                     double val1 = con->getValue() * (1.0 * loadStep / (1.0 * numberOfSteps_));
                     int dof = 2 * ind + dir;
                     ierr = VecSetValues(b, 1, &dof, &val1, ADD_VALUES);
-                    // std::cout<<"NODE: "<<ind<<" DIRECTION: "<<dir<<" VALUE: "<<val1<<std::endl;
                 }
             }
 
@@ -1273,8 +1269,6 @@ int GlobalSolid::solveStaticProblem()
                     no->incrementCurrentCoordinate(dir, val1);
                 }
             }
-            // computeDistanceFromFEBoundary();
-            // incidenceLocalxGlobal();
 
             for (Cell *el : cells_part)
             {
@@ -1284,7 +1278,6 @@ int GlobalSolid::solveStaticProblem()
 
                 for (size_t i = 0; i < num; i++)
                 {
-
                     int dof = 2 * el->getControlPoint(i)->getIndex();
                     ierr = VecSetValues(b, 1, &dof, &elementMatrices.first(2 * i), ADD_VALUES);
 
@@ -1293,7 +1286,6 @@ int GlobalSolid::solveStaticProblem()
 
                     for (size_t j = 0; j < num; j++)
                     {
-
                         int dof1 = 2 * el->getControlPoint(i)->getIndex();
                         int dof2 = 2 * el->getControlPoint(j)->getIndex();
                         ierr = MatSetValues(A, 1, &dof1, 1, &dof2, &elementMatrices.second(2 * i, 2 * j), ADD_VALUES);
@@ -1316,13 +1308,12 @@ int GlobalSolid::solveStaticProblem()
             for (Element *el : elements_part)
             {
                 std::pair<vector<double>, matrix<double>> elementMatrices;
-                elementMatrices = el->elementContributions(planeState_, "STATIC", loadStep, numberOfSteps_, 1.0, 0.25, 0.5);
+                elementMatrices = el->elementContributions(planeState_, "STATIC", loadStep, numberOfSteps_, 1.0, 0.25, 0.5, hammerPoints_, hammerPointsBlendZone_);
                 std::vector<int> freedom = el->getFreedomDegree();
                 int num = freedom.size();
 
                 for (size_t i = 0; i < num; i++)
                 {
-
                     int dof = 2 * freedom[i];
                     ierr = VecSetValues(b, 1, &dof, &elementMatrices.first(2 * i), ADD_VALUES);
 
@@ -1331,7 +1322,6 @@ int GlobalSolid::solveStaticProblem()
 
                     for (size_t j = 0; j < num; j++)
                     {
-
                         int dof1 = 2 * freedom[i];
                         int dof2 = 2 * freedom[j];
                         ierr = MatSetValues(A, 1, &dof1, 1, &dof2, &elementMatrices.second(2 * i, 2 * j), ADD_VALUES);
@@ -1440,10 +1430,17 @@ int GlobalSolid::solveStaticProblem()
                 norm += val * val;
                 node->incrementCurrentCoordinate(1, val);
             }
-            for (CP_BlendingZone *ble : cpsInsideBledingZone_)
+            // if (rank == 0)
+            // {
+            for (InactiveNode *no : inactiveNode_)
             {
-                ble->interpolateGlobalCoordinate();
+                no->interpolateGlobalCoordinate();
             }
+            for (InactiveCP *cp : inactiveCP_)
+            {
+                cp->interpolateGlobalCoordinate();
+            }
+            // }
 
             boost::posix_time::ptime t2 =
                 boost::posix_time::microsec_clock::local_time();
@@ -1478,9 +1475,6 @@ int GlobalSolid::solveStaticProblem()
         if (rank == 0)
         {
             exportToParaviewISO(loadStep);
-        }
-        else if (rank == 1)
-        {
             for (Node *n : nodes_)
             {
                 n->setZeroStressState();
@@ -2080,6 +2074,9 @@ void GlobalSolid::domainDecompositionMETIS(const std::string &elementType)
 
 int GlobalSolid::solveDynamicProblem()
 {
+    computeDistanceFromFEBoundary();
+    incidenceLocalxGlobal();
+    checkInactivesCPandNode();
     firstAccelerationCalculation();
 
     Mat A;
@@ -2095,19 +2092,18 @@ int GlobalSolid::solveDynamicProblem()
 
     MPI_Comm_rank(PETSC_COMM_WORLD, &rank);
 
-    //int n = (order_ + 1) * (order_ + 2) / 2.0;
-    //std::stringstream text1;
+    std::stringstream text1;
 
     if (rank == 0)
     {
         exportToParaviewISO(0);
-        //text1 << "DeslocamentoxTempo.txt";
+        text1 << "DeslocamentoxTempo.txt";
     }
     else if (rank == 1)
     {
         exportToParaviewFEM(0);
     }
-    // std::ofstream file1(text1.str());
+    std::ofstream file1(text1.str());
 
     double initialNorm = 0.0;
     for (ControlPoint *node : controlPoints_)
@@ -2123,7 +2119,7 @@ int GlobalSolid::solveDynamicProblem()
         initialNorm += x1 * x1 + x2 * x2;
     }
 
-    int ndir = dirichletConditions_.size() + dirichletConditionsFE_.size();
+    int ndir = dirichletConditions_.size() + dirichletConditionsFE_.size() + 2 * inactiveCPandNode_.size();
     PetscMalloc1(ndir, &dof);
     int idir = 0;
     for (DirichletCondition *dir : dirichletConditions_)
@@ -2137,6 +2133,11 @@ int GlobalSolid::solveDynamicProblem()
         int indexNode = dir->getNode()->getIndex();
         int direction = dir->getDirection();
         dof[idir++] = (2 * indexNode + direction);
+    }
+    for (int index : inactiveCPandNode_)
+    {
+        dof[idir++] = 2 * index;
+        dof[idir++] = 2 * index + 1;
     }
 
     for (int timeStep = 1; timeStep <= numberOfSteps_; timeStep++)
@@ -2192,7 +2193,6 @@ int GlobalSolid::solveDynamicProblem()
                     double val1 = con->getValue();
                     int dof = 2 * ind + dir;
                     ierr = VecSetValues(b, 1, &dof, &val1, ADD_VALUES);
-                    // std::cout<<"NODE: "<<ind<<" DIRECTION: "<<dir<<" VALUE: "<<val1<<std::endl;
                 }
             }
 
@@ -2202,7 +2202,7 @@ int GlobalSolid::solveDynamicProblem()
                 {
                     ControlPoint *cp = con->getControlPoint();
                     int dir = con->getDirection();
-                    double val1 = (con->getValue()) / (1.0 * numberOfSteps_);
+                    double val1 = (con->getValue()); // / (1.0 * numberOfSteps_);
 
                     cp->incrementCurrentCoordinate(dir, val1);
                 }
@@ -2210,7 +2210,7 @@ int GlobalSolid::solveDynamicProblem()
                 {
                     Node *no = con->getNode();
                     int dir = con->getDirection();
-                    double val1 = (con->getValue()) / (1.0 * numberOfSteps_);
+                    double val1 = (con->getValue()); // / (1.0 * numberOfSteps_);
 
                     no->incrementCurrentCoordinate(dir, val1);
                 }
@@ -2224,43 +2224,29 @@ int GlobalSolid::solveDynamicProblem()
 
                 for (size_t i = 0; i < num; i++)
                 {
-                    if (fabs(elementMatrices.first(2 * i)) >= 1.0e-15)
-                    {
-                        int dof = 2 * el->getControlPoint(i)->getIndex();
-                        ierr = VecSetValues(b, 1, &dof, &elementMatrices.first(2 * i), ADD_VALUES);
-                    }
-                    if (fabs(elementMatrices.first(2 * i + 1)) >= 1.0e-15)
-                    {
-                        int dof = 2 * el->getControlPoint(i)->getIndex() + 1;
-                        ierr = VecSetValues(b, 1, &dof, &elementMatrices.first(2 * i + 1), ADD_VALUES);
-                    }
+                    int dof = 2 * el->getControlPoint(i)->getIndex();
+                    ierr = VecSetValues(b, 1, &dof, &elementMatrices.first(2 * i), ADD_VALUES);
+
+                    dof = 2 * el->getControlPoint(i)->getIndex() + 1;
+                    ierr = VecSetValues(b, 1, &dof, &elementMatrices.first(2 * i + 1), ADD_VALUES);
 
                     for (size_t j = 0; j < num; j++)
                     {
-                        if (fabs(elementMatrices.second(2 * i, 2 * j)) >= 1.e-15)
-                        {
-                            int dof1 = 2 * el->getControlPoint(i)->getIndex();
-                            int dof2 = 2 * el->getControlPoint(j)->getIndex();
-                            ierr = MatSetValues(A, 1, &dof1, 1, &dof2, &elementMatrices.second(2 * i, 2 * j), ADD_VALUES);
-                        }
-                        if (fabs(elementMatrices.second(2 * i + 1, 2 * j)) >= 1.e-15)
-                        {
-                            int dof1 = 2 * el->getControlPoint(i)->getIndex() + 1;
-                            int dof2 = 2 * el->getControlPoint(j)->getIndex();
-                            ierr = MatSetValues(A, 1, &dof1, 1, &dof2, &elementMatrices.second(2 * i + 1, 2 * j), ADD_VALUES);
-                        }
-                        if (fabs(elementMatrices.second(2 * i, 2 * j + 1)) >= 1.e-15)
-                        {
-                            int dof1 = 2 * el->getControlPoint(i)->getIndex();
-                            int dof2 = 2 * el->getControlPoint(j)->getIndex() + 1;
-                            ierr = MatSetValues(A, 1, &dof1, 1, &dof2, &elementMatrices.second(2 * i, 2 * j + 1), ADD_VALUES);
-                        }
-                        if (fabs(elementMatrices.second(2 * i + 1, 2 * j + 1)) >= 1.e-15)
-                        {
-                            int dof1 = 2 * el->getControlPoint(i)->getIndex() + 1;
-                            int dof2 = 2 * el->getControlPoint(j)->getIndex() + 1;
-                            ierr = MatSetValues(A, 1, &dof1, 1, &dof2, &elementMatrices.second(2 * i + 1, 2 * j + 1), ADD_VALUES);
-                        }
+                        int dof1 = 2 * el->getControlPoint(i)->getIndex();
+                        int dof2 = 2 * el->getControlPoint(j)->getIndex();
+                        ierr = MatSetValues(A, 1, &dof1, 1, &dof2, &elementMatrices.second(2 * i, 2 * j), ADD_VALUES);
+
+                        dof1 = 2 * el->getControlPoint(i)->getIndex() + 1;
+                        dof2 = 2 * el->getControlPoint(j)->getIndex();
+                        ierr = MatSetValues(A, 1, &dof1, 1, &dof2, &elementMatrices.second(2 * i + 1, 2 * j), ADD_VALUES);
+
+                        dof1 = 2 * el->getControlPoint(i)->getIndex();
+                        dof2 = 2 * el->getControlPoint(j)->getIndex() + 1;
+                        ierr = MatSetValues(A, 1, &dof1, 1, &dof2, &elementMatrices.second(2 * i, 2 * j + 1), ADD_VALUES);
+
+                        dof1 = 2 * el->getControlPoint(i)->getIndex() + 1;
+                        dof2 = 2 * el->getControlPoint(j)->getIndex() + 1;
+                        ierr = MatSetValues(A, 1, &dof1, 1, &dof2, &elementMatrices.second(2 * i + 1, 2 * j + 1), ADD_VALUES);
                     }
                 }
             }
@@ -2268,48 +2254,35 @@ int GlobalSolid::solveDynamicProblem()
             for (Element *el : elements_part)
             {
                 std::pair<vector<double>, matrix<double>> elementMatrices;
-                elementMatrices = el->elementContributions(planeState_, "DYNAMIC", 1, 1, deltat_, beta_, gamma_);
-                int num = el->getConnection().size();
+                elementMatrices = el->elementContributions(planeState_, "DYNAMIC", 1, 1, deltat_, beta_, gamma_, hammerPoints_, hammerPointsBlendZone_);
+                std::vector<int> freedom = el->getFreedomDegree();
+                int num = freedom.size();
 
                 for (size_t i = 0; i < num; i++)
                 {
-                    if (fabs(elementMatrices.first(2 * i)) >= 1.0e-11)
-                    {
-                        int dof = 2 * el->getNode(i)->getIndex();
-                        ierr = VecSetValues(b, 1, &dof, &elementMatrices.first(2 * i), ADD_VALUES);
-                    }
-                    if (fabs(elementMatrices.first(2 * i + 1)) >= 1.0e-11)
-                    {
-                        int dof = 2 * el->getNode(i)->getIndex() + 1;
-                        ierr = VecSetValues(b, 1, &dof, &elementMatrices.first(2 * i + 1), ADD_VALUES);
-                    }
+                    int dof = 2 * freedom[i];
+                    ierr = VecSetValues(b, 1, &dof, &elementMatrices.first(2 * i), ADD_VALUES);
+
+                    dof = 2 * freedom[i] + 1;
+                    ierr = VecSetValues(b, 1, &dof, &elementMatrices.first(2 * i + 1), ADD_VALUES);
 
                     for (size_t j = 0; j < num; j++)
                     {
-                        if (fabs(elementMatrices.second(2 * i, 2 * j)) >= 1.e-11)
-                        {
-                            int dof1 = 2 * el->getNode(i)->getIndex();
-                            int dof2 = 2 * el->getNode(j)->getIndex();
-                            ierr = MatSetValues(A, 1, &dof1, 1, &dof2, &elementMatrices.second(2 * i, 2 * j), ADD_VALUES);
-                        }
-                        if (fabs(elementMatrices.second(2 * i + 1, 2 * j)) >= 1.e-11)
-                        {
-                            int dof1 = 2 * el->getNode(i)->getIndex() + 1;
-                            int dof2 = 2 * el->getNode(j)->getIndex();
-                            ierr = MatSetValues(A, 1, &dof1, 1, &dof2, &elementMatrices.second(2 * i + 1, 2 * j), ADD_VALUES);
-                        }
-                        if (fabs(elementMatrices.second(2 * i, 2 * j + 1)) >= 1.e-11)
-                        {
-                            int dof1 = 2 * el->getNode(i)->getIndex();
-                            int dof2 = 2 * el->getNode(j)->getIndex() + 1;
-                            ierr = MatSetValues(A, 1, &dof1, 1, &dof2, &elementMatrices.second(2 * i, 2 * j + 1), ADD_VALUES);
-                        }
-                        if (fabs(elementMatrices.second(2 * i + 1, 2 * j + 1)) >= 1.e-11)
-                        {
-                            int dof1 = 2 * el->getNode(i)->getIndex() + 1;
-                            int dof2 = 2 * el->getNode(j)->getIndex() + 1;
-                            ierr = MatSetValues(A, 1, &dof1, 1, &dof2, &elementMatrices.second(2 * i + 1, 2 * j + 1), ADD_VALUES);
-                        }
+                        int dof1 = 2 * freedom[i];
+                        int dof2 = 2 * freedom[j];
+                        ierr = MatSetValues(A, 1, &dof1, 1, &dof2, &elementMatrices.second(2 * i, 2 * j), ADD_VALUES);
+
+                        dof1 = 2 * freedom[i] + 1;
+                        dof2 = 2 * freedom[j];
+                        ierr = MatSetValues(A, 1, &dof1, 1, &dof2, &elementMatrices.second(2 * i + 1, 2 * j), ADD_VALUES);
+
+                        dof1 = 2 * freedom[i];
+                        dof2 = 2 * freedom[j] + 1;
+                        ierr = MatSetValues(A, 1, &dof1, 1, &dof2, &elementMatrices.second(2 * i, 2 * j + 1), ADD_VALUES);
+
+                        dof1 = 2 * freedom[i] + 1;
+                        dof2 = 2 * freedom[j] + 1;
+                        ierr = MatSetValues(A, 1, &dof1, 1, &dof2, &elementMatrices.second(2 * i + 1, 2 * j + 1), ADD_VALUES);
                     }
                 }
             }
@@ -2412,6 +2385,15 @@ int GlobalSolid::solveDynamicProblem()
                 node->setCurrentVelocity(vel);
             }
 
+            for (InactiveNode *no : inactiveNode_)
+            {
+                no->interpolateGlobalCoordinate();
+            }
+            for (InactiveCP *cp : inactiveCP_)
+            {
+                cp->interpolateGlobalCoordinate();
+            }
+
             boost::posix_time::ptime t2 =
                 boost::posix_time::microsec_clock::local_time();
 
@@ -2445,6 +2427,8 @@ int GlobalSolid::solveDynamicProblem()
         if (rank == 0)
         {
             exportToParaviewISO(timeStep);
+            file1 << timeStep * deltat_ << " " << nodes_[2]->getCurrentCoordinate()[1] - nodes_[2]->getInitialCoordinate()[1] << std::endl;
+
             // file1 << timeStep * deltat_ << " " << controlPoints_[1999]->getCurrentCoordinate()[1] - controlPoints_[1999]->getInitialCoordinate()[1] << " " << controlPoints_[1999]->getCurrentCoordinate()[0] - controlPoints_[1999]->getInitialCoordinate()[0] << std::endl;
         }
         else if (rank == 1)
@@ -2510,7 +2494,7 @@ int GlobalSolid::firstAccelerationCalculation()
 
     MPI_Comm_rank(PETSC_COMM_WORLD, &rank);
 
-    int ndir = dirichletConditions_.size() + dirichletConditionsFE_.size();
+    int ndir = dirichletConditions_.size() + dirichletConditionsFE_.size() + 2 * inactiveCPandNode_.size();
     PetscMalloc1(ndir, &dof);
     int idir = 0;
     for (DirichletCondition *dir : dirichletConditions_)
@@ -2524,6 +2508,11 @@ int GlobalSolid::firstAccelerationCalculation()
         int indexNode = dir->getNode()->getIndex();
         int direction = dir->getDirection();
         dof[idir++] = (2 * indexNode + direction);
+    }
+    for (int index : inactiveCPandNode_)
+    {
+        dof[idir++] = 2 * index;
+        dof[idir++] = 2 * index + 1;
     }
 
     //Create PETSc sparse parallel matrix
@@ -2588,116 +2577,86 @@ int GlobalSolid::firstAccelerationCalculation()
         std::pair<vector<double>, matrix<double>> elementMatrices;
         elementMatrices = el->cellContributions(planeState_, "STATIC", 1, 1, deltat_, beta_, gamma_, quadrature_);
         int num = el->getControlPoints().size();
-        matrix<double> massLocal(2 * num, 2 * num, 0.0);
-        massLocal = el->massMatrix(quadrature_);
+        matrix<double> massLocal = el->massMatrix(quadrature_);
 
         for (size_t i = 0; i < num; i++)
         {
-            if (fabs(elementMatrices.first(2 * i)) >= 1.0e-15)
-            {
-                int dof = 2 * el->getControlPoint(i)->getIndex();
-                ierr = VecSetValues(b, 1, &dof, &elementMatrices.first(2 * i), ADD_VALUES);
-            }
-            if (fabs(elementMatrices.first(2 * i + 1)) >= 1.0e-15)
-            {
-                int dof = 2 * el->getControlPoint(i)->getIndex() + 1;
-                ierr = VecSetValues(b, 1, &dof, &elementMatrices.first(2 * i + 1), ADD_VALUES);
-            }
+            int dof = 2 * el->getControlPoint(i)->getIndex();
+            ierr = VecSetValues(b, 1, &dof, &elementMatrices.first(2 * i), ADD_VALUES);
+
+            dof = 2 * el->getControlPoint(i)->getIndex() + 1;
+            ierr = VecSetValues(b, 1, &dof, &elementMatrices.first(2 * i + 1), ADD_VALUES);
 
             for (size_t j = 0; j < num; j++)
             {
-                if (fabs(massLocal(2 * i, 2 * j)) >= 1.e-15)
-                {
-                    int dof1 = 2 * el->getControlPoint(i)->getIndex();
-                    int dof2 = 2 * el->getControlPoint(j)->getIndex();
-                    ierr = MatSetValues(A, 1, &dof1, 1, &dof2, &massLocal(2 * i, 2 * j), ADD_VALUES);
-                }
-                if (fabs(massLocal(2 * i + 1, 2 * j)) >= 1.e-15)
-                {
-                    int dof1 = 2 * el->getControlPoint(i)->getIndex() + 1;
-                    int dof2 = 2 * el->getControlPoint(j)->getIndex();
-                    ierr = MatSetValues(A, 1, &dof1, 1, &dof2, &massLocal(2 * i + 1, 2 * j), ADD_VALUES);
-                }
-                if (fabs(massLocal(2 * i, 2 * j + 1)) >= 1.e-15)
-                {
-                    int dof1 = 2 * el->getControlPoint(i)->getIndex();
-                    int dof2 = 2 * el->getControlPoint(j)->getIndex() + 1;
-                    ierr = MatSetValues(A, 1, &dof1, 1, &dof2, &massLocal(2 * i, 2 * j + 1), ADD_VALUES);
-                }
-                if (fabs(massLocal(2 * i + 1, 2 * j + 1)) >= 1.e-15)
-                {
-                    int dof1 = 2 * el->getControlPoint(i)->getIndex() + 1;
-                    int dof2 = 2 * el->getControlPoint(j)->getIndex() + 1;
-                    ierr = MatSetValues(A, 1, &dof1, 1, &dof2, &massLocal(2 * i + 1, 2 * j + 1), ADD_VALUES);
-                }
+                int dof1 = 2 * el->getControlPoint(i)->getIndex();
+                int dof2 = 2 * el->getControlPoint(j)->getIndex();
+                ierr = MatSetValues(A, 1, &dof1, 1, &dof2, &massLocal(2 * i, 2 * j), ADD_VALUES);
+
+                dof1 = 2 * el->getControlPoint(i)->getIndex() + 1;
+                dof2 = 2 * el->getControlPoint(j)->getIndex();
+                ierr = MatSetValues(A, 1, &dof1, 1, &dof2, &massLocal(2 * i + 1, 2 * j), ADD_VALUES);
+
+                dof1 = 2 * el->getControlPoint(i)->getIndex();
+                dof2 = 2 * el->getControlPoint(j)->getIndex() + 1;
+                ierr = MatSetValues(A, 1, &dof1, 1, &dof2, &massLocal(2 * i, 2 * j + 1), ADD_VALUES);
+
+                dof1 = 2 * el->getControlPoint(i)->getIndex() + 1;
+                dof2 = 2 * el->getControlPoint(j)->getIndex() + 1;
+                ierr = MatSetValues(A, 1, &dof1, 1, &dof2, &massLocal(2 * i + 1, 2 * j + 1), ADD_VALUES);
             }
         }
     }
     for (Element *el : elements_part)
     {
         std::pair<vector<double>, matrix<double>> elementMatrices;
-        elementMatrices = el->elementContributions(planeState_, "STATIC", 1, 1, deltat_, beta_, gamma_);
-        int n = elementMatrices.first.size();
-        matrix<double> massLocal;
-        massLocal = el->massMatrix();
-        int num = el->getConnection().size();
+        elementMatrices = el->elementContributions(planeState_, "STATIC", 1, 1, deltat_, beta_, gamma_, hammerPoints_, hammerPointsBlendZone_);
+        matrix<double> massLocal = el->massMatrix(hammerPoints_, hammerPointsBlendZone_);
+        std::vector<int> freedom = el->getFreedomDegree();
+        int num = freedom.size();
 
         for (size_t i = 0; i < num; i++)
         {
-            if (fabs(elementMatrices.first(2 * i)) >= 1.0e-15)
-            {
-                int dof = 2 * el->getNode(i)->getIndex();
-                ierr = VecSetValues(b, 1, &dof, &elementMatrices.first(2 * i), ADD_VALUES);
-            }
-            if (fabs(elementMatrices.first(2 * i + 1)) >= 1.0e-15)
-            {
-                int dof = 2 * el->getNode(i)->getIndex() + 1;
-                ierr = VecSetValues(b, 1, &dof, &elementMatrices.first(2 * i + 1), ADD_VALUES);
-            }
+            int dof = 2 * freedom[i];
+            ierr = VecSetValues(b, 1, &dof, &elementMatrices.first(2 * i), ADD_VALUES);
+
+            dof = 2 * freedom[i] + 1;
+            ierr = VecSetValues(b, 1, &dof, &elementMatrices.first(2 * i + 1), ADD_VALUES);
 
             for (size_t j = 0; j < num; j++)
             {
-                if (fabs(elementMatrices.second(2 * i, 2 * j)) >= 1.e-15)
-                {
-                    int dof1 = 2 * el->getNode(i)->getIndex();
-                    int dof2 = 2 * el->getNode(j)->getIndex();
-                    ierr = MatSetValues(A, 1, &dof1, 1, &dof2, &massLocal(2 * i, 2 * j), ADD_VALUES);
-                }
-                if (fabs(elementMatrices.second(2 * i + 1, 2 * j)) >= 1.e-15)
-                {
-                    int dof1 = 2 * el->getNode(i)->getIndex() + 1;
-                    int dof2 = 2 * el->getNode(j)->getIndex();
-                    ierr = MatSetValues(A, 1, &dof1, 1, &dof2, &massLocal(2 * i + 1, 2 * j), ADD_VALUES);
-                }
-                if (fabs(elementMatrices.second(2 * i, 2 * j + 1)) >= 1.e-15)
-                {
-                    int dof1 = 2 * el->getNode(i)->getIndex();
-                    int dof2 = 2 * el->getNode(j)->getIndex() + 1;
-                    ierr = MatSetValues(A, 1, &dof1, 1, &dof2, &massLocal(2 * i, 2 * j + 1), ADD_VALUES);
-                }
-                if (fabs(elementMatrices.second(2 * i + 1, 2 * j + 1)) >= 1.e-15)
-                {
-                    int dof1 = 2 * el->getNode(i)->getIndex() + 1;
-                    int dof2 = 2 * el->getNode(j)->getIndex() + 1;
-                    ierr = MatSetValues(A, 1, &dof1, 1, &dof2, &massLocal(2 * i + 1, 2 * j + 1), ADD_VALUES);
-                }
+                int dof1 = 2 * freedom[i];
+                int dof2 = 2 * freedom[j];
+                ierr = MatSetValues(A, 1, &dof1, 1, &dof2, &massLocal(2 * i, 2 * j), ADD_VALUES);
+
+                dof1 = 2 * freedom[i] + 1;
+                dof2 = 2 * freedom[j];
+                ierr = MatSetValues(A, 1, &dof1, 1, &dof2, &massLocal(2 * i + 1, 2 * j), ADD_VALUES);
+
+                dof1 = 2 * freedom[i];
+                dof2 = 2 * freedom[j] + 1;
+                ierr = MatSetValues(A, 1, &dof1, 1, &dof2, &massLocal(2 * i, 2 * j + 1), ADD_VALUES);
+
+                dof1 = 2 * freedom[i] + 1;
+                dof2 = 2 * freedom[j] + 1;
+                ierr = MatSetValues(A, 1, &dof1, 1, &dof2, &massLocal(2 * i + 1, 2 * j + 1), ADD_VALUES);
             }
         }
     }
 
     //Assemble matrices and vectors
+
     ierr = MatAssemblyBegin(A, MAT_FINAL_ASSEMBLY);
     CHKERRQ(ierr);
     ierr = MatAssemblyEnd(A, MAT_FINAL_ASSEMBLY);
     CHKERRQ(ierr);
-    ;
 
     ierr = VecAssemblyBegin(b);
     CHKERRQ(ierr);
     ierr = VecAssemblyEnd(b);
     CHKERRQ(ierr);
 
-    MatZeroRowsColumns(A, dirichletConditions_.size(), dof, 1.0, x, b);
+    MatZeroRowsColumns(A, ndir, dof, 1.0, x, b);
 
     // VecView(b, PETSC_VIEWER_STDOUT_WORLD);
     // CHKERRQ(ierr);
@@ -2751,6 +2710,9 @@ int GlobalSolid::firstAccelerationCalculation()
         firstAccel(1) = val;
         cp->setCurrentAcceleration(firstAccel);
         cp->setPastAcceleration(firstAccel);
+
+        bounded_vector<double, 2> inicialCoord = cp->getInitialCoordinate();
+        cp->setCurrentCoordinate(inicialCoord);
     }
     for (Node *node : nodes_)
     {
@@ -2767,6 +2729,9 @@ int GlobalSolid::firstAccelerationCalculation()
         firstAccel(1) = val;
         node->setCurrentAcceleration(firstAccel);
         node->setPastAcceleration(firstAccel);
+
+        bounded_vector<double, 2> inicialCoord = node->getInitialCoordinate();
+        node->setCurrentCoordinate(inicialCoord);
     }
 
     ierr = KSPDestroy(&ksp);
@@ -2789,19 +2754,17 @@ int GlobalSolid::firstAccelerationCalculation()
 
 void GlobalSolid::incidenceLocalxGlobal()
 {
-    int rank;
-    MPI_Comm_rank(PETSC_COMM_WORLD, &rank);
-
     /*Looping para:
         -Encontrar pontos de hammer dentro da blending zone;
             -Célula em que o ponto de hammer está inserido;
             -Xsis correspondentes ao ponto de hammer na célula;
             -Computar valor de b e db_dxsiLocal
     */
-    for (Element *el : elements_) ///Looping para encontrar pontos de hammer dentro da blending zone;
+    for (Element *el : elements_part) ///Looping para encontrar pontos de hammer dentro da blending zone;
     {
         std::vector<Node *> conec = el->getConnection();
-        matrix<double> integrationPoints = el->hammerQuadrature();
+        matrix<double> integrationPoints = el->hammerQuadrature(hammerPointsBlendZone_);
+        bool blendZone = false; //test to check if the finite element is inside blend zone;
 
         //Variáveis para serem exportadas para os elementos
         std::vector<bool> insideBlendZone;                       //verdadeiro se o ponto de hammer está na blend zone e encontrou uma célula;
@@ -2810,7 +2773,7 @@ void GlobalSolid::incidenceLocalxGlobal()
         std::vector<double> bValue;                              //value of assigned distance
         std::vector<bounded_vector<double, 2>> db_dxsiValue;     //derivada de b em relação a xsi
 
-        for (int ih = 0; ih < integrationPoints.size1(); ih++)
+        for (int ih = 0; ih < hammerPointsBlendZone_; ih++)
         {
             double DAhammer = 0.0;             //distância interpolada do ponto de hammer ao contorno de elementos finitos
             bounded_vector<double, 2> coordFE; //coordenada global do ponto de hammer
@@ -2874,6 +2837,7 @@ void GlobalSolid::incidenceLocalxGlobal()
                         xsiISO(1) >= -1.0 and xsiISO(1) <= 1.0)
                     {
                         insideBlendZone[ih] = true;
+                        blendZone = true;
                         xsiIncidenceCell.push_back(xsiISO);
                         incidenceCell.push_back(cell);
 
@@ -2895,9 +2859,6 @@ void GlobalSolid::incidenceLocalxGlobal()
                         db_dxsi(1) = blend(1) * dDA_dxsi(1); //(db_dxsiLocal2)
                         db_dxsiValue.push_back(db_dxsi);
 
-                        // if (rank == 0)
-                        //     std::cout << el->getIndex() << " " << ih << " " << blend(1) << " " << dDA_dxsi(0) << " " << dDA_dxsi(1) << std::endl;
-
                         break;
                     }
                 }
@@ -2907,7 +2868,10 @@ void GlobalSolid::incidenceLocalxGlobal()
                 insideBlendZone.push_back(false);
             }
         }
-        el->setIncidenceOnGlobal(insideBlendZone, incidenceCell, xsiIncidenceCell, bValue, db_dxsiValue);
+        if (blendZone == true)
+        {
+            el->setIncidenceOnGlobal(insideBlendZone, incidenceCell, xsiIncidenceCell, bValue, db_dxsiValue);
+        }
     }
 
     // /*Looping para:
@@ -3231,197 +3195,194 @@ bounded_matrix<double, 2, 2> GlobalSolid::inverseMatrix(const bounded_matrix<dou
 
 void GlobalSolid::computeDistanceFromFEBoundary()
 {
-    for (Node *no : nodes_) //paralelizar utilizando elements_part
+    for (Element *el : elements_part)
     {
-        double distanceNode = 1000000.0;
-        bounded_vector<double, 2> coord = no->getCurrentCoordinate();
-
-        for (BoundaryElement *bound : boundaryFE_)
+        std::vector<Node *> conec = el->getConnection();
+        for (Node *no : conec)
         {
-            double distance;
-            double xsiBoundary = 0.0; //primeira tentativa
-            double deltaxsi = 100000.0;
-            int cont = 0;
-            std::vector<Node *> boundaryConec = bound->getNodes();
-            bounded_vector<double, 2> coordBoundary, firstDerivate, secondDerivate;
-
-            while (fabs(deltaxsi) >= 1.0e-06 and xsiBoundary >= -1.0 and xsiBoundary <= 1.0 and cont <= 15)
+            if (no->getDistanceToBoundary() == -10000.0) //-10000.0 é o valor que a variável foi iniciada na criação do nó
             {
-                matrix<double> boundaryFunctions = bound->shapeFunctionsAndDerivates(xsiBoundary); //PHI, PHI', PHI''
-                coordBoundary(0) = 0.0;
-                coordBoundary(1) = 0.0;
-                firstDerivate(0) = 0.0;
-                firstDerivate(1) = 0.0;
-                secondDerivate(0) = 0.0;
-                secondDerivate(1) = 0.0;
-                int aux = 0;
-                for (Node *node : boundaryConec)
+                double distanceNode = 1000000.0;
+                bounded_vector<double, 2> coord = no->getCurrentCoordinate();
+
+                for (BoundaryElement *bound : boundaryFE_)
                 {
-                    bounded_vector<double, 2> coordinateNode = node->getCurrentCoordinate();
+                    double distance;
+                    double xsiBoundary = 0.0; //primeira tentativa
+                    double deltaxsi = 100000.0;
+                    int cont = 0;
+                    std::vector<Node *> boundaryConec = bound->getNodes();
+                    bounded_vector<double, 2> coordBoundary, firstDerivate, secondDerivate;
 
-                    coordBoundary(0) += boundaryFunctions(aux, 0) * coordinateNode(0);
-                    coordBoundary(1) += boundaryFunctions(aux, 0) * coordinateNode(1);
+                    while (fabs(deltaxsi) >= 1.0e-06 and xsiBoundary >= -1.0 and xsiBoundary <= 1.0 and cont <= 15)
+                    {
+                        matrix<double> boundaryFunctions = bound->shapeFunctionsAndDerivates(xsiBoundary); //PHI, PHI', PHI''
+                        coordBoundary(0) = 0.0;
+                        coordBoundary(1) = 0.0;
+                        firstDerivate(0) = 0.0;
+                        firstDerivate(1) = 0.0;
+                        secondDerivate(0) = 0.0;
+                        secondDerivate(1) = 0.0;
+                        int aux = 0;
+                        for (Node *node : boundaryConec)
+                        {
+                            bounded_vector<double, 2> coordinateNode = node->getCurrentCoordinate();
 
-                    firstDerivate(0) += boundaryFunctions(aux, 1) * coordinateNode(0);
-                    firstDerivate(1) += boundaryFunctions(aux, 1) * coordinateNode(1);
+                            coordBoundary(0) += boundaryFunctions(aux, 0) * coordinateNode(0);
+                            coordBoundary(1) += boundaryFunctions(aux, 0) * coordinateNode(1);
 
-                    secondDerivate(0) += boundaryFunctions(aux, 2) * coordinateNode(0);
-                    secondDerivate(1) += boundaryFunctions(aux, 2) * coordinateNode(1);
-                    aux = aux + 1;
+                            firstDerivate(0) += boundaryFunctions(aux, 1) * coordinateNode(0);
+                            firstDerivate(1) += boundaryFunctions(aux, 1) * coordinateNode(1);
+
+                            secondDerivate(0) += boundaryFunctions(aux, 2) * coordinateNode(0);
+                            secondDerivate(1) += boundaryFunctions(aux, 2) * coordinateNode(1);
+                            aux = aux + 1;
+                        }
+                        double h = -((coord(0) - coordBoundary(0)) * (-firstDerivate(0)) + (coord(1) - coordBoundary(1)) * (-firstDerivate(1)));
+                        double dh_dxsi = (-firstDerivate(0)) * (-firstDerivate(0)) + (-secondDerivate(0)) * (coord(0) - coordBoundary(0)) +
+                                         (-firstDerivate(1)) * (-firstDerivate(1)) + (-secondDerivate(1)) * (coord(1) - coordBoundary(1));
+
+                        deltaxsi = h / dh_dxsi;
+
+                        xsiBoundary = xsiBoundary + deltaxsi;
+
+                        cont++;
+                    }
+
+                    if (xsiBoundary <= -1.0)
+                    {
+                        matrix<double> boundaryFunctions = bound->shapeFunctionsAndDerivates(-1.0); //PHI, PHI', PHI''
+                        int aux = 0;
+                        coordBoundary(0) = 0.0;
+                        coordBoundary(1) = 0.0;
+                        for (Node *node : boundaryConec)
+                        {
+                            bounded_vector<double, 2> coordinateNode = node->getCurrentCoordinate();
+                            coordBoundary(0) += boundaryFunctions(aux, 0) * coordinateNode(0);
+                            coordBoundary(1) += boundaryFunctions(aux, 0) * coordinateNode(1);
+
+                            aux = aux + 1;
+                        }
+                    }
+                    else if (xsiBoundary >= 1.0)
+                    {
+                        matrix<double> boundaryFunctions = bound->shapeFunctionsAndDerivates(1.0); //PHI, PHI', PHI''
+                        int aux = 0;
+                        coordBoundary(0) = 0.0;
+                        coordBoundary(1) = 0.0;
+                        for (Node *node : boundaryConec)
+                        {
+                            bounded_vector<double, 2> coordinateNode = node->getCurrentCoordinate();
+                            coordBoundary(0) += boundaryFunctions(aux, 0) * coordinateNode(0);
+                            coordBoundary(1) += boundaryFunctions(aux, 0) * coordinateNode(1);
+
+                            aux = aux + 1;
+                        }
+                    }
+
+                    distance = sqrt((coord(0) - coordBoundary(0)) * (coord(0) - coordBoundary(0)) + (coord(1) - coordBoundary(1)) * (coord(1) - coordBoundary(1)));
+
+                    if (distance < distanceNode)
+                    {
+                        distanceNode = distance;
+                    }
                 }
-                double h = -((coord(0) - coordBoundary(0)) * (-firstDerivate(0)) + (coord(1) - coordBoundary(1)) * (-firstDerivate(1)));
-                double dh_dxsi = (-firstDerivate(0)) * (-firstDerivate(0)) + (-secondDerivate(0)) * (coord(0) - coordBoundary(0)) +
-                                 (-firstDerivate(1)) * (-firstDerivate(1)) + (-secondDerivate(1)) * (coord(1) - coordBoundary(1));
-
-                deltaxsi = h / dh_dxsi;
-
-                xsiBoundary = xsiBoundary + deltaxsi;
-
-                cont++;
-            }
-
-            if (xsiBoundary <= -1.0)
-            {
-                matrix<double> boundaryFunctions = bound->shapeFunctionsAndDerivates(-1.0); //PHI, PHI', PHI''
-                int aux = 0;
-                coordBoundary(0) = 0.0;
-                coordBoundary(1) = 0.0;
-                for (Node *node : boundaryConec)
-                {
-                    bounded_vector<double, 2> coordinateNode = node->getCurrentCoordinate();
-                    coordBoundary(0) += boundaryFunctions(aux, 0) * coordinateNode(0);
-                    coordBoundary(1) += boundaryFunctions(aux, 0) * coordinateNode(1);
-
-                    aux = aux + 1;
-                }
-            }
-            else if (xsiBoundary >= 1.0)
-            {
-                matrix<double> boundaryFunctions = bound->shapeFunctionsAndDerivates(1.0); //PHI, PHI', PHI''
-                int aux = 0;
-                coordBoundary(0) = 0.0;
-                coordBoundary(1) = 0.0;
-                for (Node *node : boundaryConec)
-                {
-                    bounded_vector<double, 2> coordinateNode = node->getCurrentCoordinate();
-                    coordBoundary(0) += boundaryFunctions(aux, 0) * coordinateNode(0);
-                    coordBoundary(1) += boundaryFunctions(aux, 0) * coordinateNode(1);
-
-                    aux = aux + 1;
-                }
-            }
-
-            distance = sqrt((coord(0) - coordBoundary(0)) * (coord(0) - coordBoundary(0)) + (coord(1) - coordBoundary(1)) * (coord(1) - coordBoundary(1)));
-
-            if (distance < distanceNode)
-            {
-                distanceNode = distance;
+                no->setDistanceToBoundary(distanceNode);
             }
         }
-        no->setDistanceToBoundary(distanceNode);
-        // std::cout<<"NODE: "<<no->getIndex() <<" DISTANCE: "<<distanceNode<<std::endl;
     }
-
-    // for (Element *el : elements_) //voltar para elements_part
+    // for (Node *no : nodes_)
     // {
-    //     matrix<double> integrationPoints = el->hammerQuadrature();
-    //     std::vector<double> distanceFE;
+    //     double distanceNode = 1000000.0;
+    //     bounded_vector<double, 2> coord = no->getCurrentCoordinate();
 
-    //     for (int ip = 0; ip < integrationPoints.size1(); ip++)
+    //     for (BoundaryElement *bound : boundaryFE_)
     //     {
-    //         distanceFE.push_back(100000000.0);
-    //         bounded_vector<double, 2> xsi, coordIP; //coordinate of hammer point
-    //         xsi(0) = integrationPoints(ip, 0);
-    //         xsi(1) = integrationPoints(ip, 1);
-    //         coordIP = el->calculateGlobalCoordinate(xsi);
     //         double distance;
+    //         double xsiBoundary = 0.0; //primeira tentativa
+    //         double deltaxsi = 100000.0;
+    //         int cont = 0;
+    //         std::vector<Node *> boundaryConec = bound->getNodes();
+    //         bounded_vector<double, 2> coordBoundary, firstDerivate, secondDerivate;
 
-    //         for (BoundaryElement *bound : boundaryFE_)
+    //         while (fabs(deltaxsi) >= 1.0e-06 and xsiBoundary >= -1.0 and xsiBoundary <= 1.0 and cont <= 15)
     //         {
-    //             double xsiBoundary = 0.0; //primeira tentativa
-    //             double deltaxsi = 100000.0;
-    //             int cont = 0;
-    //             std::vector<Node *> boundaryConec = bound->getNodes();
-    //             bounded_vector<double, 2> coordBoundary, firstDerivate, secondDerivate, normal;
-
-    //             while (fabs(deltaxsi) >= 1.0e-06 and xsiBoundary >= -1.0 and xsiBoundary <= 1.0 and cont <= 15)
+    //             matrix<double> boundaryFunctions = bound->shapeFunctionsAndDerivates(xsiBoundary); //PHI, PHI', PHI''
+    //             coordBoundary(0) = 0.0;
+    //             coordBoundary(1) = 0.0;
+    //             firstDerivate(0) = 0.0;
+    //             firstDerivate(1) = 0.0;
+    //             secondDerivate(0) = 0.0;
+    //             secondDerivate(1) = 0.0;
+    //             int aux = 0;
+    //             for (Node *node : boundaryConec)
     //             {
-    //                 matrix<double> boundaryFunctions = bound->shapeFunctionsAndDerivates(xsiBoundary); //PHI, PHI', PHI''
-    //                 coordBoundary(0) = 0.0;
-    //                 coordBoundary(1) = 0.0;
-    //                 firstDerivate(0) = 0.0;
-    //                 firstDerivate(1) = 0.0;
-    //                 secondDerivate(0) = 0.0;
-    //                 secondDerivate(1) = 0.0;
-    //                 int aux = 0;
-    //                 for (Node *node : boundaryConec)
-    //                 {
-    //                     bounded_vector<double, 2> coordinateNode = node->getCurrentCoordinate();
+    //                 bounded_vector<double, 2> coordinateNode = node->getCurrentCoordinate();
 
-    //                     coordBoundary(0) += boundaryFunctions(aux, 0) * coordinateNode(0);
-    //                     coordBoundary(1) += boundaryFunctions(aux, 0) * coordinateNode(1);
+    //                 coordBoundary(0) += boundaryFunctions(aux, 0) * coordinateNode(0);
+    //                 coordBoundary(1) += boundaryFunctions(aux, 0) * coordinateNode(1);
 
-    //                     firstDerivate(0) += boundaryFunctions(aux, 1) * coordinateNode(0);
-    //                     firstDerivate(1) += boundaryFunctions(aux, 1) * coordinateNode(1);
+    //                 firstDerivate(0) += boundaryFunctions(aux, 1) * coordinateNode(0);
+    //                 firstDerivate(1) += boundaryFunctions(aux, 1) * coordinateNode(1);
 
-    //                     secondDerivate(0) += boundaryFunctions(aux, 2) * coordinateNode(0);
-    //                     secondDerivate(1) += boundaryFunctions(aux, 2) * coordinateNode(1);
-    //                     aux = aux + 1;
-    //                 }
-    //                 double h = -((coordIP(0) - coordBoundary(0)) * (-firstDerivate(0)) + (coordIP(1) - coordBoundary(1)) * (-firstDerivate(1)));
-    //                 double dh_dxsi = (-firstDerivate(0)) * (-firstDerivate(0)) + (-secondDerivate(0)) * (coordIP(0) - coordBoundary(0)) +
-    //                                  (-firstDerivate(1)) * (-firstDerivate(1)) + (-secondDerivate(1)) * (coordIP(1) - coordBoundary(1));
-
-    //                 deltaxsi = h / dh_dxsi;
-
-    //                 xsiBoundary = xsiBoundary + deltaxsi;
-
-    //                 cont++;
+    //                 secondDerivate(0) += boundaryFunctions(aux, 2) * coordinateNode(0);
+    //                 secondDerivate(1) += boundaryFunctions(aux, 2) * coordinateNode(1);
+    //                 aux = aux + 1;
     //             }
+    //             double h = -((coord(0) - coordBoundary(0)) * (-firstDerivate(0)) + (coord(1) - coordBoundary(1)) * (-firstDerivate(1)));
+    //             double dh_dxsi = (-firstDerivate(0)) * (-firstDerivate(0)) + (-secondDerivate(0)) * (coord(0) - coordBoundary(0)) +
+    //                              (-firstDerivate(1)) * (-firstDerivate(1)) + (-secondDerivate(1)) * (coord(1) - coordBoundary(1));
 
-    //             if (xsiBoundary <= -1.0)
+    //             deltaxsi = h / dh_dxsi;
+
+    //             xsiBoundary = xsiBoundary + deltaxsi;
+
+    //             cont++;
+    //         }
+
+    //         if (xsiBoundary <= -1.0)
+    //         {
+    //             matrix<double> boundaryFunctions = bound->shapeFunctionsAndDerivates(-1.0); //PHI, PHI', PHI''
+    //             int aux = 0;
+    //             coordBoundary(0) = 0.0;
+    //             coordBoundary(1) = 0.0;
+    //             for (Node *node : boundaryConec)
     //             {
-    //                 matrix<double> boundaryFunctions = bound->shapeFunctionsAndDerivates(-1.0); //PHI, PHI', PHI''
-    //                 int aux = 0;
-    //                 coordBoundary(0) = 0.0;
-    //                 coordBoundary(1) = 0.0;
-    //                 for (Node *node : boundaryConec)
-    //                 {
-    //                     bounded_vector<double, 2> coordinateNode = node->getCurrentCoordinate();
-    //                     coordBoundary(0) += boundaryFunctions(aux, 0) * coordinateNode(0);
-    //                     coordBoundary(1) += boundaryFunctions(aux, 0) * coordinateNode(1);
+    //                 bounded_vector<double, 2> coordinateNode = node->getCurrentCoordinate();
+    //                 coordBoundary(0) += boundaryFunctions(aux, 0) * coordinateNode(0);
+    //                 coordBoundary(1) += boundaryFunctions(aux, 0) * coordinateNode(1);
 
-    //                     aux = aux + 1;
-    //                 }
-    //             }
-    //             else if (xsiBoundary >= 1.0)
-    //             {
-    //                 matrix<double> boundaryFunctions = bound->shapeFunctionsAndDerivates(1.0); //PHI, PHI', PHI''
-    //                 int aux = 0;
-    //                 coordBoundary(0) = 0.0;
-    //                 coordBoundary(1) = 0.0;
-    //                 for (Node *node : boundaryConec)
-    //                 {
-    //                     bounded_vector<double, 2> coordinateNode = node->getCurrentCoordinate();
-    //                     coordBoundary(0) += boundaryFunctions(aux, 0) * coordinateNode(0);
-    //                     coordBoundary(1) += boundaryFunctions(aux, 0) * coordinateNode(1);
-
-    //                     aux = aux + 1;
-    //                 }
-    //             }
-
-    //             distance = sqrt((coordIP(0) - coordBoundary(0)) * (coordIP(0) - coordBoundary(0)) + (coordIP(1) - coordBoundary(1)) * (coordIP(1) - coordBoundary(1)));
-
-    //             if (distance < distanceFE[ip])
-    //             {
-    //                 distanceFE[ip] = distance;
+    //                 aux = aux + 1;
     //             }
     //         }
+    //         else if (xsiBoundary >= 1.0)
+    //         {
+    //             matrix<double> boundaryFunctions = bound->shapeFunctionsAndDerivates(1.0); //PHI, PHI', PHI''
+    //             int aux = 0;
+    //             coordBoundary(0) = 0.0;
+    //             coordBoundary(1) = 0.0;
+    //             for (Node *node : boundaryConec)
+    //             {
+    //                 bounded_vector<double, 2> coordinateNode = node->getCurrentCoordinate();
+    //                 coordBoundary(0) += boundaryFunctions(aux, 0) * coordinateNode(0);
+    //                 coordBoundary(1) += boundaryFunctions(aux, 0) * coordinateNode(1);
+
+    //                 aux = aux + 1;
+    //             }
+    //         }
+
+    //         distance = sqrt((coord(0) - coordBoundary(0)) * (coord(0) - coordBoundary(0)) + (coord(1) - coordBoundary(1)) * (coord(1) - coordBoundary(1)));
+
+    //         if (distance < distanceNode)
+    //         {
+    //             distanceNode = distance;
+    //         }
     //     }
-    //     el->setDistanceFromFEBoundary(distanceFE);
+    //     no->setDistanceToBoundary(distanceNode);
+    //     // std::cout<<"NODE: "<<no->getIndex() <<" DISTANCE: "<<distanceNode<<std::endl;
     // }
 
-    for (Cell *cell : cells_) //voltar para cells_part
+    for (Cell *cell : cells_part)
     {
         matrix<double> integrationPoints = cell->isoQuadrature(quadrature_);
         std::vector<double> distanceFE;
@@ -3547,225 +3508,221 @@ void GlobalSolid::computeDistanceFromFEBoundary()
             }
         }
         cell->setDistanceFromFEBoundary(distanceFE);
-        // for(int i=0; i<distanceFE.size();i++)
-        // {
-        //     std::cout<<"CELL: "<<cell->getIndex()<<" DENTRO? "<<distanceFE[i]<<std::endl;
-        // }
     }
 }
 
-void GlobalSolid::testeParaviewFE()
-{
-    std::stringstream name;
-    name << "hammerPointsFE.vtu";
-    std::ofstream file(name.str());
+// void GlobalSolid::testeParaviewFE()
+// {
+//     std::stringstream name;
+//     name << "hammerPointsFE.vtu";
+//     std::ofstream file(name.str());
 
-    matrix<double> hammer = elements_[0]->hammerQuadrature();
-    int nn = hammer.size1();
+//     matrix<double> hammer = elements_[0]->hammerQuadrature();
+//     int nn = hammer.size1();
 
-    //header
-    file << "<?xml version=\"1.0\"?>"
-         << "\n"
-         << "<VTKFile type=\"UnstructuredGrid\">"
-         << "\n"
-         << "  <UnstructuredGrid>"
-         << "\n"
-         << "  <Piece NumberOfPoints=\"" << nn * elements_.size()
-         << "\"  NumberOfCells=\"" << nn * elements_.size()
-         << "\">"
-         << "\n";
+//     //header
+//     file << "<?xml version=\"1.0\"?>"
+//          << "\n"
+//          << "<VTKFile type=\"UnstructuredGrid\">"
+//          << "\n"
+//          << "  <UnstructuredGrid>"
+//          << "\n"
+//          << "  <Piece NumberOfPoints=\"" << nn * elements_.size()
+//          << "\"  NumberOfCells=\"" << nn * elements_.size()
+//          << "\">"
+//          << "\n";
 
-    //nodal coordinates
-    file << "    <Points>"
-         << "\n"
-         << "      <DataArray type=\"Float64\" "
-         << "NumberOfComponents=\"3\" format=\"ascii\">"
-         << "\n";
-    for (Element *el : elements_)
-    {
-        matrix<double> hammer = el->hammerQuadrature();
-        for (int i = 0; i < hammer.size1(); i++)
-        {
-            bounded_vector<double, 2> xsi;
-            xsi(0) = hammer(i, 0);
-            xsi(1) = hammer(i, 1);
-            bounded_vector<double, 2> coord = el->calculateGlobalCoordinate(xsi);
-            file << coord(0) << " " << coord(1) << " " << 0.0 << "\n";
-        }
-    }
-    file << "      </DataArray>"
-         << "\n"
-         << "    </Points>"
-         << "\n";
+//     //nodal coordinates
+//     file << "    <Points>"
+//          << "\n"
+//          << "      <DataArray type=\"Float64\" "
+//          << "NumberOfComponents=\"3\" format=\"ascii\">"
+//          << "\n";
+//     for (Element *el : elements_)
+//     {
+//         matrix<double> hammer = el->hammerQuadrature();
+//         for (int i = 0; i < hammer.size1(); i++)
+//         {
+//             bounded_vector<double, 2> xsi;
+//             xsi(0) = hammer(i, 0);
+//             xsi(1) = hammer(i, 1);
+//             bounded_vector<double, 2> coord = el->calculateGlobalCoordinate(xsi);
+//             file << coord(0) << " " << coord(1) << " " << 0.0 << "\n";
+//         }
+//     }
+//     file << "      </DataArray>"
+//          << "\n"
+//          << "    </Points>"
+//          << "\n";
 
-    //element connectivity
-    file << "    <Cells>"
-         << "\n"
-         << "      <DataArray type=\"Int32\" "
-         << "Name=\"connectivity\" format=\"ascii\">"
-         << "\n";
-    int aux = 0;
-    for (Element *el : elements_)
-    {
-        for (int i = 0; i < nn; i++)
-        {
-            file << aux++ << std::endl;
-        }
-    }
-    file << "      </DataArray>"
-         << "\n";
+//     //element connectivity
+//     file << "    <Cells>"
+//          << "\n"
+//          << "      <DataArray type=\"Int32\" "
+//          << "Name=\"connectivity\" format=\"ascii\">"
+//          << "\n";
+//     int aux = 0;
+//     for (Element *el : elements_)
+//     {
+//         for (int i = 0; i < nn; i++)
+//         {
+//             file << aux++ << std::endl;
+//         }
+//     }
+//     file << "      </DataArray>"
+//          << "\n";
 
-    //offsets
-    file << "      <DataArray type=\"Int32\""
-         << " Name=\"offsets\" format=\"ascii\">"
-         << "\n";
-    aux = 0;
-    for (Element *el : elements_)
-    {
-        for (int i = 0; i < nn; i++)
-        {
-            file << aux++ << std::endl;
-        }
-    }
-    file << "      </DataArray>"
-         << "\n";
+//     //offsets
+//     file << "      <DataArray type=\"Int32\""
+//          << " Name=\"offsets\" format=\"ascii\">"
+//          << "\n";
+//     aux = 0;
+//     for (Element *el : elements_)
+//     {
+//         for (int i = 0; i < nn; i++)
+//         {
+//             file << aux++ << std::endl;
+//         }
+//     }
+//     file << "      </DataArray>"
+//          << "\n";
 
-    //elements type
-    file << "      <DataArray type=\"UInt8\" Name=\"types\" "
-         << "format=\"ascii\">"
-         << "\n";
-    for (Element *el : elements_)
-    {
-        for (int i = 0; i < nn; i++)
-        {
-            file << 1 << std::endl;
-        }
-    }
-    file << "      </DataArray>"
-         << "\n"
-         << "    </Cells>"
-         << "\n";
+//     //elements type
+//     file << "      <DataArray type=\"UInt8\" Name=\"types\" "
+//          << "format=\"ascii\">"
+//          << "\n";
+//     for (Element *el : elements_)
+//     {
+//         for (int i = 0; i < nn; i++)
+//         {
+//             file << 1 << std::endl;
+//         }
+//     }
+//     file << "      </DataArray>"
+//          << "\n"
+//          << "    </Cells>"
+//          << "\n";
 
-    //nodal results
-    file << "    <PointData>"
-         << "\n";
-    file << "      <DataArray type=\"Float64\" NumberOfComponents=\"3\" "
-         << "Name=\"Blend\" format=\"ascii\">"
-         << "\n";
-    for (Element *el : elements_)
-    {
-        std::vector<bool> blend = el->ipInsideBlendZone();
-        std::vector<double> b = el->getBlendValue();
-        int au = 0;
-        for (int i = 0; i < blend.size(); i++)
-        {
-            double tt = 0.0;
-            if (blend[i] == true)
-            {
-                tt = b[au++];
-            }
-            file << blend[i] << " " << tt << " " << 1.0 - tt << "\n";
-        }
-    }
-    file << "      </DataArray> "
-         << "\n";
+//     //nodal results
+//     file << "    <PointData>"
+//          << "\n";
+//     file << "      <DataArray type=\"Float64\" NumberOfComponents=\"3\" "
+//          << "Name=\"Blend\" format=\"ascii\">"
+//          << "\n";
+//     for (Element *el : elements_)
+//     {
+//         std::vector<bool> blend = el->ipInsideBlendZone();
+//         std::vector<double> b = el->getBlendValue();
+//         int au = 0;
+//         for (int i = 0; i < blend.size(); i++)
+//         {
+//             double tt = 0.0;
+//             if (blend[i] == true)
+//             {
+//                 tt = b[au++];
+//             }
+//             file << blend[i] << " " << tt << " " << 1.0 - tt << "\n";
+//         }
+//     }
+//     file << "      </DataArray> "
+//          << "\n";
 
-    // file << "      <DataArray type=\"Float64\" NumberOfComponents=\"6\" "
-    //      << "Name=\"Local\" format=\"ascii\">"
-    //      << "\n";
-    // for (Element *el : elements_)
-    // {
-    //     matrix<double> hammer = el->hammerQuadrature();
-    //     std::vector<bool> blend = el->ipInsideBlendZone();
-    //     std::vector<double> dist = el->getDistanceFromFEBoundary();
-    //     vector<double> phi;
+//     // file << "      <DataArray type=\"Float64\" NumberOfComponents=\"6\" "
+//     //      << "Name=\"Local\" format=\"ascii\">"
+//     //      << "\n";
+//     // for (Element *el : elements_)
+//     // {
+//     //     matrix<double> hammer = el->hammerQuadrature();
+//     //     std::vector<bool> blend = el->ipInsideBlendZone();
+//     //     std::vector<double> dist = el->getDistanceFromFEBoundary();
+//     //     vector<double> phi;
 
-    //     for (int i = 0; i < nn; i++)
-    //     {
-    //         phi = el->domainShapeFunction(hammer(i, 0), hammer(i, 1));
-    //         double tt = 0.0;
-    //         if (blend[i] == true)
-    //         {
-    //             tt = el->blendFunction(dist[i], blendZoneThickness_);
-    //         }
-    //         for (int j = 0; j < 6; j++)
-    //         {
-    //             file << (1.0 - tt) * phi(j) << " ";
-    //         }
-    //         file << "\n";
-    //     }
-    // }
-    // file << "      </DataArray> "
-    //      << "\n";
+//     //     for (int i = 0; i < nn; i++)
+//     //     {
+//     //         phi = el->domainShapeFunction(hammer(i, 0), hammer(i, 1));
+//     //         double tt = 0.0;
+//     //         if (blend[i] == true)
+//     //         {
+//     //             tt = el->blendFunction(dist[i], blendZoneThickness_);
+//     //         }
+//     //         for (int j = 0; j < 6; j++)
+//     //         {
+//     //             file << (1.0 - tt) * phi(j) << " ";
+//     //         }
+//     //         file << "\n";
+//     //     }
+//     // }
+//     // file << "      </DataArray> "
+//     //      << "\n";
 
-    // file << "      <DataArray type=\"Float64\" NumberOfComponents=\"9\" "
-    //      << "Name=\"Global\" format=\"ascii\">"
-    //      << "\n";
-    // for (Element *el : elements_)
-    // {
-    //     matrix<double> hammer = el->hammerQuadrature();
-    //     std::vector<bool> blend = el->ipInsideBlendZone();
-    //     std::vector<double> dist = el->getDistanceFromFEBoundary();
-    //     std::vector<Cell *> cell = el->incidenceCell();
-    //     std::vector<bounded_vector<double, 2>> xsiGlobal = el->xsiIncidenceCell();
+//     // file << "      <DataArray type=\"Float64\" NumberOfComponents=\"9\" "
+//     //      << "Name=\"Global\" format=\"ascii\">"
+//     //      << "\n";
+//     // for (Element *el : elements_)
+//     // {
+//     //     matrix<double> hammer = el->hammerQuadrature();
+//     //     std::vector<bool> blend = el->ipInsideBlendZone();
+//     //     std::vector<double> dist = el->getDistanceFromFEBoundary();
+//     //     std::vector<Cell *> cell = el->incidenceCell();
+//     //     std::vector<bounded_vector<double, 2>> xsiGlobal = el->xsiIncidenceCell();
 
-    //     //vector<double> phi;
-    //     int aa = 0;
-    //     for (int i = 0; i < hammer.size1(); i++)
-    //     {
-    //         double tt = 0.0;
-    //         if (blend[i] == true)
-    //         {
-    //             tt = el->blendFunction(dist[i], blendZoneThickness_);
-    //             std::pair<vector<double>, matrix<double>> phi = cell[aa]->shapeFunctionAndDerivates(xsiGlobal[aa]); //PHI, PHI'
-    //             phi.first = tt * phi.first;
+//     //     //vector<double> phi;
+//     //     int aa = 0;
+//     //     for (int i = 0; i < hammer.size1(); i++)
+//     //     {
+//     //         double tt = 0.0;
+//     //         if (blend[i] == true)
+//     //         {
+//     //             tt = el->blendFunction(dist[i], blendZoneThickness_);
+//     //             std::pair<vector<double>, matrix<double>> phi = cell[aa]->shapeFunctionAndDerivates(xsiGlobal[aa]); //PHI, PHI'
+//     //             phi.first = tt * phi.first;
 
-    //             for (int j = 0; j < phi.first.size(); j++)
-    //             {
-    //                 file << phi.first(j) << " ";
-    //             }
+//     //             for (int j = 0; j < phi.first.size(); j++)
+//     //             {
+//     //                 file << phi.first(j) << " ";
+//     //             }
 
-    //             aa++;
-    //         }
-    //         else
-    //         {
-    //             for (int j = 0; j < 9; j++)
-    //             {
-    //                 file << 0.0 << " ";
-    //             }
-    //         }
-    //         file << "\n";
-    //     }
-    // }
-    // file << "      </DataArray> "
-    //      << "\n";
+//     //             aa++;
+//     //         }
+//     //         else
+//     //         {
+//     //             for (int j = 0; j < 9; j++)
+//     //             {
+//     //                 file << 0.0 << " ";
+//     //             }
+//     //         }
+//     //         file << "\n";
+//     //     }
+//     // }
+//     // file << "      </DataArray> "
+//     //      << "\n";
 
-    file << "    </PointData>"
-         << "\n";
-    //elemental results
-    file << "    <CellData>"
-         << "\n";
+//     file << "    </PointData>"
+//          << "\n";
+//     //elemental results
+//     file << "    <CellData>"
+//          << "\n";
 
-    // file << "      <DataArray type=\"Float64\" NumberOfComponents=\"1\" "
-    //      << "Name=\"Process\" format=\"ascii\">" << std::endl;
+//     // file << "      <DataArray type=\"Float64\" NumberOfComponents=\"1\" "
+//     //      << "Name=\"Process\" format=\"ascii\">" << std::endl;
 
-    // for (Element *el : elements_)
-    // {
-    //     file << elementPartition_[el->getIndex()] << "\n";
-    // }
-    // file << "      </DataArray> "
-    //      << "\n";
+//     // for (Element *el : elements_)
+//     // {
+//     //     file << elementPartition_[el->getIndex()] << "\n";
+//     // }
+//     // file << "      </DataArray> "
+//     //      << "\n";
 
-    file << "    </CellData>"
-         << "\n";
-    //footnote
-    file << "  </Piece>"
-         << "\n"
-         << "  </UnstructuredGrid>"
-         << "\n"
-         << "</VTKFile>"
-         << "\n";
-}
+//     file << "    </CellData>"
+//          << "\n";
+//     //footnote
+//     file << "  </Piece>"
+//          << "\n"
+//          << "  </UnstructuredGrid>"
+//          << "\n"
+//          << "</VTKFile>"
+//          << "\n";
+// }
 
 bounded_vector<double, 2> GlobalSolid::blendFunction(const double &DA)
 {
@@ -3777,226 +3734,186 @@ bounded_vector<double, 2> GlobalSolid::blendFunction(const double &DA)
     return blend;
 }
 
-vector<double> GlobalSolid::diagonalMassMatrix()
+void GlobalSolid::checkInactivesCPandNode()
 {
-    vector<double> diagonal(cpnumber_, 0.0); //ver para paralelizar com vetor do PETSC;s
-    for (Cell *cell : cells_)
+    Vec b, All;
+    PetscInt Idof, Ione = 1;
+    PetscScalar val;
+    VecScatter ctx;
+
+    int rank;
+    MPI_Comm_rank(PETSC_COMM_WORLD, &rank);
+
+    VecCreate(PETSC_COMM_WORLD, &b);
+    VecSetSizes(b, PETSC_DECIDE, cpnumber_);
+    VecSetFromOptions(b);
+
+    for (Cell *cell : cells_part)
     {
         vector<double> mass = cell->diagonalMass(quadrature_);
         std::vector<ControlPoint *> conec = cell->getControlPoints();
         for (int i = 0; i < conec.size(); i++)
         {
-            diagonal(conec[i]->getIndex()) += mass(i);
+            int cp = conec[i]->getIndex();
+            VecSetValues(b, 1, &cp, &mass(i), ADD_VALUES);
         }
     }
-    for (Element *el : elements_)
+    for (Element *el : elements_part)
     {
-        vector<double> mass = el->diagonalMass();
+        vector<double> mass = el->diagonalMass(hammerPoints_, hammerPointsBlendZone_);
         std::vector<int> freedom = el->getFreedomDegree();
         for (int i = 0; i < freedom.size(); i++)
         {
-            diagonal(freedom[i]) += mass(i);
+            int dof = freedom[i];
+            VecSetValues(b, 1, &dof, &mass(i), ADD_VALUES);
         }
     }
 
-    // for (int i = 0; i < controlPoints_.size(); i++)
-    // {
-    //     if (diagonal(i) < 5.0e-03)
-    //     {
-    //         DirichletCondition *dir0 = new DirichletCondition(controlPoints_[i], 0, 0.0);
-    //         cpOutsideDomain_.push_back(dir0);
+    VecAssemblyBegin(b);
+    VecAssemblyEnd(b);
 
-    //         DirichletCondition *dir1 = new DirichletCondition(controlPoints_[i], 1, 0.0);
-    //         cpOutsideDomain_.push_back(dir1);
-    //     }
-    // }
-    return diagonal;
-}
+    //VecView(b, PETSC_VIEWER_STDOUT_WORLD);
 
-void GlobalSolid::checkInactivesCPs()
-{
-    vector<double> pseudoDiagonal = diagonalMassMatrix();
+    VecScatterCreateToAll(b, &ctx, &All);
+    VecScatterBegin(ctx, b, All, INSERT_VALUES, SCATTER_FORWARD);
+    VecScatterEnd(ctx, b, All, INSERT_VALUES, SCATTER_FORWARD);
+    VecScatterDestroy(&ctx);
 
-    for (int i = 0; i < controlPoints_.size(); i++)
+    std::vector<ControlPoint *> inactiveCP;
+    std::vector<Node *> inactiveNode;
+
+    for (ControlPoint *cp : controlPoints_)
     {
-        if (pseudoDiagonal(i) < 5.0e-06)
+        Idof = cp->getIndex();
+        VecGetValues(All, Ione, &Idof, &val);
+
+        if (val < 1.0e-06)
         {
-            ControlPoint *cp = controlPoints_[i];
-            bounded_vector<double, 2> coord = cp->getCurrentCoordinate();
-            DirichletCondition *dir0 = new DirichletCondition(cp, 0, 0.0);
-            cpOutsideDomain_.push_back(dir0);
+            inactiveCP.push_back(cp);
+            inactiveCPandNode_.push_back(Idof);
+        }
+    }
+    for (Node *node : nodes_)
+    {
+        Idof = node->getIndex();
+        VecGetValues(All, Ione, &Idof, &val);
 
-            DirichletCondition *dir1 = new DirichletCondition(cp, 1, 0.0);
-            cpOutsideDomain_.push_back(dir1);
-            std::cout << "CP " << cp->getIndex() << " foi desativado..." << std::endl;
+        if (val < 1.0e-06)
+        {
+            inactiveNode.push_back(node);
+            inactiveCPandNode_.push_back(Idof);
+        }
+    }
 
-            for (Element *el : elements_)
+    VecDestroy(&b);
+
+    std::cout<<"INATIVOS: "<<inactiveCPandNode_.size()<<std::endl;
+
+    // if (rank == 0)
+    // {
+    for (ControlPoint *cp : inactiveCP)
+    {
+        bounded_vector<double, 2> coord = cp->getCurrentCoordinate();
+
+        for (Element *el : elements_)
+        {
+            bounded_vector<double, 2> xsiFE, coordFE, deltaxsi;
+            deltaxsi(0) = 100000.0;
+            deltaxsi(1) = 100000.0;
+            xsiFE(0) = 0.5; //first attempt xs1
+            xsiFE(1) = 0.5; //first attempt xs2
+
+            std::vector<Node *> conec = el->getConnection();
+
+            int cont = 0;
+            while (deltaxsi(0) >= 1.0e-06 and deltaxsi(1) >= 1.0e-06 and
+                   xsiFE(0) >= 0.0 and xsiFE(0) <= 1.0 and
+                   xsiFE(1) >= 0.0 and xsiFE(1) <= 1.0 and cont <= 15)
             {
-                bounded_vector<double, 2> xsiFE, coordFE, deltaxsi;
-                deltaxsi(0) = 100000.0;
-                deltaxsi(1) = 100000.0;
-                xsiFE(0) = 0.5; //first attempt xs1
-                xsiFE(1) = 0.5; //first attempt xs2
 
-                std::vector<Node *> conec = el->getConnection();
+                coordFE = el->calculateGlobalCoordinate(xsiFE);
 
-                int cont = 0;
-                while (deltaxsi(0) >= 1.0e-06 and deltaxsi(1) >= 1.0e-06 and
-                       xsiFE(0) >= 0.0 and xsiFE(0) <= 1.0 and
-                       xsiFE(1) >= 0.0 and xsiFE(1) <= 1.0 and cont <= 15)
-                {
+                bounded_matrix<double, 2, 2> jacobian = el->referenceJacobianMatrix(xsiFE(0), xsiFE(1));
+                bounded_matrix<double, 2, 2> inverse = inverseMatrix(jacobian);
+                deltaxsi = prod(inverse, coord - coordFE);
 
-                    coordFE = el->calculateGlobalCoordinate(xsiFE);
+                xsiFE = xsiFE + deltaxsi;
 
-                    bounded_matrix<double, 2, 2> jacobian = el->referenceJacobianMatrix(xsiFE(0), xsiFE(1));
-                    bounded_matrix<double, 2, 2> inverse = inverseMatrix(jacobian);
-                    deltaxsi = prod(inverse, coord - coordFE);
+                cont++;
+            }
 
-                    xsiFE = xsiFE + deltaxsi;
+            if (xsiFE(0) >= 0.0 and xsiFE(0) <= 1.0 and //ponto de hammer encontrou uma célula
+                xsiFE(1) >= 0.0 and xsiFE(1) <= 1.0 and
+                xsiFE(0) + xsiFE(1) <= 1.0) //só vai funcionar para triângulos não muito deformados...
+            {
+                InactiveCP *inactive = new InactiveCP(cp, el, xsiFE);
+                inactiveCP_.push_back(inactive);
 
-                    cont++;
-                }
-
-                if (xsiFE(0) >= 0.0 and xsiFE(0) <= 1.0 and //ponto de hammer encontrou uma célula
-                    xsiFE(1) >= 0.0 and xsiFE(1) <= 1.0 and
-                    xsiFE(0) + xsiFE(1) <= 1.0) //só vai funcionar para triângulos não muito deformados...
-                {
-                    CP_BlendingZone *inside = new CP_BlendingZone(cp, el, xsiFE);
-                    cpsInsideBledingZone_.push_back(inside);
-
-                    break;
-                }
+                break;
             }
         }
     }
-
-    /*Looping para:
-        -Encontrar pontos de controle dentro da malha local;
-            -Elemento em que o ponto de controle está inserido;
-            -Xsis correspondentes ao ponto de controle no elemento;
-        -Encontrar pontos de controle fora do domínio global;
-            -Adicionar condição de contorno;
-    */
-    // if (cpOutsideDomain_.size() > 1)
-    // {
-    //     cpOutsideDomain_.erase(cpOutsideDomain_.begin(), cpOutsideDomain_.begin() + cpOutsideDomain_.size());
     // }
-    // for (ControlPoint *cp : controlPoints_)
+
+    // if (rank == 0)
     // {
-    //     bounded_vector<double, 2> coord = cp->getCurrentCoordinate() / cp->getWeight();
-    //     double distanceCP = 1000000.0;
-    //     double distance;
+    for (Node *no : inactiveNode)
+    {
+        std::cout << "NO DESATIVADO " << no->getIndex() << std::endl;
+        bounded_vector<double, 2> coordFE = no->getCurrentCoordinate();
 
-    //     for (BoundaryElement *bound : boundaryFE_)
-    //     {
-    //         double xsiBoundary = 0.0; //primeira tentativa
-    //         double deltaxsi = 100000.0;
-    //         int cont = 0;
-    //         std::vector<Node *> boundaryConec = bound->getNodes();
-    //         bounded_vector<double, 2> coordBoundary, firstDerivate, secondDerivate, normal;
+        for (Cell *cell : cells_)
+        {
+            bounded_vector<double, 2> xsiISO, coordISO, deltaxsi;
+            deltaxsi(0) = 100000.0;
+            deltaxsi(1) = 100000.0;
+            xsiISO(0) = 0.0; //first attempt xs1
+            xsiISO(1) = 0.0; //first attempt xs2
 
-    //         while (fabs(deltaxsi) >= 1.0e-06 and xsiBoundary >= -1.0 and xsiBoundary <= 1.0 and cont <= 15)
-    //         {
-    //             matrix<double> boundaryFunctions = bound->shapeFunctionsAndDerivates(xsiBoundary); //PHI, PHI', PHI''
-    //             coordBoundary(0) = 0.0;
-    //             coordBoundary(1) = 0.0;
-    //             firstDerivate(0) = 0.0;
-    //             firstDerivate(1) = 0.0;
-    //             secondDerivate(0) = 0.0;
-    //             secondDerivate(1) = 0.0;
-    //             int aux = 0;
-    //             for (Node *node : boundaryConec)
-    //             {
-    //                 bounded_vector<double, 2> coordinateNode = node->getCurrentCoordinate();
+            std::vector<ControlPoint *> conPoints = cell->getControlPoints();
+            vector<double> wpc2(conPoints.size());
+            for (int i = 0; i < conPoints.size(); i++)
+            {
+                wpc2(i) = conPoints[i]->getWeight();
+            }
 
-    //                 coordBoundary(0) += boundaryFunctions(aux, 0) * coordinateNode(0);
-    //                 coordBoundary(1) += boundaryFunctions(aux, 0) * coordinateNode(1);
+            int cont = 0;
+            while (deltaxsi(0) >= 1.0e-06 and deltaxsi(1) >= 1.0e-06 and //newton-raphson para encontrar os xsis
+                   xsiISO(0) >= -1.0 and xsiISO(0) <= 1.0 and
+                   xsiISO(1) >= -1.0 and xsiISO(1) <= 1.0 and cont <= 15)
+            {
+                std::pair<vector<double>, matrix<double>> functions;
+                functions = cell->shapeFunctionAndDerivates(xsiISO);
 
-    //                 firstDerivate(0) += boundaryFunctions(aux, 1) * coordinateNode(0);
-    //                 firstDerivate(1) += boundaryFunctions(aux, 1) * coordinateNode(1);
+                coordISO(0) = 0.0;
+                coordISO(1) = 0.0;
 
-    //                 secondDerivate(0) += boundaryFunctions(aux, 2) * coordinateNode(0);
-    //                 secondDerivate(1) += boundaryFunctions(aux, 2) * coordinateNode(1);
-    //                 aux = aux + 1;
-    //             }
-    //             double h = -((coord(0) - coordBoundary(0)) * (-firstDerivate(0)) + (coord(1) - coordBoundary(1)) * (-firstDerivate(1)));
-    //             double dh_dxsi = (-firstDerivate(0)) * (-firstDerivate(0)) + (-secondDerivate(0)) * (coord(0) - coordBoundary(0)) +
-    //                              (-firstDerivate(1)) * (-firstDerivate(1)) + (-secondDerivate(1)) * (coord(1) - coordBoundary(1));
+                for (int cp = 0; cp < conPoints.size(); cp++)
+                {
+                    bounded_vector<double, 2> coordinateCP = conPoints[cp]->getCurrentCoordinate();
+                    coordISO(0) += functions.first(cp) * coordinateCP(0) / wpc2(cp);
+                    coordISO(1) += functions.first(cp) * coordinateCP(1) / wpc2(cp);
+                }
 
-    //             deltaxsi = h / dh_dxsi;
+                bounded_matrix<double, 2, 2> jacobian = cell->referenceJacobianMatrix(functions.second);
+                bounded_matrix<double, 2, 2> inverse = inverseMatrix(jacobian);
+                deltaxsi = prod(inverse, coordFE - coordISO);
 
-    //             xsiBoundary = xsiBoundary + deltaxsi;
+                xsiISO = xsiISO + deltaxsi;
 
-    //             cont++;
-    //         }
+                cont++;
+            }
 
-    //         if (xsiBoundary <= -1.0)
-    //         {
-    //             matrix<double> boundaryFunctions = bound->shapeFunctionsAndDerivates(-1.0); //PHI, PHI', PHI''
-    //             int aux = 0;
-    //             coordBoundary(0) = 0.0;
-    //             coordBoundary(1) = 0.0;
-    //             firstDerivate(0) = 0.0;
-    //             firstDerivate(1) = 0.0;
-    //             for (Node *node : boundaryConec)
-    //             {
-    //                 bounded_vector<double, 2> coordinateNode = node->getCurrentCoordinate();
-    //                 coordBoundary(0) += boundaryFunctions(aux, 0) * coordinateNode(0);
-    //                 coordBoundary(1) += boundaryFunctions(aux, 0) * coordinateNode(1);
+            if (xsiISO(0) >= -1.0 and xsiISO(0) <= 1.0 and //ponto de hammer encontrou uma célula
+                xsiISO(1) >= -1.0 and xsiISO(1) <= 1.0)
+            {
 
-    //                 firstDerivate(0) += boundaryFunctions(aux, 1) * coordinateNode(0);
-    //                 firstDerivate(1) += boundaryFunctions(aux, 1) * coordinateNode(1);
+                InactiveNode *inactive = new InactiveNode(no, cell, xsiISO);
+                inactiveNode_.push_back(inactive);
 
-    //                 aux = aux + 1;
-    //             }
-    //         }
-    //         else if (xsiBoundary >= 1.0)
-    //         {
-    //             matrix<double> boundaryFunctions = bound->shapeFunctionsAndDerivates(1.0); //PHI, PHI', PHI''
-    //             int aux = 0;
-    //             coordBoundary(0) = 0.0;
-    //             coordBoundary(1) = 0.0;
-    //             firstDerivate(0) = 0.0;
-    //             firstDerivate(1) = 0.0;
-    //             for (Node *node : boundaryConec)
-    //             {
-    //                 bounded_vector<double, 2> coordinateNode = node->getCurrentCoordinate();
-    //                 coordBoundary(0) += boundaryFunctions(aux, 0) * coordinateNode(0);
-    //                 coordBoundary(1) += boundaryFunctions(aux, 0) * coordinateNode(1);
-
-    //                 firstDerivate(0) += boundaryFunctions(aux, 1) * coordinateNode(0);
-    //                 firstDerivate(1) += boundaryFunctions(aux, 1) * coordinateNode(1);
-
-    //                 aux = aux + 1;
-    //             }
-    //         }
-
-    //         distance = sqrt((coord(0) - coordBoundary(0)) * (coord(0) - coordBoundary(0)) + (coord(1) - coordBoundary(1)) * (coord(1) - coordBoundary(1)));
-    //         normal(0) = firstDerivate(1);
-    //         normal(1) = -firstDerivate(0);
-    //         double aux = (coord(0) - coordBoundary(0)) * normal(0) + (coord(1) - coordBoundary(1)) * normal(1);
-
-    //         if (distance < 1.0e-10)
-    //         {
-    //             distance = 0.0;
-    //         }
-
-    //         if (distance < fabs(distanceCP))
-    //         {
-    //             if (aux > 0.0) //fora do domínio local
-    //             {
-    //                 distanceCP = -distance;
-    //             }
-    //             else if (aux < 0.0) //dentro do domínio local
-    //             {
-    //                 distanceCP = distance;
-    //             }
-    //             else if (aux == 0.0 and distance == 0.0) //caso único: exatamente sobre um elemento do contorno
-    //             {
-    //                 distanceCP = distance;
-    //             }
-    //         }
-    //     }
-
+                break;
+            }
+        }
+    }
     // }
 }

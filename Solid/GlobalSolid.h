@@ -12,11 +12,12 @@
 #include "FiniteElement/Node.h"
 #include "FiniteElement/Mesh.h"
 #include "FiniteElement/BoundaryElement.h"
-#include "FiniteElement/BlendZone.h"
+#include "FiniteElement/Inactive.h"
 #include <boost/timer.hpp>
 #include <boost/thread.hpp>
 #include <metis.h>
 #include <petscksp.h>
+#include <petscvec.h>
 
 using namespace boost::numeric::ublas;
 
@@ -111,7 +112,7 @@ public:
 
     void computeDistanceFromFEBoundary();
 
-    void checkInactivesCPs();
+    void checkInactivesCPandNode();
 
     void testeParaviewFE();
 
@@ -130,13 +131,15 @@ private:
 
     std::vector<DirichletConditionFE *> dirichletConditionsFE_;
 
-    std::vector<DirichletCondition *> cpOutsideDomain_;
+    std::vector<int> inactiveCPandNode_;
 
     std::vector<NeumannCondition *> neumannConditions_;
 
     std::vector<NeumannConditionFE *> neumannConditionsFE_;
 
-    std::vector<CP_BlendingZone *> cpsInsideBledingZone_;
+    std::vector<InactiveCP *> inactiveCP_;
+
+    std::vector<InactiveNode *> inactiveNode_;
 
     std::vector<Material *> materials_;
 
@@ -178,8 +181,6 @@ private:
 
     std::vector<ControlPoint *> controlPoints_;
 
-    std::vector<ControlPoint *> inactiveCPs_;
-
     std::vector<Node *> nodes_;
 
     std::vector<BoundaryElement *> boundaryFE_;
@@ -191,4 +192,8 @@ private:
     int cpnumber_;
 
     int cpaux_;
+
+    int hammerPoints_; //number of hammer points for elements outside the blend zone
+
+    int hammerPointsBlendZone_; //number of hammer points for elements inside the blend zone
 };

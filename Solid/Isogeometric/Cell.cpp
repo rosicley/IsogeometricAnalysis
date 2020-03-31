@@ -1088,7 +1088,6 @@ matrix<double> Cell::massMatrix(const int &pointsQuadrature)
     vector<double> wpc2(number);
 
     INC_ = controlPoints_[number - 1]->getINC();
-
     for (int i = 0; i < number; i++)
     {
         wpc2(i) = controlPoints_[i]->getWeight();
@@ -1096,21 +1095,23 @@ matrix<double> Cell::massMatrix(const int &pointsQuadrature)
 
     for (int ih = 0; ih < domainIntegrationPoints_.size1(); ih++)
     {
-        bounded_vector<double, 2> qxsi;
-        qxsi(0) = domainIntegrationPoints_(ih, 0);
-        qxsi(1) = domainIntegrationPoints_(ih, 1);
-        double weight = domainIntegrationPoints_(ih, 2);
-
-        vector<double> phi = shapeFunction(qxsi, wpc2, INC_);
-
-        for (int i = 0; i < controlPoints_.size(); i++)
+        if (distanceFE_[ih] <= 0.0)
         {
+            bounded_vector<double, 2> qxsi;
+            qxsi(0) = domainIntegrationPoints_(ih, 0);
+            qxsi(1) = domainIntegrationPoints_(ih, 1);
+            double weight = domainIntegrationPoints_(ih, 2);
 
-            for (int k = 0; k < controlPoints_.size(); k++)
+            vector<double> phi = shapeFunction(qxsi, wpc2, INC_);
+
+            for (int i = 0; i < controlPoints_.size(); i++)
             {
-                resul = auxiliar * phi(i) * phi(k);
-                mass(2 * i, 2 * k) += resul;
-                mass(2 * i + 1, 2 * k + 1) += resul;
+                for (int k = 0; k < controlPoints_.size(); k++)
+                {
+                    resul = auxiliar * phi(i) * phi(k) * weight;
+                    mass(2 * i, 2 * k) += resul;
+                    mass(2 * i + 1, 2 * k + 1) += resul;
+                }
             }
         }
     }
@@ -1625,7 +1626,6 @@ vector<double> Cell::diagonalMass(const int &points)
     int number = controlPoints_.size();
     vector<double> mass(number, 0.0);
     matrix<double> domainIntegrationPoints_ = isoQuadrature(points);
-    double auxiliar = patch_->getMaterial()->getDensity() * patch_->getThickness();
     bounded_vector<int, 2> INC_;
     vector<double> wpc2(number);
 
@@ -1649,7 +1649,7 @@ vector<double> Cell::diagonalMass(const int &points)
 
             for (int i = 0; i < number; i++)
             {
-                mass(i) += auxiliar * phi(i) * phi(i) * weight;
+                mass(i) += phi(i) * phi(i) * weight;
             }
         }
     }

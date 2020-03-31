@@ -21,6 +21,7 @@ Node::Node(const int &index, const int &indexFE, const bounded_vector<double, 2>
     stressState_(2) = 0.0;
     stressState_(3) = 0.0;
     stressState_(4) = 1.0;
+    distanceToBoundary_ = -10000.0;
 }
 
 Node::~Node() {}
