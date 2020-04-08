@@ -659,16 +659,25 @@ void GlobalSolid::dataReading(const std::string &inputParameters, const std::str
         }
     }
 
-    dataFromGmsh(inputMeshFE);
+    FILE *fem;
+    fem = fopen(inputMeshFE.c_str(), "r");
+    if (fem != NULL)
+    {
+        fclose(fem);
+        dataFromGmsh(inputMeshFE);
+    }
+    else
+    {
+        if (rank == 0)
+        {
+            exportMirror();
+        }
+    }
 }
 
 void GlobalSolid::dataFromGmsh(const std::string &inputGmesh)
 {
     std::ifstream feMesh(inputGmesh);
-
-    // std::stringstream text1;
-    // text1 << "mirror.txt";
-    // std::ofstream mirror(text1.str());
 
     std::string line;
     std::string elementType;
@@ -1166,8 +1175,12 @@ int GlobalSolid::solveStaticProblem()
 
     //////REVER QUANDO RECONSTRUIR MALHA!
     computeDistanceFromFEBoundary();
-    incidenceLocalxGlobal();
-    checkInactivesCPandNode();
+    if (elements_.size() > 0)
+    {
+        incidenceLocalxGlobal();
+        checkInactivesCPandNode();
+    }
+
     // checkControlPointsOutsideTheDomain();
     // if (rank == 1)
     // {
@@ -3389,7 +3402,7 @@ void GlobalSolid::computeDistanceFromFEBoundary()
 
         for (int ip = 0; ip < integrationPoints.size1(); ip++)
         {
-            distanceFE.push_back(100000000.0);
+            distanceFE.push_back(-100000000.0);
             bounded_vector<double, 2> xsi, coordIP; //coordinate of hammer point
             xsi(0) = integrationPoints(ip, 0);
             xsi(1) = integrationPoints(ip, 1);
@@ -3807,7 +3820,7 @@ void GlobalSolid::checkInactivesCPandNode()
 
     VecDestroy(&b);
 
-    std::cout<<"INATIVOS: "<<inactiveCPandNode_.size()<<std::endl;
+    std::cout << "INATIVOS: " << inactiveCPandNode_.size() << std::endl;
 
     // if (rank == 0)
     // {

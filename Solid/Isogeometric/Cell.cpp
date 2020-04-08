@@ -727,6 +727,13 @@ std::pair<vector<double>, matrix<double>> Cell::cellContributions(const std::str
 {
     int npc = controlPoints_.size();
 
+    vector<double> wpc(npc);
+
+    for (int i = 0; i < npc; i++)
+    {
+        wpc(i) = controlPoints_[i]->getWeight();
+    }
+
     vector<double> rhs(2 * npc, 0.0);
     matrix<double> tangent(2 * npc, 2 * npc, 0.0);
     matrix<double> domainIntegrationPoints_ = isoQuadrature(pointsQuadrature);
@@ -807,15 +814,15 @@ std::pair<vector<double>, matrix<double>> Cell::cellContributions(const std::str
                 {
                     if (j == 0)
                     {
-                        dA_dy(0, 0) = functions.second(0, i);
-                        dA_dy(0, 1) = functions.second(1, i);
+                        dA_dy(0, 0) = functions.second(0, i) / wpc(i);
+                        dA_dy(0, 1) = functions.second(1, i) / wpc(i);
                         dA_dy(1, 0) = 0.0;
                         dA_dy(1, 1) = 0.0;
                     }
                     else
                     {
-                        dA_dy(1, 0) = functions.second(0, i);
-                        dA_dy(1, 1) = functions.second(1, i);
+                        dA_dy(1, 0) = functions.second(0, i) / wpc(i);
+                        dA_dy(1, 1) = functions.second(1, i) / wpc(i);
                         dA_dy(0, 0) = 0.0;
                         dA_dy(0, 1) = 0.0;
                     }
@@ -860,15 +867,15 @@ std::pair<vector<double>, matrix<double>> Cell::cellContributions(const std::str
                         {
                             if (l == 0)
                             {
-                                dA_dy2(0, 0) = functions.second(0, k);
-                                dA_dy2(0, 1) = functions.second(1, k);
+                                dA_dy2(0, 0) = functions.second(0, k) / wpc(k);
+                                dA_dy2(0, 1) = functions.second(1, k) / wpc(k);
                                 dA_dy2(1, 0) = 0.0;
                                 dA_dy2(1, 1) = 0.0;
                             }
                             else
                             {
-                                dA_dy2(1, 0) = functions.second(0, k);
-                                dA_dy2(1, 1) = functions.second(1, k);
+                                dA_dy2(1, 0) = functions.second(0, k) / wpc(k);
+                                dA_dy2(1, 1) = functions.second(1, k) / wpc(k);
                                 dA_dy2(0, 0) = 0.0;
                                 dA_dy2(0, 1) = 0.0;
                             }
@@ -1368,22 +1375,16 @@ vector<double> Cell::computeDistribuitedLoads(const bounded_vector<double, 2> &v
         tangent(1) = 0.0;
         for (int ih = 0; ih < npc; ih++)
         {
-            tangent(0) += functions.second(ih) * points[ih]->getCurrentCoordinate()(0);
-            tangent(1) += functions.second(ih) * points[ih]->getCurrentCoordinate()(1);
+            tangent(0) += functions.second(ih) / wpc(ih) * points[ih]->getCurrentCoordinate()(0);
+            tangent(1) += functions.second(ih) / wpc(ih) * points[ih]->getCurrentCoordinate()(1);
         }
 
         double jacobian = sqrt(pow(tangent(0), 2) + pow(tangent(1), 2));
 
-        // double aux = 0.0;
-        // for (int m = 0; m < npc; m++)
-        // {
-        //     aux += functions.first(m);
-        // }
-
         for (int ih = 0; ih < npc; ih++)
         {
-            distribuitedLoad(2 * ih) += value(0) * functions.first(ih) * weight * thickness * jacobian;
-            distribuitedLoad(2 * ih + 1) += value(1) * functions.first(ih) * weight * thickness * jacobian;
+            distribuitedLoad(2 * ih) += value(0) * functions.first(ih) * weight * thickness * jacobian / wpc(ih);
+            distribuitedLoad(2 * ih + 1) += value(1) * functions.first(ih) * weight * thickness * jacobian / wpc(ih);
         }
     }
     return distribuitedLoad;
