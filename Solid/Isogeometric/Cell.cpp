@@ -75,7 +75,6 @@ vector<double> Cell::shapeFunction(const bounded_vector<double, 2> &qxsi,
     matrix<double> uBF(degm + 1, degm + 1); // stores de base functions in each direction
     matrix<double> vBF(degn + 1, degn + 1); // stores de base functions in each direction
 
-    //vector<double> wpc(numLocalBF);
     vector<double> phiIso(numLocalBF);
 
     double saved, temp;
@@ -171,25 +170,17 @@ vector<double> Cell::shapeFunction(const bounded_vector<double, 2> &qxsi,
 
     for (int i = 0; i < numLocalBF; i++)
     {
-        phiIso(i) = phit(i) * wpc(i) / sum;
+        phiIso(i) = phit(i) / sum;
     }
     return phiIso;
 }
-std::pair<vector<double>, matrix<double>> Cell::shapeFunctionAndDerivates(const bounded_vector<double, 2> &qxsi) //,
-                                                                                                                 //   const vector<double> &wpc,
-                                                                                                                 //   const bounded_vector<double, 2> inc)
+std::pair<vector<double>, matrix<double>> Cell::shapeFunctionAndDerivates(const bounded_vector<double, 2> &qxsi,
+                                                                          const vector<double> &wpc,
+                                                                          const bounded_vector<double, 2> inc) //,
+                                                                                                               //   const vector<double> &wpc,
+                                                                                                               //   const bounded_vector<double, 2> inc)
 {
     int npc = controlPoints_.size();
-
-    vector<double> wpc(npc);
-    bounded_vector<int, 2> inc;
-
-    inc = controlPoints_[npc - 1]->getINC();
-
-    for (int i = 0; i < npc; i++)
-    {
-        wpc(i) = controlPoints_[i]->getWeight();
-    }
 
     int degm = patch_->getDegree(0);
     int degn = patch_->getDegree(1);
@@ -217,7 +208,6 @@ std::pair<vector<double>, matrix<double>> Cell::shapeFunctionAndDerivates(const 
     matrix<double> uBF(degm + 1, degm + 1); // stores de base functions in each direction
     matrix<double> vBF(degn + 1, degn + 1); // stores de base functions in each direction
 
-    //vector<double> wpc(numLocalBF);
     vector<double> phiIso(numLocalBF);
     matrix<double> dphiIso(2, numLocalBF);
 
@@ -313,7 +303,7 @@ std::pair<vector<double>, matrix<double>> Cell::shapeFunctionAndDerivates(const 
 
     for (int i = 0; i < numLocalBF; i++)
     {
-        phiIso(i) = phit(i) * wpc(i) / sum;
+        phiIso(i) = phit(i) / sum;
     }
 
     //DERIVATES
@@ -467,33 +457,26 @@ std::pair<vector<double>, matrix<double>> Cell::shapeFunctionAndDerivates(const 
 
     for (int i = 0; i < numLocalBF; i++)
     {
-        dphiIso(0, i) = (1.0 / (sum * sum * 2 * auxiliar(0))) * (dphit(0, i) * wpc(i) * sum - phit(i) * wpc(i) * sum1);
-        dphiIso(1, i) = (1.0 / (sum * sum * 2 * auxiliar(1))) * (dphit(1, i) * wpc(i) * sum - phit(i) * wpc(i) * sum2);
+        dphiIso(0, i) = (1.0 / (sum * sum * 2 * auxiliar(0))) * (dphit(0, i) * sum - phit(i) * sum1);
+        dphiIso(1, i) = (1.0 / (sum * sum * 2 * auxiliar(1))) * (dphit(1, i) * sum - phit(i) * sum2);
     }
 
     return std::make_pair(phiIso, dphiIso);
 };
 
-bounded_matrix<double, 2, 2> Cell::referenceJacobianMatrix(const matrix<double> &dphi_dxsi) //, const vector<double> &wpc)
+bounded_matrix<double, 2, 2> Cell::referenceJacobianMatrix(const matrix<double> &dphi_dxsi)
 {
     int npc = controlPoints_.size();
-
-    vector<double> wpc(npc);
-
-    for (int i = 0; i < npc; i++)
-    {
-        wpc(i) = controlPoints_[i]->getWeight();
-    }
 
     double dx1_dxsi1 = 0.0, dx1_dxsi2 = 0.0, dx2_dxsi1 = 0.0, dx2_dxsi2 = 0.0;
 
     for (int i = 0; i < npc; i++)
     {
         bounded_vector<double, 2> initialCoord = controlPoints_[i]->getInitialCoordinate();
-        dx1_dxsi1 += initialCoord(0) * dphi_dxsi(0, i) / wpc(i);
-        dx1_dxsi2 += initialCoord(0) * dphi_dxsi(1, i) / wpc(i);
-        dx2_dxsi1 += initialCoord(1) * dphi_dxsi(0, i) / wpc(i);
-        dx2_dxsi2 += initialCoord(1) * dphi_dxsi(1, i) / wpc(i);
+        dx1_dxsi1 += initialCoord(0) * dphi_dxsi(0, i);
+        dx1_dxsi2 += initialCoord(0) * dphi_dxsi(1, i);
+        dx2_dxsi1 += initialCoord(1) * dphi_dxsi(0, i);
+        dx2_dxsi2 += initialCoord(1) * dphi_dxsi(1, i);
     }
 
     bounded_matrix<double, 2, 2> referenceJacobianMatrix;
@@ -505,26 +488,19 @@ bounded_matrix<double, 2, 2> Cell::referenceJacobianMatrix(const matrix<double> 
     return referenceJacobianMatrix;
 }
 
-bounded_matrix<double, 2, 2> Cell::currentJacobianMatrix(const matrix<double> &dphi_dxsi) //, const vector<double> &wpc)
+bounded_matrix<double, 2, 2> Cell::currentJacobianMatrix(const matrix<double> &dphi_dxsi)
 {
     int npc = controlPoints_.size();
-
-    vector<double> wpc(npc);
-
-    for (int i = 0; i < npc; i++)
-    {
-        wpc(i) = controlPoints_[i]->getWeight();
-    }
 
     double dx1_dxsi1 = 0.0, dx1_dxsi2 = 0.0, dx2_dxsi1 = 0.0, dx2_dxsi2 = 0.0;
 
     for (int i = 0; i < npc; i++)
     {
         bounded_vector<double, 2> currentCoord = controlPoints_[i]->getCurrentCoordinate();
-        dx1_dxsi1 += currentCoord(0) * dphi_dxsi(0, i) / wpc(i);
-        dx1_dxsi2 += currentCoord(0) * dphi_dxsi(1, i) / wpc(i);
-        dx2_dxsi1 += currentCoord(1) * dphi_dxsi(0, i) / wpc(i);
-        dx2_dxsi2 += currentCoord(1) * dphi_dxsi(1, i) / wpc(i);
+        dx1_dxsi1 += currentCoord(0) * dphi_dxsi(0, i);
+        dx1_dxsi2 += currentCoord(0) * dphi_dxsi(1, i);
+        dx2_dxsi1 += currentCoord(1) * dphi_dxsi(0, i);
+        dx2_dxsi2 += currentCoord(1) * dphi_dxsi(1, i);
     }
 
     bounded_matrix<double, 2, 2> currentJacobianMatrix;
@@ -734,6 +710,9 @@ std::pair<vector<double>, matrix<double>> Cell::cellContributions(const std::str
         wpc(i) = controlPoints_[i]->getWeight();
     }
 
+    bounded_vector<int, 2> inc;
+    inc = controlPoints_[npc - 1]->getINC();
+
     vector<double> rhs(2 * npc, 0.0);
     matrix<double> tangent(2 * npc, 2 * npc, 0.0);
     matrix<double> domainIntegrationPoints_ = isoQuadrature(pointsQuadrature);
@@ -761,7 +740,7 @@ std::pair<vector<double>, matrix<double>> Cell::cellContributions(const std::str
 
             std::pair<vector<double>, matrix<double>> functions;
 
-            functions = shapeFunctionAndDerivates(qxsi); //, wpc, inc_);
+            functions = shapeFunctionAndDerivates(qxsi, wpc, inc);
 
             bounded_matrix<double, 2, 2> A0 = referenceJacobianMatrix(functions.second); //initial configuration map
             double j0 = jacobianDeterminant(A0);
@@ -814,15 +793,15 @@ std::pair<vector<double>, matrix<double>> Cell::cellContributions(const std::str
                 {
                     if (j == 0)
                     {
-                        dA_dy(0, 0) = functions.second(0, i) / wpc(i);
-                        dA_dy(0, 1) = functions.second(1, i) / wpc(i);
+                        dA_dy(0, 0) = functions.second(0, i);
+                        dA_dy(0, 1) = functions.second(1, i);
                         dA_dy(1, 0) = 0.0;
                         dA_dy(1, 1) = 0.0;
                     }
                     else
                     {
-                        dA_dy(1, 0) = functions.second(0, i) / wpc(i);
-                        dA_dy(1, 1) = functions.second(1, i) / wpc(i);
+                        dA_dy(1, 0) = functions.second(0, i);
+                        dA_dy(1, 1) = functions.second(1, i);
                         dA_dy(0, 0) = 0.0;
                         dA_dy(0, 1) = 0.0;
                     }
@@ -835,29 +814,21 @@ std::pair<vector<double>, matrix<double>> Cell::cellContributions(const std::str
                     double r = dE_dy(0, 0) * S(0, 0) + dE_dy(1, 1) * S(1, 1) + dE_dy(0, 1) * S(0, 1) + dE_dy(1, 0) * S(1, 0); //internal force
 
                     double accel = 0.0;
-                    double shape = 0.0;
+                    //double shape = 0.0;
 
                     //shape = phi(i) * shape;
 
-                    if (typeAnalyze == "STATIC")
-                    {
-                        for (int m = 0; m < controlPoints_.size(); m++)
-                        {
-                            shape += functions.first(m); //* (1.0 * shapeForce_(j) * step / (1.0 * numberOfStep));
-                        }
-                    }
-                    else
+                    if (typeAnalyze == "DYNAMIC")
                     {
                         for (int m = 0; m < controlPoints_.size(); m++)
                         {
                             accel += functions.first(m) * controlPoints_[m]->getCurrentAcceleration()(j);
-                            shape += functions.first(m);
                         }
                     }
 
                     double m = density * functions.first(i) * accel; //inertial force
 
-                    shape = (shape * shapeForce_(j) * step / numberOfStep / thickness) * functions.first(i);
+                    double shape = (shapeForce_(j) * step / numberOfStep / thickness) * functions.first(i);
 
                     rhs(2 * i + j) -= (r + m - shape) * weight * j0 * thickness;
 
@@ -867,15 +838,15 @@ std::pair<vector<double>, matrix<double>> Cell::cellContributions(const std::str
                         {
                             if (l == 0)
                             {
-                                dA_dy2(0, 0) = functions.second(0, k) / wpc(k);
-                                dA_dy2(0, 1) = functions.second(1, k) / wpc(k);
+                                dA_dy2(0, 0) = functions.second(0, k);
+                                dA_dy2(0, 1) = functions.second(1, k);
                                 dA_dy2(1, 0) = 0.0;
                                 dA_dy2(1, 1) = 0.0;
                             }
                             else
                             {
-                                dA_dy2(1, 0) = functions.second(0, k) / wpc(k);
-                                dA_dy2(1, 1) = functions.second(1, k) / wpc(k);
+                                dA_dy2(1, 0) = functions.second(0, k);
+                                dA_dy2(1, 1) = functions.second(1, k);
                                 dA_dy2(0, 0) = 0.0;
                                 dA_dy2(0, 1) = 0.0;
                             }
@@ -915,21 +886,21 @@ bounded_vector<double, 4> Cell::getCauchStress(const bounded_vector<double, 2> &
     bounded_vector<double, 4> cauchStress;
 
     int npc = controlPoints_.size();
-    // vector<double> wpc(npc);
-    // bounded_vector<int, 2> inc_;
+    vector<double> wpc(npc);
+    bounded_vector<int, 2> inc;
 
-    // inc_ = controlPoints_[npc - 1]->getINC();
+    inc = controlPoints_[npc - 1]->getINC();
 
-    // for (int i = 0; i < npc; i++)
-    // {
-    //     wpc(i) = controlPoints_[i]->getWeight();
-    // }
+    for (int i = 0; i < npc; i++)
+    {
+        wpc(i) = controlPoints_[i]->getWeight();
+    }
 
     double young, poisson, density;
     patch_->getMaterial()->setProperties(young, poisson, density);
 
     std::pair<vector<double>, matrix<double>> functions;
-    functions = shapeFunctionAndDerivates(qxsi); //retorna as funções de formas e derivadas calculadas nos pontos qxsi
+    functions = shapeFunctionAndDerivates(qxsi, wpc, inc); //retorna as funções de formas e derivadas calculadas nos pontos qxsi
 
     bounded_matrix<double, 2, 2> A0 = referenceJacobianMatrix(functions.second); //initial configuration map
     double j0 = jacobianDeterminant(A0);
@@ -966,31 +937,6 @@ bounded_vector<double, 4> Cell::getCauchStress(const bounded_vector<double, 2> &
     mat1 = prod(Ac, S);
     sigma = (1.0 / jac) * prod(mat1, trans(Ac));
 
-    // if (sigma(0, 0) >= 10.0e-11 or sigma(0, 0) <= -10.0e-11)
-    // {
-    //     cauchStress(0) = sigma(0, 0);
-    // }
-    // else
-    // {
-    //     cauchStress(0) = 0.0;
-    // }
-    // if (sigma(1, 1) >= 10.0e-11 or sigma(1, 1) <= -10.0e-11)
-    // {
-    //     cauchStress(1) = sigma(1, 1);
-    // }
-    // else
-    // {
-    //     cauchStress(1) = 0.0;
-    // }
-    // if (sigma(0, 1) >= 10.0e-11 or sigma(0, 1) <= -10.0e-11)
-    // {
-    //     cauchStress(3) = sigma(0, 1);
-    // }
-    // else
-    // {
-    //     cauchStress(3) = 0.0;
-    // }
-
     cauchStress(0) = sigma(0, 0);
     cauchStress(1) = sigma(1, 1);
     cauchStress(3) = sigma(0, 1);
@@ -1007,26 +953,76 @@ bounded_vector<double, 4> Cell::getCauchStress(const bounded_vector<double, 2> &
     return cauchStress;
 }
 
-bounded_vector<double, 4> Cell::getGreen(const bounded_vector<double, 2> &qxsi, const std::string &ep) //(SIGMA11, SIGMA22, SIGMA33, SIGMA12)
+bounded_matrix<double, 2, 2> Cell::get2PiolaStress(const bounded_vector<double, 2> &qxsi, const std::string &ep)
 {
-    bounded_vector<double, 4> green;
-
     int npc = controlPoints_.size();
-    // vector<double> wpc(npc);
-    // bounded_vector<int, 2> inc_;
+    vector<double> wpc(npc);
+    bounded_vector<int, 2> inc;
 
-    // inc_ = controlPoints_[npc - 1]->getINC();
+    inc = controlPoints_[npc - 1]->getINC();
 
-    // for (int i = 0; i < npc; i++)
-    // {
-    //     wpc(i) = controlPoints_[i]->getWeight();
-    // }
+    for (int i = 0; i < npc; i++)
+    {
+        wpc(i) = controlPoints_[i]->getWeight();
+    }
 
     double young, poisson, density;
     patch_->getMaterial()->setProperties(young, poisson, density);
 
     std::pair<vector<double>, matrix<double>> functions;
-    functions = shapeFunctionAndDerivates(qxsi); //retorna as funções de formas e derivadas calculadas nos pontos qxsi
+    functions = shapeFunctionAndDerivates(qxsi, wpc, inc); //retorna as funções de formas e derivadas calculadas nos pontos qxsi
+
+    bounded_matrix<double, 2, 2> A0 = referenceJacobianMatrix(functions.second); //initial configuration map
+    double j0 = jacobianDeterminant(A0);
+    bounded_matrix<double, 2, 2> A0I; //inverse initial configuration map
+    A0I(0, 0) = A0(1, 1) / j0;
+    A0I(1, 1) = A0(0, 0) / j0;
+    A0I(0, 1) = -A0(0, 1) / j0;
+    A0I(1, 0) = -A0(1, 0) / j0;
+
+    bounded_matrix<double, 2, 2> A1 = currentJacobianMatrix(functions.second); //current configuration map
+    bounded_matrix<double, 2, 2> Ac = prod(A1, A0I);                           //current deformation gradient
+    identity_matrix<double> I(2);                                              //identity matrix
+    bounded_matrix<double, 2, 2> Ec = 0.5 * (prod(trans(Ac), Ac) - I);         //current green strain tensor
+    bounded_matrix<double, 2, 2> S;                                            //second piola kirchhoff stress tensor
+
+    if (ep == "EPD")
+    {
+        S(0, 0) = (young / ((1.0 + poisson) * (1.0 - 2.0 * poisson))) * ((1.0 - poisson) * Ec(0, 0) + poisson * Ec(1, 1));
+        S(1, 1) = (young / ((1.0 + poisson) * (1.0 - 2.0 * poisson))) * ((1.0 - poisson) * Ec(1, 1) + poisson * Ec(0, 0));
+        S(1, 0) = (young / (1.0 + poisson)) * Ec(1, 0);
+        S(0, 1) = (young / (1.0 + poisson)) * Ec(0, 1);
+    }
+    else
+    {
+        S(0, 0) = (young / (1.0 - poisson * poisson)) * (Ec(0, 0) + poisson * Ec(1, 1));
+        S(1, 1) = (young / (1.0 - poisson * poisson)) * (Ec(1, 1) + poisson * Ec(0, 0));
+        S(1, 0) = (young / (1.0 + poisson)) * Ec(1, 0);
+        S(0, 1) = (young / (1.0 + poisson)) * Ec(0, 1);
+    }
+    return S;
+}
+
+bounded_vector<double, 4> Cell::getGreen(const bounded_vector<double, 2> &qxsi, const std::string &ep) //(SIGMA11, SIGMA22, SIGMA33, SIGMA12)
+{
+    bounded_vector<double, 4> green;
+
+    int npc = controlPoints_.size();
+    vector<double> wpc(npc);
+    bounded_vector<int, 2> inc;
+
+    inc = controlPoints_[npc - 1]->getINC();
+
+    for (int i = 0; i < npc; i++)
+    {
+        wpc(i) = controlPoints_[i]->getWeight();
+    }
+
+    double young, poisson, density;
+    patch_->getMaterial()->setProperties(young, poisson, density);
+
+    std::pair<vector<double>, matrix<double>> functions;
+    functions = shapeFunctionAndDerivates(qxsi, wpc, inc); //retorna as funções de formas e derivadas calculadas nos pontos qxsi
 
     bounded_matrix<double, 2, 2> A0 = referenceJacobianMatrix(functions.second); //initial configuration map
     double j0 = jacobianDeterminant(A0);
@@ -1211,7 +1207,7 @@ std::pair<vector<double>, vector<double>> Cell::boundaryShapeFunctionAndDerivate
 
     for (int i = 0; i < numLocal; i++)
     {
-        phiIso(i) = phiL(i) * wpc(i) / sum;
+        phiIso(i) = phiL(i) / sum;
     }
 
     //DERIVATES
@@ -1289,7 +1285,7 @@ std::pair<vector<double>, vector<double>> Cell::boundaryShapeFunctionAndDerivate
 
     for (int i = 0; i < numLocal; i++)
     {
-        dphiIso(i) = (1.0 / (sum * sum * 2 * auxiliar)) * (wpc(i) * dphiL(i) * sum - wpc(i) * phiL(i) * sum1);
+        dphiIso(i) = (1.0 / (sum * sum * 2 * auxiliar)) * (dphiL(i) * sum - phiL(i) * sum1);
     }
 
     return std::make_pair(phiIso, dphiIso);
@@ -1373,18 +1369,23 @@ vector<double> Cell::computeDistribuitedLoads(const bounded_vector<double, 2> &v
         bounded_vector<double, 2> tangent;
         tangent(0) = 0.0;
         tangent(1) = 0.0;
+        //double sum = 0.0;
         for (int ih = 0; ih < npc; ih++)
         {
-            tangent(0) += functions.second(ih) / wpc(ih) * points[ih]->getCurrentCoordinate()(0);
-            tangent(1) += functions.second(ih) / wpc(ih) * points[ih]->getCurrentCoordinate()(1);
+            tangent(0) += functions.second(ih) * points[ih]->getCurrentCoordinate()(0);
+            tangent(1) += functions.second(ih) * points[ih]->getCurrentCoordinate()(1);
+            //sum += functions.first(ih);
         }
 
         double jacobian = sqrt(pow(tangent(0), 2) + pow(tangent(1), 2));
+        // bounded_vector<double, 2> normal;
+        // normal(0) = tangent(1) / jacobian;
+        // normal(1) = -tangent(0) / jacobian;
 
         for (int ih = 0; ih < npc; ih++)
         {
-            distribuitedLoad(2 * ih) += value(0) * functions.first(ih) * weight * thickness * jacobian / wpc(ih);
-            distribuitedLoad(2 * ih + 1) += value(1) * functions.first(ih) * weight * thickness * jacobian / wpc(ih);
+            distribuitedLoad(2 * ih) += value(0) * functions.first(ih) * weight * thickness * jacobian;
+            distribuitedLoad(2 * ih + 1) += value(1) * functions.first(ih) * weight * thickness * jacobian;
         }
     }
     return distribuitedLoad;
@@ -1611,8 +1612,8 @@ bounded_vector<double, 2> Cell::calculateGlobalCoordinate(const bounded_vector<d
     for (int cp = 0; cp < npc; cp++) //global coordinates of the integration point
     {
         bounded_vector<double, 2> coordinateCP = controlPoints_[cp]->getCurrentCoordinate();
-        coordIP(0) += phi(cp) * coordinateCP(0) / wpc2(cp);
-        coordIP(1) += phi(cp) * coordinateCP(1) / wpc2(cp);
+        coordIP(0) += phi(cp) * coordinateCP(0);
+        coordIP(1) += phi(cp) * coordinateCP(1);
     }
     return coordIP;
 }

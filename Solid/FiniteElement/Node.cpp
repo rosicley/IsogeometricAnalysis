@@ -22,6 +22,7 @@ Node::Node(const int &index, const int &indexFE, const bounded_vector<double, 2>
     stressState_(3) = 0.0;
     stressState_(4) = 1.0;
     distanceToBoundary_ = -10000.0;
+    cellIndex_ = -1;
 }
 
 Node::~Node() {}
@@ -84,6 +85,21 @@ bounded_vector<double, 5> Node::getStressState()
 double Node::getDistanceToBoundary()
 {
     return distanceToBoundary_;
+}
+
+int Node::getCellIndex()
+{
+    return cellIndex_;
+}
+
+bounded_vector<double, 2> Node::getXsisGlobal()
+{
+    return xsisglobal_;
+}
+
+bounded_vector<double, 2> Node::getValuesOfBlendingFunction()
+{
+    return blendingFunction_;
 }
 
 void Node::setPastCoordinate(const bounded_vector<double, 2> &pastCoordinate)
@@ -156,7 +172,17 @@ void Node::setDistanceToBoundary(const double &distance)
     distanceToBoundary_ = distance;
 }
 
-// void Node::setIndexFE(const int &index)
-// {
-//     indexFE_ = index;
-// }
+void Node::setCellIndex(const int &cellIndex)
+{
+    cellIndex_ = cellIndex;
+}
+
+void Node::setXsisGlobal(const bounded_vector<double, 2> &xsis)
+{
+    xsisglobal_ = xsis;
+}
+
+void Node::setValuesOfBlendingFunction(const bounded_vector<double, 2> &bvalues)
+{
+    blendingFunction_ = bvalues;
+}

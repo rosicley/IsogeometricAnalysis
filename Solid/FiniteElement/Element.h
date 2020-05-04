@@ -55,21 +55,7 @@ public:
 
     void setAnalysisParameters(const double &numberOfDomainIntegrationPoints, const double &deltat, const double &beta, const double &gamma);
 
-    void StressCalculate(const std::string &ep);
-
     matrix<double> massMatrix(const int &nHammer, const int &nHammerBlendZone);
-
-    //void computeDistanceFromFEBoundary(std::vector<BoundaryElement *> boundaryFE);
-
-    // void checkIncidence(std::vector<Cell* > cells);
-
-    // std::vector<double> InternalForce();
-
-    // bounded_matrix<double, 6, 6> localHessian();
-
-    // bounded_matrix<double, 6, 6> localMassMatrix();
-
-    // void setArea(const double &area);
 
     bounded_vector<double, 2> calculateGlobalCoordinate(const bounded_vector<double, 2> &qxsi);
 
@@ -102,8 +88,11 @@ public:
 
     std::vector<double> getBlendValue();
 
-    vector<double> diagonalMass(const int &nHammer, const int &nHammerBlendZone);
+    bounded_vector<double, 4> getCauchyStress(const bounded_vector<double, 2> &qxsi, const std::string &ep);
 
+    bounded_vector<double, 4> getCauchyStressBlendZone(const bounded_vector<double, 2> &qxsiLocal, const std::string &ep, Cell *cell, const bounded_vector<double, 2> &xsiGlobal, const bounded_vector<double, 2> &blendFunctions);
+
+    vector<double> diagonalMass(const int &nHammer, const int &nHammerBlendZone);
 
 private:
     int index_;

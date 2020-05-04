@@ -16,12 +16,10 @@ int main(int argc, char **args)
 
     GlobalSolid *problem = new GlobalSolid;
 
-    problem->dataReading("parameters.txt", "properties.txt", "codaISO.txt", "codaFE.msh", true);
+    problem->dataReading("parameters.txt", "properties.txt", "doublecrack.txt", "doublecrack3.msh", true);
 
     std::string planeState = problem->getPlaneState(); //EPD OR EPT
     std::string type = problem->getAnalysisType();     //DYNAMIC OR STATIC
-
-    //problem->teste();
 
     if (planeState == "EPD" or planeState == "EPT")
     {
@@ -31,7 +29,7 @@ int main(int argc, char **args)
         }
         else if (type == "DYNAMIC")
         {
-            problem->solveDynamicProblem();
+           problem->solveDynamicProblem();
         }
         else
         {

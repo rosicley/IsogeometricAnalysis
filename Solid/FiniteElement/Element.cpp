@@ -1641,16 +1641,23 @@ std::pair<vector<double>, matrix<double>> Element::elementContributions(const st
                 matrix<double> dphi_dxsiLocal = domainDerivativeShapeFunction(xsi1, xsi2); //derivadas das funções de forma em relação a xsi local (direção, nó);
 
                 //GLOBAL
-                std::vector<ControlPoint *> cps = cell->getControlPoints();                                                   //conectividade da célula
-                const std::pair<vector<double>, matrix<double>> functionsGlobal = cell->shapeFunctionAndDerivates(xsiGlobal); //functionsGlobal.first(i) são as funções de forma globais calculadas em xsiGlobal que houve incidência;
-                                                                                                                              //functionsGlobal.second(j, i) são as derivadas das funções de forma globais em relação a xsi global;
+                std::vector<ControlPoint *> cps = cell->getControlPoints();
+                int nglobal = cps.size(); //quantidade de pontos de controle que definem a célula em que o ponto de hammer está inserido
+                vector<double> wpc(nglobal);
+                bounded_vector<int, 2> inc;
+                inc = cps[nglobal - 1]->getINC();
+                for (int i = 0; i < nglobal; i++)
+                {
+                    wpc(i) = cps[i]->getWeight();
+                }                                                                                                                       //conectividade da célula
+                const std::pair<vector<double>, matrix<double>> functionsGlobal = cell->shapeFunctionAndDerivates(xsiGlobal, wpc, inc); //functionsGlobal.first(i) são as funções de forma globais calculadas em xsiGlobal que houve incidência;
+                                                                                                                                        //functionsGlobal.second(j, i) são as derivadas das funções de forma globais em relação a xsi global;
 
                 bounded_matrix<double, 2, 2> Jlocal = referenceJacobianMatrix(xsi1, xsi2);
                 bounded_matrix<double, 2, 2> JGlobalI = inverseMatrix(cell->referenceJacobianMatrix(functionsGlobal.second));
                 bounded_matrix<double, 2, 2> M = trans(prod(JGlobalI, Jlocal)); //para transforma dPhiGlobal_dXsiGlobal em dPhiGlobal_dXsiLocal
 
                 int nlocal = connection_.size();               //poderia estar de fora...
-                int nglobal = cps.size();                      //quantidade de pontos de controle que definem a célula em que o ponto de hammer está inserido
                 int nnum = nlocal + nglobal;                   //novo número funções de forma que definem o elemento na blend zone
                 vector<double> phiBlended(nnum, 0.0);          //novas funções de forma que definem o elemento
                 matrix<double> dphi_dxsiBlended(2, nnum, 0.0); //derivadas das novas funções de forma em relação a xsi local
@@ -1981,244 +1988,6 @@ std::pair<vector<double>, matrix<double>> Element::elementContributions(const st
     return std::make_pair(rhs, tangent);
 }
 
-void Element::StressCalculate(const std::string &ep)
-{
-    if (order_ == 2)
-    {
-        double young, poisson, density;
-        mesh_->getMaterial()->setProperties(young, poisson, density);
-        for (int i = 0; i < 6; i++)
-        {
-            bounded_matrix<double, 6, 2> xsi;
-            xsi(0, 0) = 1.0;
-            xsi(0, 1) = 0.0;
-
-            xsi(1, 0) = 0.0;
-            xsi(1, 1) = 1.0;
-
-            xsi(2, 0) = 0.0;
-            xsi(2, 1) = 0.0;
-
-            xsi(3, 0) = 0.5;
-            xsi(3, 1) = 0.5;
-
-            xsi(4, 0) = 0.0;
-            xsi(4, 1) = 0.5;
-
-            xsi(5, 0) = 0.5;
-            xsi(5, 1) = 0.0;
-
-            bounded_matrix<double, 2, 2> A0 = referenceJacobianMatrix(xsi(i, 0), xsi(i, 1)); //initial configuration map
-            double j0 = jacobianDeterminant(A0);
-            bounded_matrix<double, 2, 2> A0I; //inverse initial configuration map
-            A0I(0, 0) = A0(1, 1) / j0;
-            A0I(1, 1) = A0(0, 0) / j0;
-            A0I(0, 1) = -A0(0, 1) / j0;
-            A0I(1, 0) = -A0(1, 0) / j0;
-            bounded_matrix<double, 2, 2> A1 = currentJacobianMatrix(xsi(i, 0), xsi(i, 1));
-            bounded_matrix<double, 2, 2> Ac = prod(A1, A0I);                   //current deformation gradient
-            identity_matrix<double> I(2);                                      //identity matrix
-            bounded_matrix<double, 2, 2> Ec = 0.5 * (prod(trans(Ac), Ac) - I); //current green strain tensor
-            bounded_matrix<double, 2, 2> S;                                    //second piola kirchhoff stress tensor
-
-            if (ep == "EPD")
-            {
-                S(0, 0) = (young / ((1.0 + poisson) * (1.0 - 2.0 * poisson))) * ((1.0 - poisson) * Ec(0, 0) + poisson * Ec(1, 1));
-                S(1, 1) = (young / ((1.0 + poisson) * (1.0 - 2.0 * poisson))) * ((1.0 - poisson) * Ec(1, 1) + poisson * Ec(0, 0));
-                S(1, 0) = (young / (1.0 + poisson)) * Ec(1, 0);
-                S(0, 1) = (young / (1.0 + poisson)) * Ec(0, 1);
-            }
-            else
-            {
-                S(0, 0) = (young / (1.0 - poisson * poisson)) * (Ec(0, 0) + poisson * Ec(1, 1));
-                S(1, 1) = (young / (1.0 - poisson * poisson)) * (Ec(1, 1) + poisson * Ec(0, 0));
-                S(1, 0) = (young / (1.0 + poisson)) * Ec(1, 0);
-                S(0, 1) = (young / (1.0 + poisson)) * Ec(0, 1);
-            }
-
-            bounded_matrix<double, 2, 2> sigma;
-            double jac = jacobianDeterminant(Ac);
-            bounded_matrix<double, 2, 2> mat1;
-            mat1 = prod(Ac, S);
-            sigma = (1.0 / jac) * prod(mat1, trans(Ac));
-
-            bounded_vector<double, 4> cauchStress;
-
-            cauchStress(0) = sigma(0, 0);
-            cauchStress(1) = sigma(1, 1);
-            cauchStress(3) = sigma(0, 1);
-
-            if (ep == "EPD")
-            {
-                cauchStress(2) = poisson * (cauchStress(0) + cauchStress(1));
-            }
-            else //EPT
-            {
-                cauchStress(2) = 0.0;
-            }
-
-            connection_[i]->setStressState(cauchStress);
-        }
-    }
-    else if (order_ == 1)
-    {
-        double young, poisson, density;
-        mesh_->getMaterial()->setProperties(young, poisson, density);
-        for (int i = 0; i < 3; i++)
-        {
-            bounded_matrix<double, 3, 2> xsi;
-            xsi(0, 0) = 1.0;
-            xsi(0, 1) = 0.0;
-
-            xsi(1, 0) = 0.0;
-            xsi(1, 1) = 1.0;
-
-            xsi(2, 0) = 0.0;
-            xsi(2, 1) = 0.0;
-
-            bounded_matrix<double, 2, 2> A0 = referenceJacobianMatrix(xsi(i, 0), xsi(i, 1)); //initial configuration map
-            double j0 = jacobianDeterminant(A0);
-            bounded_matrix<double, 2, 2> A0I; //inverse initial configuration map
-            A0I(0, 0) = A0(1, 1) / j0;
-            A0I(1, 1) = A0(0, 0) / j0;
-            A0I(0, 1) = -A0(0, 1) / j0;
-            A0I(1, 0) = -A0(1, 0) / j0;
-            bounded_matrix<double, 2, 2> A1 = currentJacobianMatrix(xsi(i, 0), xsi(i, 1));
-            bounded_matrix<double, 2, 2> Ac = prod(A1, A0I);                   //current deformation gradient
-            identity_matrix<double> I(2);                                      //identity matrix
-            bounded_matrix<double, 2, 2> Ec = 0.5 * (prod(trans(Ac), Ac) - I); //current green strain tensor
-            bounded_matrix<double, 2, 2> S;                                    //second piola kirchhoff stress tensor
-
-            if (ep == "EPD")
-            {
-                S(0, 0) = (young / ((1.0 + poisson) * (1.0 - 2.0 * poisson))) * ((1.0 - poisson) * Ec(0, 0) + poisson * Ec(1, 1));
-                S(1, 1) = (young / ((1.0 + poisson) * (1.0 - 2.0 * poisson))) * ((1.0 - poisson) * Ec(1, 1) + poisson * Ec(0, 0));
-                S(1, 0) = (young / (1.0 + poisson)) * Ec(1, 0);
-                S(0, 1) = (young / (1.0 + poisson)) * Ec(0, 1);
-            }
-            else
-            {
-                S(0, 0) = (young / (1.0 - poisson * poisson)) * (Ec(0, 0) + poisson * Ec(1, 1));
-                S(1, 1) = (young / (1.0 - poisson * poisson)) * (Ec(1, 1) + poisson * Ec(0, 0));
-                S(1, 0) = (young / (1.0 + poisson)) * Ec(1, 0);
-                S(0, 1) = (young / (1.0 + poisson)) * Ec(0, 1);
-            }
-
-            bounded_matrix<double, 2, 2> sigma;
-            double jac = jacobianDeterminant(Ac);
-            bounded_matrix<double, 2, 2> mat1;
-            mat1 = prod(Ac, S);
-            sigma = (1.0 / jac) * prod(mat1, trans(Ac));
-
-            bounded_vector<double, 4> cauchStress;
-
-            cauchStress(0) = sigma(0, 0);
-            cauchStress(1) = sigma(1, 1);
-            cauchStress(3) = sigma(0, 1);
-
-            if (ep == "EPD")
-            {
-                cauchStress(2) = poisson * (cauchStress(0) + cauchStress(1));
-            }
-            else //EPT
-            {
-                cauchStress(2) = 0.0;
-            }
-
-            connection_[i]->setStressState(cauchStress);
-        }
-    }
-    else if (order_ == 3)
-    {
-        double young, poisson, density;
-        mesh_->getMaterial()->setProperties(young, poisson, density);
-        for (int i = 0; i < 10; i++)
-        {
-            bounded_matrix<double, 10, 2> xsi;
-            xsi(0, 0) = 1.0;
-            xsi(0, 1) = 0.0;
-
-            xsi(1, 0) = 0.0;
-            xsi(1, 1) = 1.0;
-
-            xsi(2, 0) = 0.0;
-            xsi(2, 1) = 0.0;
-
-            xsi(3, 0) = 0.666666666666667;
-            xsi(3, 1) = 0.333333333333333;
-
-            xsi(4, 0) = 0.333333333333333;
-            xsi(4, 1) = 0.666666666666667;
-
-            xsi(5, 0) = 0.0;
-            xsi(5, 1) = 0.666666666666667;
-
-            xsi(6, 0) = 0.0;
-            xsi(6, 1) = 0.333333333333333;
-
-            xsi(7, 0) = 0.333333333333333;
-            xsi(7, 1) = 0.0;
-
-            xsi(8, 0) = 0.666666666666667;
-            xsi(8, 1) = 0.0;
-
-            xsi(9, 0) = 0.333333333333333;
-            xsi(9, 1) = 0.333333333333333;
-
-            bounded_matrix<double, 2, 2> A0 = referenceJacobianMatrix(xsi(i, 0), xsi(i, 1)); //initial configuration map
-            double j0 = jacobianDeterminant(A0);
-            bounded_matrix<double, 2, 2> A0I; //inverse initial configuration map
-            A0I(0, 0) = A0(1, 1) / j0;
-            A0I(1, 1) = A0(0, 0) / j0;
-            A0I(0, 1) = -A0(0, 1) / j0;
-            A0I(1, 0) = -A0(1, 0) / j0;
-            bounded_matrix<double, 2, 2> A1 = currentJacobianMatrix(xsi(i, 0), xsi(i, 1));
-            bounded_matrix<double, 2, 2> Ac = prod(A1, A0I);                   //current deformation gradient
-            identity_matrix<double> I(2);                                      //identity matrix
-            bounded_matrix<double, 2, 2> Ec = 0.5 * (prod(trans(Ac), Ac) - I); //current green strain tensor
-            bounded_matrix<double, 2, 2> S;                                    //second piola kirchhoff stress tensor
-
-            if (ep == "EPD")
-            {
-                S(0, 0) = (young / ((1.0 + poisson) * (1.0 - 2.0 * poisson))) * ((1.0 - poisson) * Ec(0, 0) + poisson * Ec(1, 1));
-                S(1, 1) = (young / ((1.0 + poisson) * (1.0 - 2.0 * poisson))) * ((1.0 - poisson) * Ec(1, 1) + poisson * Ec(0, 0));
-                S(1, 0) = (young / (1.0 + poisson)) * Ec(1, 0);
-                S(0, 1) = (young / (1.0 + poisson)) * Ec(0, 1);
-            }
-            else
-            {
-                S(0, 0) = (young / (1.0 - poisson * poisson)) * (Ec(0, 0) + poisson * Ec(1, 1));
-                S(1, 1) = (young / (1.0 - poisson * poisson)) * (Ec(1, 1) + poisson * Ec(0, 0));
-                S(1, 0) = (young / (1.0 + poisson)) * Ec(1, 0);
-                S(0, 1) = (young / (1.0 + poisson)) * Ec(0, 1);
-            }
-
-            bounded_matrix<double, 2, 2> sigma;
-            double jac = jacobianDeterminant(Ac);
-            bounded_matrix<double, 2, 2> mat1;
-            mat1 = prod(Ac, S);
-            sigma = (1.0 / jac) * prod(mat1, trans(Ac));
-
-            bounded_vector<double, 4> cauchStress;
-
-            cauchStress(0) = sigma(0, 0);
-            cauchStress(1) = sigma(1, 1);
-            cauchStress(3) = sigma(0, 1);
-
-            if (ep == "EPD")
-            {
-                cauchStress(2) = poisson * (cauchStress(0) + cauchStress(1));
-            }
-            else //EPT
-            {
-                cauchStress(2) = 0.0;
-            }
-
-            connection_[i]->setStressState(cauchStress);
-        }
-    }
-}
-
 matrix<double> Element::massMatrix(const int &hammerPoints, const int &hammerPointsBlendZone)
 {
     std::vector<Cell *> cellAux;
@@ -2480,19 +2249,19 @@ bounded_matrix<double, 2, 2> Element::referenceJacobianMatrixBlendZone(const mat
     }
 
     int nGlobal = cpsGLobal.size();
-    vector<double> wpc(nGlobal);
-    for (int i = 0; i < nGlobal; i++)
-    {
-        wpc(i) = cpsGLobal[i]->getWeight();
-    }
+    // vector<double> wpc(nGlobal);
+    // for (int i = 0; i < nGlobal; i++)
+    // {
+    //     wpc(i) = cpsGLobal[i]->getWeight();
+    // }
 
     for (int i = 0; i < nGlobal; i++)
     {
         bounded_vector<double, 2> initialCoord = cpsGLobal[i]->getInitialCoordinate();
-        dx1_dxsi1 += initialCoord(0) * dphi_dxsiBlended(0, i + nLocal) / wpc(i);
-        dx1_dxsi2 += initialCoord(0) * dphi_dxsiBlended(1, i + nLocal) / wpc(i);
-        dx2_dxsi1 += initialCoord(1) * dphi_dxsiBlended(0, i + nLocal) / wpc(i);
-        dx2_dxsi2 += initialCoord(1) * dphi_dxsiBlended(1, i + nLocal) / wpc(i);
+        dx1_dxsi1 += initialCoord(0) * dphi_dxsiBlended(0, i + nLocal);
+        dx1_dxsi2 += initialCoord(0) * dphi_dxsiBlended(1, i + nLocal);
+        dx2_dxsi1 += initialCoord(1) * dphi_dxsiBlended(0, i + nLocal);
+        dx2_dxsi2 += initialCoord(1) * dphi_dxsiBlended(1, i + nLocal);
     }
 
     bounded_matrix<double, 2, 2> referenceJacobianMatrix;
@@ -2519,18 +2288,18 @@ bounded_matrix<double, 2, 2> Element::currentJacobianMatrixBlendZone(const matri
     }
 
     int nGlobal = cpsGLobal.size();
-    vector<double> wpc(nGlobal);
-    for (int i = 0; i < nGlobal; i++)
-    {
-        wpc(i) = cpsGLobal[i]->getWeight();
-    }
+    // vector<double> wpc(nGlobal);
+    // for (int i = 0; i < nGlobal; i++)
+    // {
+    //     wpc(i) = cpsGLobal[i]->getWeight();
+    // }
     for (int i = 0; i < nGlobal; i++)
     {
         bounded_vector<double, 2> currentCoord = cpsGLobal[i]->getCurrentCoordinate();
-        dx1_dxsi1 += currentCoord(0) * dphi_dxsiBlended(0, i + nLocal) / wpc(i);
-        dx1_dxsi2 += currentCoord(0) * dphi_dxsiBlended(1, i + nLocal) / wpc(i);
-        dx2_dxsi1 += currentCoord(1) * dphi_dxsiBlended(0, i + nLocal) / wpc(i);
-        dx2_dxsi2 += currentCoord(1) * dphi_dxsiBlended(1, i + nLocal) / wpc(i);
+        dx1_dxsi1 += currentCoord(0) * dphi_dxsiBlended(0, i + nLocal);
+        dx1_dxsi2 += currentCoord(0) * dphi_dxsiBlended(1, i + nLocal);
+        dx2_dxsi1 += currentCoord(1) * dphi_dxsiBlended(0, i + nLocal);
+        dx2_dxsi2 += currentCoord(1) * dphi_dxsiBlended(1, i + nLocal);
     }
 
     bounded_matrix<double, 2, 2> referenceJacobianMatrix;
@@ -2692,4 +2461,183 @@ vector<double> Element::diagonalMass(const int &hammerPoints, const int &hammerP
     }
 
     return mass;
+}
+
+bounded_vector<double, 4> Element::getCauchyStress(const bounded_vector<double, 2> &qxsi, const std::string &ep)
+{
+    bounded_vector<double, 4> cauchStress;
+
+    double young, poisson, density;
+    mesh_->getMaterial()->setProperties(young, poisson, density);
+    double xsi1 = qxsi(0);
+    double xsi2 = qxsi(1);
+
+    bounded_matrix<double, 2, 2> A0 = referenceJacobianMatrix(xsi1, xsi2); //initial configuration map
+    double j0 = jacobianDeterminant(A0);
+    bounded_matrix<double, 2, 2> A0I; //inverse initial configuration map
+    A0I(0, 0) = A0(1, 1) / j0;
+    A0I(1, 1) = A0(0, 0) / j0;
+    A0I(0, 1) = -A0(0, 1) / j0;
+    A0I(1, 0) = -A0(1, 0) / j0;
+    bounded_matrix<double, 2, 2> A1 = currentJacobianMatrix(xsi1, xsi2); //current configuration map
+    bounded_matrix<double, 2, 2> Ac = prod(A1, A0I);                     //current deformation gradient
+    identity_matrix<double> I(2);                                        //identity matrix
+    bounded_matrix<double, 2, 2> Ec = 0.5 * (prod(trans(Ac), Ac) - I);   //current green strain tensor
+
+    bounded_matrix<double, 2, 2> S; //second piola kirchhoff stress tensor
+
+    if (ep == "EPD")
+    {
+        S(0, 0) = (young / ((1.0 + poisson) * (1.0 - 2.0 * poisson))) * ((1.0 - poisson) * Ec(0, 0) + poisson * Ec(1, 1));
+        S(1, 1) = (young / ((1.0 + poisson) * (1.0 - 2.0 * poisson))) * ((1.0 - poisson) * Ec(1, 1) + poisson * Ec(0, 0));
+        S(1, 0) = (young / (1.0 + poisson)) * Ec(1, 0);
+        S(0, 1) = (young / (1.0 + poisson)) * Ec(0, 1);
+    }
+    else
+    {
+        S(0, 0) = (young / (1.0 - poisson * poisson)) * (Ec(0, 0) + poisson * Ec(1, 1));
+        S(1, 1) = (young / (1.0 - poisson * poisson)) * (Ec(1, 1) + poisson * Ec(0, 0));
+        S(1, 0) = (young / (1.0 + poisson)) * Ec(1, 0);
+        S(0, 1) = (young / (1.0 + poisson)) * Ec(0, 1);
+    }
+
+    bounded_matrix<double, 2, 2> sigma;
+    double jac = jacobianDeterminant(Ac);
+    bounded_matrix<double, 2, 2> mat1;
+    mat1 = prod(Ac, S);
+    sigma = (1.0 / jac) * prod(mat1, trans(Ac));
+
+    cauchStress(0) = sigma(0, 0);
+    cauchStress(1) = sigma(1, 1);
+    cauchStress(3) = sigma(0, 1);
+
+    if (ep == "EPD")
+    {
+        cauchStress(2) = poisson * (cauchStress(0) + cauchStress(1));
+    }
+    else //EPT
+    {
+        cauchStress(2) = 0.0;
+    }
+    return cauchStress;
+}
+
+bounded_vector<double, 4> Element::getCauchyStressBlendZone(const bounded_vector<double, 2> &qxsiLocal, const std::string &ep, Cell *cell, const bounded_vector<double, 2> &xsiGlobal, const bounded_vector<double, 2> &blendFunctions)
+{
+    bounded_vector<double, 4> cauchStress;
+
+    double young, poisson, density;
+    mesh_->getMaterial()->setProperties(young, poisson, density);
+
+    double blend = blendFunctions(0);
+    const double xsi1 = qxsiLocal(0);
+    const double xsi2 = qxsiLocal(1);
+
+    vector<double> phiLocal = domainShapeFunction(xsi1, xsi2);                 //funções de forma calculada no ponto de hammer
+    matrix<double> dphi_dxsiLocal = domainDerivativeShapeFunction(xsi1, xsi2); //derivadas das funções de forma em relação a xsi local (direção, nó);
+
+    bounded_vector<double, 2> dDA_dxsi;
+    dDA_dxsi(0) = 0.0;
+    dDA_dxsi(1) = 0.0;
+    for (int i = 0; i < connection_.size(); i++)
+    {
+        double DAnode = connection_[i]->getDistanceToBoundary();
+        dDA_dxsi(0) += dphi_dxsiLocal(0, i) * DAnode; //dDAhammer_dxsiLocal1
+        dDA_dxsi(1) += dphi_dxsiLocal(1, i) * DAnode; //dDAhammer_dxsiLocal1
+    }
+
+    bounded_vector<double, 2> dblend_dxsi;
+    dblend_dxsi(0) = blendFunctions(1) * dDA_dxsi(0); //(db_dxsiLocal1)
+    dblend_dxsi(1) = blendFunctions(1) * dDA_dxsi(1); //(db_dxsiLocal2)
+
+    //GLOBAL
+    std::vector<ControlPoint *> cps = cell->getControlPoints();
+    int nglobal = cps.size(); //quantidade de pontos de controle que definem a célula em que o ponto de hammer está inserido
+    vector<double> wpc(nglobal);
+    bounded_vector<int, 2> inc;
+    inc = cps[nglobal - 1]->getINC();
+    for (int i = 0; i < nglobal; i++)
+    {
+        wpc(i) = cps[i]->getWeight();
+    }                                                                                                                       //conectividade da célula
+    const std::pair<vector<double>, matrix<double>> functionsGlobal = cell->shapeFunctionAndDerivates(xsiGlobal, wpc, inc); //functionsGlobal.first(i) são as funções de forma globais calculadas em xsiGlobal que houve incidência;
+                                                                                                                            //functionsGlobal.second(j, i) são as derivadas das funções de forma globais em relação a xsi global;
+
+    bounded_matrix<double, 2, 2> Jlocal = referenceJacobianMatrix(xsi1, xsi2);
+    bounded_matrix<double, 2, 2> JGlobalI = inverseMatrix(cell->referenceJacobianMatrix(functionsGlobal.second));
+    bounded_matrix<double, 2, 2> M = trans(prod(JGlobalI, Jlocal)); //para transforma dPhiGlobal_dXsiGlobal em dPhiGlobal_dXsiLocal
+
+    int nlocal = connection_.size();
+    int nnum = nlocal + nglobal;
+    matrix<double> dphi_dxsiBlended(2, nnum, 0.0);
+
+    for (int i = 0; i < nlocal; i++)
+    {
+        dphi_dxsiBlended(0, i) = -dblend_dxsi(0) * phiLocal(i) + (1.0 - blend) * dphi_dxsiLocal(0, i);
+        dphi_dxsiBlended(1, i) = -dblend_dxsi(1) * phiLocal(i) + (1.0 - blend) * dphi_dxsiLocal(1, i);
+    }
+
+    for (int i = 0; i < nglobal; i++)
+    {
+        bounded_vector<double, 2> dPhiG_dXsiG, dPhiG_dxsiL;
+        dPhiG_dXsiG(0) = functionsGlobal.second(0, i); //dPhiGlobal_dxsiGlobal1
+        dPhiG_dXsiG(1) = functionsGlobal.second(1, i); //dPhiGlobal_dxsiGlobal2
+        dPhiG_dxsiL = prod(M, dPhiG_dXsiG);
+
+        dphi_dxsiBlended(0, nlocal + i) = dblend_dxsi(0) * functionsGlobal.first(i) + blend * dPhiG_dxsiL(0);
+        dphi_dxsiBlended(1, nlocal + i) = dblend_dxsi(1) * functionsGlobal.first(i) + blend * dPhiG_dxsiL(1);
+    }
+
+    bounded_matrix<double, 2, 2> A0 = referenceJacobianMatrixBlendZone(dphi_dxsiBlended, cps); //mapeamento da configuração inicial
+    bounded_matrix<double, 2, 2> A1 = currentJacobianMatrixBlendZone(dphi_dxsiBlended, cps);   //mapeamento da configuração atual
+    bounded_matrix<double, 2, 2> A0I = inverseMatrix(A0);                                      //inverse initial configuration map
+    bounded_matrix<double, 2, 2> Ac = prod(A1, A0I);                                           //gradiente da função mudança de configuração
+    identity_matrix<double> I(2);                                                              //identity matrix
+    bounded_matrix<double, 2, 2> Ec = 0.5 * (prod(trans(Ac), Ac) - I);                         //current green strain tensor
+    bounded_matrix<double, 2, 2> S;                                                            //second piola kirchhoff stress tensor
+    double j0 = jacobianDeterminant(Jlocal);                                                   //para multiplicar com o peso
+
+    if (ep == "EPD")
+    {
+        S(0, 0) = (young / ((1.0 + poisson) * (1.0 - 2.0 * poisson))) * ((1.0 - poisson) * Ec(0, 0) + poisson * Ec(1, 1));
+        S(1, 1) = (young / ((1.0 + poisson) * (1.0 - 2.0 * poisson))) * ((1.0 - poisson) * Ec(1, 1) + poisson * Ec(0, 0));
+        S(1, 0) = (young / (1.0 + poisson)) * Ec(1, 0);
+        S(0, 1) = (young / (1.0 + poisson)) * Ec(0, 1);
+    }
+    else
+    {
+        S(0, 0) = (young / (1.0 - poisson * poisson)) * (Ec(0, 0) + poisson * Ec(1, 1));
+        S(1, 1) = (young / (1.0 - poisson * poisson)) * (Ec(1, 1) + poisson * Ec(0, 0));
+        S(1, 0) = (young / (1.0 + poisson)) * Ec(1, 0);
+        S(0, 1) = (young / (1.0 + poisson)) * Ec(0, 1);
+    }
+
+    //double jac = jacobianDeterminant(prod(currentJacobianMatrix(xsi1, xsi2), inverseMatrix(Jlocal)));
+
+    // A0 = referenceJacobianMatrix(xsi1, xsi2); //initial configuration map
+    // //double j0 = jacobianDeterminant(A0);
+    // A0I = inverseMatrix(A0); //inverse initial configuration map
+    // A1 = currentJacobianMatrix(xsi1, xsi2); //current configuration map
+    // Ac = prod(A1, A0I);                     //current deformation gradient
+
+    bounded_matrix<double, 2, 2> sigma;
+    double jac = jacobianDeterminant(Ac);
+    bounded_matrix<double, 2, 2> mat1;
+    mat1 = prod(Ac, S);
+    sigma = (1.0 / jac) * prod(mat1, trans(Ac));
+
+    cauchStress(0) = sigma(0, 0);
+    cauchStress(1) = sigma(1, 1);
+    cauchStress(3) = sigma(0, 1);
+
+    if (ep == "EPD")
+    {
+        cauchStress(2) = poisson * (cauchStress(0) + cauchStress(1));
+    }
+    else //EPT
+    {
+        cauchStress(2) = 0.0;
+    }
+
+    return cauchStress;
 }

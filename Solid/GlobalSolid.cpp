@@ -681,7 +681,7 @@ void GlobalSolid::dataFromGmsh(const std::string &inputGmesh)
 
     std::string line;
     std::string elementType;
-    int nmesh, nnode, nelem, auxEl, auxBo;
+    int nmesh, nnode, nelem, auxEl, auxBo, nLinesBlend;
 
     int rank;
     MPI_Comm_rank(PETSC_COMM_WORLD, &rank);
@@ -725,6 +725,22 @@ void GlobalSolid::dataFromGmsh(const std::string &inputGmesh)
     std::getline(feMesh, line);
     std::getline(feMesh, line);
     std::getline(feMesh, line);
+    feMesh >> nLinesBlend;
+    std::getline(feMesh, line);
+    std::getline(feMesh, line);
+    std::getline(feMesh, line);
+    std::getline(feMesh, line);
+    std::getline(feMesh, line);
+    vector<int> linesBlend(nLinesBlend);
+    for (int i = 0; i < nLinesBlend; i++)
+    {
+        feMesh >> linesBlend(i);
+    }
+    std::getline(feMesh, line);
+    std::getline(feMesh, line);
+    std::getline(feMesh, line);
+    std::getline(feMesh, line);
+    std::getline(feMesh, line);
     std::getline(feMesh, line);
     feMesh >> nnode;
     std::getline(feMesh, line);
@@ -741,7 +757,7 @@ void GlobalSolid::dataFromGmsh(const std::string &inputGmesh)
     std::getline(feMesh, line);
     feMesh >> nelem;
     std::getline(feMesh, line);
-
+    
     int type, num, auxconec;
     int elementCont = 0;
     for (int ielem = 0; ielem < nelem; ielem++)
@@ -749,16 +765,27 @@ void GlobalSolid::dataFromGmsh(const std::string &inputGmesh)
         feMesh >> trash >> type >> trash >> trash >> num;
         if (type == 1 or type == 8 or type == 26)
         {
-            std::vector<Node *> conec;
-
-            for (int in = 0; in < auxBo; in++)
+            bool teste = false;
+            for (int i = 0; i < linesBlend.size(); i++)
             {
-                feMesh >> auxconec;
-                conec.push_back(nodes_[auxconec - 1]);
+                if (num == linesBlend(i))
+                {
+                    teste = true;
+                }
             }
+            if (teste == true)
+            {
+                std::vector<Node *> conec;
 
-            BoundaryElement *bfe = new BoundaryElement(num, conec);
-            boundaryFE_.push_back(bfe);
+                for (int in = 0; in < auxBo; in++)
+                {
+                    feMesh >> auxconec;
+                    conec.push_back(nodes_[auxconec - 1]);
+                }
+
+                BoundaryElement *bfe = new BoundaryElement(num, conec);
+                boundaryFE_.push_back(bfe);
+            }
         }
         else if (type == 2 or type == 9 or type == 21)
         {
@@ -1088,31 +1115,30 @@ void GlobalSolid::teste()
     // incidenceLocalxGlobal();
     computeDistanceFromFEBoundary();
     incidenceLocalxGlobal();
-    checkInactivesCPandNode();
-    firstAccelerationCalculation();
+    shareDataBetweenRanks();
+    //checkInactivesCPandNode();
+    //firstAccelerationCalculation();
+    std::cout << "o improvável deu certo" << std::endl;
 
-    // if (rank == 0)
-    // {
-    //     computeDistanceFromFEBoundary();
-    //     incidenceLocalxGlobal();
+    if (rank == 0)
+    {
+        exportToParaviewISO(0);
+    }
+    else if (rank == 1)
+    {
+        exportToParaviewFEM(0);
+        // for (BoundaryElement *bou : boundaryFE_)
+        // {
+        //     std::cout << "LINE: " << bou->getBoundaryIndex() << " ";
+        //     for (int i = 0; i < bou->getNodes().size(); i++)
+        //     {
+        //         std::cout << bou->getNode(i)->getIndexFE() << " ";
+        //     }
+        //     std::cout << std::endl;
+        // }
+    }
 
-    //     vector<double> mass = diagonalMassMatrix();
-    //     std::cout << "GLOBAL: " << std::endl;
-    //     for (int i = 0; i < controlPoints_.size(); i++)
-    //     {
-    //         std::cout << mass(i) << std::endl;
-    //     }
-    //     std::cout << "LOCAL: " << std::endl;
-    //     for (int i = controlPoints_.size(); i < cpnumber_; i++)
-    //     {
-    //         std::cout << mass(i) << std::endl;
-    //     }
-    // }
-    // else if (rank == 1)
-    // {
-    //     exportToParaviewFEM(0);
-    //     testeParaviewFE();
-    // }
+    exportToParaviewHammerPoints();
 
     // for (Cell *cell : cells_part)
     // {
@@ -1151,13 +1177,27 @@ int GlobalSolid::solveStaticProblem()
     MPI_Comm_size(PETSC_COMM_WORLD, &size);
 
     //std::stringstream text1;
+    //double force;
+    //text1 << "forceInternal" << rank << ".txt";
+    //std::ofstream file1(text1.str());
 
-    if (rank == 0)
+    computeDistanceFromFEBoundary();
+    if (elements_.size() > 0)
+    {
+        incidenceLocalxGlobal();
+        checkInactivesCPandNode();
+        shareDataBetweenRanks();
+    }
+    exportToParaviewHammerPoints();
+
+    if (rank == 0 and cells_.size() > 0)
     {
         exportToParaviewISO(0);
+    }
+    else if (rank == 1 and elements_.size() > 0)
+    {
         exportToParaviewFEM(0);
     }
-    //std::ofstream file1(text1.str());
 
     double initialNorm = 0.0;
     for (ControlPoint *node : controlPoints_)
@@ -1172,21 +1212,6 @@ int GlobalSolid::solveStaticProblem()
         double x2 = node->getInitialCoordinate()(1);
         initialNorm += x1 * x1 + x2 * x2;
     }
-
-    //////REVER QUANDO RECONSTRUIR MALHA!
-    computeDistanceFromFEBoundary();
-    if (elements_.size() > 0)
-    {
-        incidenceLocalxGlobal();
-        checkInactivesCPandNode();
-    }
-
-    // checkControlPointsOutsideTheDomain();
-    // if (rank == 1)
-    // {
-    //     testeParaviewFE();
-    // }
-    /////
 
     int ndir = dirichletConditions_.size() + dirichletConditionsFE_.size() + 2 * inactiveCPandNode_.size();
     PetscMalloc1(ndir, &dof);
@@ -1225,7 +1250,7 @@ int GlobalSolid::solveStaticProblem()
             //Create PETSc sparse parallel matrix
             ierr = MatCreateAIJ(PETSC_COMM_WORLD, PETSC_DECIDE, PETSC_DECIDE,
                                 2 * cpnumber_, 2 * cpnumber_,
-                                100, NULL, 300, NULL, &A);
+                                100000, NULL, 300000, NULL, &A);
             CHKERRQ(ierr);
 
             ierr = MatGetOwnershipRange(A, &Istart, &Iend);
@@ -1373,6 +1398,7 @@ int GlobalSolid::solveStaticProblem()
             // CHKERRQ(ierr);
 
             //Zerando linhas e colunas
+
             MatZeroRowsColumns(A, ndir, dof, 1.0, x, b);
 
             //MatView(A, PETSC_VIEWER_STDOUT_WORLD);
@@ -1443,6 +1469,7 @@ int GlobalSolid::solveStaticProblem()
                 norm += val * val;
                 node->incrementCurrentCoordinate(1, val);
             }
+
             // if (rank == 0)
             // {
             for (InactiveNode *no : inactiveNode_)
@@ -1484,18 +1511,13 @@ int GlobalSolid::solveStaticProblem()
                 break;
             }
         }
-
-        if (rank == 0)
+        if (rank == 0 and cells_.size() > 0)
         {
             exportToParaviewISO(loadStep);
-            for (Node *n : nodes_)
-            {
-                n->setZeroStressState();
-            }
-            for (Element *el : elements_)
-            {
-                el->StressCalculate(planeState_);
-            }
+        }
+        else if (rank == 1 and elements_.size() > 0)
+        {
+            stressCalculateFEM();
             exportToParaviewFEM(loadStep);
         }
     }
@@ -1556,8 +1578,8 @@ void GlobalSolid::exportToParaviewISO(const int &loadstep)
             for (int i = 0; i < connection.size(); i++)
             {
                 x = connection[i]->getCurrentCoordinate();
-                coord(0) += phi2_(i) * x(0) / wpc2(i);
-                coord(1) += phi2_(i) * x(1) / wpc2(i);
+                coord(0) += phi2_(i) * x(0);
+                coord(1) += phi2_(i) * x(1);
             }
             file << coord(0) << " " << coord(1) << " " << 0.0 << std::endl;
         }
@@ -1743,8 +1765,39 @@ void GlobalSolid::exportToParaviewFEM(const int &num)
          << "\n";
     for (Node *no : nodes_)
     {
-        bounded_vector<double, 2> coord = no->getCurrentCoordinate();
-        file << coord(0) << " " << coord(1) << " " << 0.0 << "\n";
+        bounded_vector<double, 2> coordNode = no->getCurrentCoordinate();
+        int cellIndex = no->getCellIndex();
+        if (cellIndex == -1)
+        {
+            file << coordNode(0) << " " << coordNode(1) << " " << 0.1 << "\n";
+        }
+        else
+        {
+            Cell *cell = cells_[cellIndex];
+            bounded_vector<double, 2> xsiglobal = no->getXsisGlobal();
+            bounded_vector<double, 2> blendF = blendFunction(no->getDistanceToBoundary());
+
+            std::vector<ControlPoint *> connection = cell->getControlPoints();
+            vector<double> wpc2(connection.size());
+            bounded_vector<int, 2> INC_;
+            INC_ = connection[connection.size() - 1]->getINC();
+            for (int i = 0; i < connection.size(); i++)
+            {
+                wpc2(i) = connection[i]->getWeight();
+            }
+            vector<double> phi = cell->shapeFunction(xsiglobal, wpc2, INC_);
+
+            bounded_vector<double, 2> coordInter;
+            coordInter = (1.0 - blendF(0)) * coordNode;
+
+            for (int i = 0; i < connection.size(); i++)
+            {
+                bounded_vector<double, 2> coordCP = connection[i]->getCurrentCoordinate();
+                coordInter += blendF(0) * phi(i) * coordCP;
+            }
+
+            file << coordInter(0) << " " << coordInter(1) << " " << 0.1 << "\n";
+        }
     }
     file << "      </DataArray>"
          << "\n"
@@ -1804,9 +1857,41 @@ void GlobalSolid::exportToParaviewFEM(const int &num)
          << "\n";
     for (Node *n : nodes_)
     {
-        bounded_vector<double, 2> disp = n->getCurrentDisplacement();
+        bounded_vector<double, 2> dispNode = n->getCurrentDisplacement();
 
-        file << disp(0) << " " << disp(1) << "\n";
+        int cellIndex = n->getCellIndex();
+        if (cellIndex == -1)
+        {
+            file << dispNode(0) << " " << dispNode(1) << "\n";
+        }
+        else
+        {
+            Cell *cell = cells_[cellIndex];
+            bounded_vector<double, 2> xsiglobal = n->getXsisGlobal();
+            bounded_vector<double, 2> blendF = blendFunction(n->getDistanceToBoundary());
+
+            std::vector<ControlPoint *> connection = cell->getControlPoints();
+            vector<double> wpc2(connection.size());
+            bounded_vector<int, 2> INC_;
+            INC_ = connection[connection.size() - 1]->getINC();
+            for (int i = 0; i < connection.size(); i++)
+            {
+                wpc2(i) = connection[i]->getWeight();
+            }
+
+            vector<double> phi = cell->shapeFunction(xsiglobal, wpc2, INC_);
+
+            bounded_vector<double, 2> dispInter;
+            dispInter = (1.0 - blendF(0)) * dispNode;
+
+            for (int i = 0; i < connection.size(); i++)
+            {
+                bounded_vector<double, 2> dispCP = connection[i]->getCurrentDisplacement();
+                dispInter += blendF(0) * phi(i) * dispCP;
+            }
+
+            file << dispInter(0) << " " << dispInter(1) << "\n";
+        }
     }
     file << "      </DataArray> "
          << "\n";
@@ -1818,6 +1903,24 @@ void GlobalSolid::exportToParaviewFEM(const int &num)
     {
         bounded_vector<double, 5> stress = n->getStressState(); //(x1, x2, x12, contador)
         file << stress(0) / stress(4) << " " << stress(1) / stress(4) << " " << stress(2) / stress(4) << " " << stress(3) / stress(4) << "\n";
+    }
+    file << "      </DataArray> "
+         << "\n";
+
+    file << "      <DataArray type=\"Float64\" NumberOfComponents=\"1\" "
+         << "Name=\"blendingZone\" format=\"ascii\">"
+         << "\n";
+    for (Node *n : nodes_)
+    {
+        int cellIndex = n->getCellIndex();
+        if (cellIndex == -1)
+        {
+            file << 0 << "\n";
+        }
+        else
+        {
+            file << 1 << "\n";
+        }
     }
     file << "      </DataArray> "
          << "\n";
@@ -1881,8 +1984,7 @@ matrix<double> GlobalSolid::coordinatesForInterpolation(const int &orderElememen
         coord(3, 0) = -1.0;
         coord(3, 1) = 1.0;
     }
-
-    if (orderElemement == 2)
+    else if (orderElemement == 2)
     {
         coord(0, 0) = -1.0;
         coord(0, 1) = -1.0;
@@ -1911,8 +2013,7 @@ matrix<double> GlobalSolid::coordinatesForInterpolation(const int &orderElememen
         coord(8, 0) = 0.0;
         coord(8, 1) = 0.0;
     }
-
-    if (orderElemement == 3)
+    else if (orderElemement == 3)
     {
         coord(0, 0) = -1.0;
         coord(0, 1) = -1.0;
@@ -1961,6 +2062,809 @@ matrix<double> GlobalSolid::coordinatesForInterpolation(const int &orderElememen
 
         coord(14, 0) = -0.33333333;
         coord(14, 1) = 0.33333333;
+    }
+    else if (orderParaview_ == 19)
+    {
+        coord(0, 0) = -1.0000000000000000;
+        coord(1, 0) = 1.0000000000000000;
+        coord(2, 0) = 1.0000000000000000;
+        coord(3, 0) = -1.0000000000000000;
+        coord(4, 0) = -0.8947368421052630;
+        coord(5, 0) = -0.7894736842105260;
+        coord(6, 0) = -0.6842105263157900;
+        coord(7, 0) = -0.5789473684210530;
+        coord(8, 0) = -0.4736842105263160;
+        coord(9, 0) = -0.3684210526315790;
+        coord(10, 0) = -0.2631578947368420;
+        coord(11, 0) = -0.1578947368421050;
+        coord(12, 0) = -0.0526315789473685;
+        coord(13, 0) = 0.0526315789473684;
+        coord(14, 0) = 0.1578947368421050;
+        coord(15, 0) = 0.2631578947368420;
+        coord(16, 0) = 0.3684210526315790;
+        coord(17, 0) = 0.4736842105263160;
+        coord(18, 0) = 0.5789473684210530;
+        coord(19, 0) = 0.6842105263157890;
+        coord(20, 0) = 0.7894736842105260;
+        coord(21, 0) = 0.8947368421052630;
+        coord(22, 0) = 1.0000000000000000;
+        coord(23, 0) = 1.0000000000000000;
+        coord(24, 0) = 1.0000000000000000;
+        coord(25, 0) = 1.0000000000000000;
+        coord(26, 0) = 1.0000000000000000;
+        coord(27, 0) = 1.0000000000000000;
+        coord(28, 0) = 1.0000000000000000;
+        coord(29, 0) = 1.0000000000000000;
+        coord(30, 0) = 1.0000000000000000;
+        coord(31, 0) = 1.0000000000000000;
+        coord(32, 0) = 1.0000000000000000;
+        coord(33, 0) = 1.0000000000000000;
+        coord(34, 0) = 1.0000000000000000;
+        coord(35, 0) = 1.0000000000000000;
+        coord(36, 0) = 1.0000000000000000;
+        coord(37, 0) = 1.0000000000000000;
+        coord(38, 0) = 1.0000000000000000;
+        coord(39, 0) = 1.0000000000000000;
+        coord(40, 0) = -0.8947368421052630;
+        coord(41, 0) = -0.7894736842105260;
+        coord(42, 0) = -0.6842105263157900;
+        coord(43, 0) = -0.5789473684210530;
+        coord(44, 0) = -0.4736842105263160;
+        coord(45, 0) = -0.3684210526315790;
+        coord(46, 0) = -0.2631578947368420;
+        coord(47, 0) = -0.1578947368421050;
+        coord(48, 0) = -0.0526315789473685;
+        coord(49, 0) = 0.0526315789473684;
+        coord(50, 0) = 0.1578947368421050;
+        coord(51, 0) = 0.2631578947368420;
+        coord(52, 0) = 0.3684210526315790;
+        coord(53, 0) = 0.4736842105263160;
+        coord(54, 0) = 0.5789473684210530;
+        coord(55, 0) = 0.6842105263157890;
+        coord(56, 0) = 0.7894736842105260;
+        coord(57, 0) = 0.8947368421052630;
+        coord(58, 0) = -1.0000000000000000;
+        coord(59, 0) = -1.0000000000000000;
+        coord(60, 0) = -1.0000000000000000;
+        coord(61, 0) = -1.0000000000000000;
+        coord(62, 0) = -1.0000000000000000;
+        coord(63, 0) = -1.0000000000000000;
+        coord(64, 0) = -1.0000000000000000;
+        coord(65, 0) = -1.0000000000000000;
+        coord(66, 0) = -1.0000000000000000;
+        coord(67, 0) = -1.0000000000000000;
+        coord(68, 0) = -1.0000000000000000;
+        coord(69, 0) = -1.0000000000000000;
+        coord(70, 0) = -1.0000000000000000;
+        coord(71, 0) = -1.0000000000000000;
+        coord(72, 0) = -1.0000000000000000;
+        coord(73, 0) = -1.0000000000000000;
+        coord(74, 0) = -1.0000000000000000;
+        coord(75, 0) = -1.0000000000000000;
+        coord(76, 0) = -0.8947368421052630;
+        coord(77, 0) = -0.7894736842105260;
+        coord(78, 0) = -0.6842105263157900;
+        coord(79, 0) = -0.5789473684210530;
+        coord(80, 0) = -0.4736842105263160;
+        coord(81, 0) = -0.3684210526315790;
+        coord(82, 0) = -0.2631578947368420;
+        coord(83, 0) = -0.1578947368421050;
+        coord(84, 0) = -0.0526315789473685;
+        coord(85, 0) = 0.0526315789473684;
+        coord(86, 0) = 0.1578947368421050;
+        coord(87, 0) = 0.2631578947368420;
+        coord(88, 0) = 0.3684210526315790;
+        coord(89, 0) = 0.4736842105263160;
+        coord(90, 0) = 0.5789473684210530;
+        coord(91, 0) = 0.6842105263157890;
+        coord(92, 0) = 0.7894736842105260;
+        coord(93, 0) = 0.8947368421052630;
+        coord(94, 0) = -0.8947368421052630;
+        coord(95, 0) = -0.7894736842105260;
+        coord(96, 0) = -0.6842105263157900;
+        coord(97, 0) = -0.5789473684210530;
+        coord(98, 0) = -0.4736842105263160;
+        coord(99, 0) = -0.3684210526315790;
+        coord(100, 0) = -0.2631578947368420;
+        coord(101, 0) = -0.1578947368421050;
+        coord(102, 0) = -0.0526315789473685;
+        coord(103, 0) = 0.0526315789473684;
+        coord(104, 0) = 0.1578947368421050;
+        coord(105, 0) = 0.2631578947368420;
+        coord(106, 0) = 0.3684210526315790;
+        coord(107, 0) = 0.4736842105263160;
+        coord(108, 0) = 0.5789473684210530;
+        coord(109, 0) = 0.6842105263157890;
+        coord(110, 0) = 0.7894736842105260;
+        coord(111, 0) = 0.8947368421052630;
+        coord(112, 0) = -0.8947368421052630;
+        coord(113, 0) = -0.7894736842105260;
+        coord(114, 0) = -0.6842105263157900;
+        coord(115, 0) = -0.5789473684210530;
+        coord(116, 0) = -0.4736842105263160;
+        coord(117, 0) = -0.3684210526315790;
+        coord(118, 0) = -0.2631578947368420;
+        coord(119, 0) = -0.1578947368421050;
+        coord(120, 0) = -0.0526315789473685;
+        coord(121, 0) = 0.0526315789473684;
+        coord(122, 0) = 0.1578947368421050;
+        coord(123, 0) = 0.2631578947368420;
+        coord(124, 0) = 0.3684210526315790;
+        coord(125, 0) = 0.4736842105263160;
+        coord(126, 0) = 0.5789473684210530;
+        coord(127, 0) = 0.6842105263157890;
+        coord(128, 0) = 0.7894736842105260;
+        coord(129, 0) = 0.8947368421052630;
+        coord(130, 0) = -0.8947368421052630;
+        coord(131, 0) = -0.7894736842105260;
+        coord(132, 0) = -0.6842105263157900;
+        coord(133, 0) = -0.5789473684210530;
+        coord(134, 0) = -0.4736842105263160;
+        coord(135, 0) = -0.3684210526315790;
+        coord(136, 0) = -0.2631578947368420;
+        coord(137, 0) = -0.1578947368421050;
+        coord(138, 0) = -0.0526315789473685;
+        coord(139, 0) = 0.0526315789473684;
+        coord(140, 0) = 0.1578947368421050;
+        coord(141, 0) = 0.2631578947368420;
+        coord(142, 0) = 0.3684210526315790;
+        coord(143, 0) = 0.4736842105263160;
+        coord(144, 0) = 0.5789473684210530;
+        coord(145, 0) = 0.6842105263157890;
+        coord(146, 0) = 0.7894736842105260;
+        coord(147, 0) = 0.8947368421052630;
+        coord(148, 0) = -0.8947368421052630;
+        coord(149, 0) = -0.7894736842105260;
+        coord(150, 0) = -0.6842105263157900;
+        coord(151, 0) = -0.5789473684210530;
+        coord(152, 0) = -0.4736842105263160;
+        coord(153, 0) = -0.3684210526315790;
+        coord(154, 0) = -0.2631578947368420;
+        coord(155, 0) = -0.1578947368421050;
+        coord(156, 0) = -0.0526315789473685;
+        coord(157, 0) = 0.0526315789473684;
+        coord(158, 0) = 0.1578947368421050;
+        coord(159, 0) = 0.2631578947368420;
+        coord(160, 0) = 0.3684210526315790;
+        coord(161, 0) = 0.4736842105263160;
+        coord(162, 0) = 0.5789473684210530;
+        coord(163, 0) = 0.6842105263157890;
+        coord(164, 0) = 0.7894736842105260;
+        coord(165, 0) = 0.8947368421052630;
+        coord(166, 0) = -0.8947368421052630;
+        coord(167, 0) = -0.7894736842105260;
+        coord(168, 0) = -0.6842105263157900;
+        coord(169, 0) = -0.5789473684210530;
+        coord(170, 0) = -0.4736842105263160;
+        coord(171, 0) = -0.3684210526315790;
+        coord(172, 0) = -0.2631578947368420;
+        coord(173, 0) = -0.1578947368421050;
+        coord(174, 0) = -0.0526315789473685;
+        coord(175, 0) = 0.0526315789473684;
+        coord(176, 0) = 0.1578947368421050;
+        coord(177, 0) = 0.2631578947368420;
+        coord(178, 0) = 0.3684210526315790;
+        coord(179, 0) = 0.4736842105263160;
+        coord(180, 0) = 0.5789473684210530;
+        coord(181, 0) = 0.6842105263157890;
+        coord(182, 0) = 0.7894736842105260;
+        coord(183, 0) = 0.8947368421052630;
+        coord(184, 0) = -0.8947368421052630;
+        coord(185, 0) = -0.7894736842105260;
+        coord(186, 0) = -0.6842105263157900;
+        coord(187, 0) = -0.5789473684210530;
+        coord(188, 0) = -0.4736842105263160;
+        coord(189, 0) = -0.3684210526315790;
+        coord(190, 0) = -0.2631578947368420;
+        coord(191, 0) = -0.1578947368421050;
+        coord(192, 0) = -0.0526315789473685;
+        coord(193, 0) = 0.0526315789473684;
+        coord(194, 0) = 0.1578947368421050;
+        coord(195, 0) = 0.2631578947368420;
+        coord(196, 0) = 0.3684210526315790;
+        coord(197, 0) = 0.4736842105263160;
+        coord(198, 0) = 0.5789473684210530;
+        coord(199, 0) = 0.6842105263157890;
+        coord(200, 0) = 0.7894736842105260;
+        coord(201, 0) = 0.8947368421052630;
+        coord(202, 0) = -0.8947368421052630;
+        coord(203, 0) = -0.7894736842105260;
+        coord(204, 0) = -0.6842105263157900;
+        coord(205, 0) = -0.5789473684210530;
+        coord(206, 0) = -0.4736842105263160;
+        coord(207, 0) = -0.3684210526315790;
+        coord(208, 0) = -0.2631578947368420;
+        coord(209, 0) = -0.1578947368421050;
+        coord(210, 0) = -0.0526315789473685;
+        coord(211, 0) = 0.0526315789473684;
+        coord(212, 0) = 0.1578947368421050;
+        coord(213, 0) = 0.2631578947368420;
+        coord(214, 0) = 0.3684210526315790;
+        coord(215, 0) = 0.4736842105263160;
+        coord(216, 0) = 0.5789473684210530;
+        coord(217, 0) = 0.6842105263157890;
+        coord(218, 0) = 0.7894736842105260;
+        coord(219, 0) = 0.8947368421052630;
+        coord(220, 0) = -0.8947368421052630;
+        coord(221, 0) = -0.7894736842105260;
+        coord(222, 0) = -0.6842105263157900;
+        coord(223, 0) = -0.5789473684210530;
+        coord(224, 0) = -0.4736842105263160;
+        coord(225, 0) = -0.3684210526315790;
+        coord(226, 0) = -0.2631578947368420;
+        coord(227, 0) = -0.1578947368421050;
+        coord(228, 0) = -0.0526315789473685;
+        coord(229, 0) = 0.0526315789473684;
+        coord(230, 0) = 0.1578947368421050;
+        coord(231, 0) = 0.2631578947368420;
+        coord(232, 0) = 0.3684210526315790;
+        coord(233, 0) = 0.4736842105263160;
+        coord(234, 0) = 0.5789473684210530;
+        coord(235, 0) = 0.6842105263157890;
+        coord(236, 0) = 0.7894736842105260;
+        coord(237, 0) = 0.8947368421052630;
+        coord(238, 0) = -0.8947368421052630;
+        coord(239, 0) = -0.7894736842105260;
+        coord(240, 0) = -0.6842105263157900;
+        coord(241, 0) = -0.5789473684210530;
+        coord(242, 0) = -0.4736842105263160;
+        coord(243, 0) = -0.3684210526315790;
+        coord(244, 0) = -0.2631578947368420;
+        coord(245, 0) = -0.1578947368421050;
+        coord(246, 0) = -0.0526315789473685;
+        coord(247, 0) = 0.0526315789473684;
+        coord(248, 0) = 0.1578947368421050;
+        coord(249, 0) = 0.2631578947368420;
+        coord(250, 0) = 0.3684210526315790;
+        coord(251, 0) = 0.4736842105263160;
+        coord(252, 0) = 0.5789473684210530;
+        coord(253, 0) = 0.6842105263157890;
+        coord(254, 0) = 0.7894736842105260;
+        coord(255, 0) = 0.8947368421052630;
+        coord(256, 0) = -0.8947368421052630;
+        coord(257, 0) = -0.7894736842105260;
+        coord(258, 0) = -0.6842105263157900;
+        coord(259, 0) = -0.5789473684210530;
+        coord(260, 0) = -0.4736842105263160;
+        coord(261, 0) = -0.3684210526315790;
+        coord(262, 0) = -0.2631578947368420;
+        coord(263, 0) = -0.1578947368421050;
+        coord(264, 0) = -0.0526315789473685;
+        coord(265, 0) = 0.0526315789473684;
+        coord(266, 0) = 0.1578947368421050;
+        coord(267, 0) = 0.2631578947368420;
+        coord(268, 0) = 0.3684210526315790;
+        coord(269, 0) = 0.4736842105263160;
+        coord(270, 0) = 0.5789473684210530;
+        coord(271, 0) = 0.6842105263157890;
+        coord(272, 0) = 0.7894736842105260;
+        coord(273, 0) = 0.8947368421052630;
+        coord(274, 0) = -0.8947368421052630;
+        coord(275, 0) = -0.7894736842105260;
+        coord(276, 0) = -0.6842105263157900;
+        coord(277, 0) = -0.5789473684210530;
+        coord(278, 0) = -0.4736842105263160;
+        coord(279, 0) = -0.3684210526315790;
+        coord(280, 0) = -0.2631578947368420;
+        coord(281, 0) = -0.1578947368421050;
+        coord(282, 0) = -0.0526315789473685;
+        coord(283, 0) = 0.0526315789473684;
+        coord(284, 0) = 0.1578947368421050;
+        coord(285, 0) = 0.2631578947368420;
+        coord(286, 0) = 0.3684210526315790;
+        coord(287, 0) = 0.4736842105263160;
+        coord(288, 0) = 0.5789473684210530;
+        coord(289, 0) = 0.6842105263157890;
+        coord(290, 0) = 0.7894736842105260;
+        coord(291, 0) = 0.8947368421052630;
+        coord(292, 0) = -0.8947368421052630;
+        coord(293, 0) = -0.7894736842105260;
+        coord(294, 0) = -0.6842105263157900;
+        coord(295, 0) = -0.5789473684210530;
+        coord(296, 0) = -0.4736842105263160;
+        coord(297, 0) = -0.3684210526315790;
+        coord(298, 0) = -0.2631578947368420;
+        coord(299, 0) = -0.1578947368421050;
+        coord(300, 0) = -0.0526315789473685;
+        coord(301, 0) = 0.0526315789473684;
+        coord(302, 0) = 0.1578947368421050;
+        coord(303, 0) = 0.2631578947368420;
+        coord(304, 0) = 0.3684210526315790;
+        coord(305, 0) = 0.4736842105263160;
+        coord(306, 0) = 0.5789473684210530;
+        coord(307, 0) = 0.6842105263157890;
+        coord(308, 0) = 0.7894736842105260;
+        coord(309, 0) = 0.8947368421052630;
+        coord(310, 0) = -0.8947368421052630;
+        coord(311, 0) = -0.7894736842105260;
+        coord(312, 0) = -0.6842105263157900;
+        coord(313, 0) = -0.5789473684210530;
+        coord(314, 0) = -0.4736842105263160;
+        coord(315, 0) = -0.3684210526315790;
+        coord(316, 0) = -0.2631578947368420;
+        coord(317, 0) = -0.1578947368421050;
+        coord(318, 0) = -0.0526315789473685;
+        coord(319, 0) = 0.0526315789473684;
+        coord(320, 0) = 0.1578947368421050;
+        coord(321, 0) = 0.2631578947368420;
+        coord(322, 0) = 0.3684210526315790;
+        coord(323, 0) = 0.4736842105263160;
+        coord(324, 0) = 0.5789473684210530;
+        coord(325, 0) = 0.6842105263157890;
+        coord(326, 0) = 0.7894736842105260;
+        coord(327, 0) = 0.8947368421052630;
+        coord(328, 0) = -0.8947368421052630;
+        coord(329, 0) = -0.7894736842105260;
+        coord(330, 0) = -0.6842105263157900;
+        coord(331, 0) = -0.5789473684210530;
+        coord(332, 0) = -0.4736842105263160;
+        coord(333, 0) = -0.3684210526315790;
+        coord(334, 0) = -0.2631578947368420;
+        coord(335, 0) = -0.1578947368421050;
+        coord(336, 0) = -0.0526315789473685;
+        coord(337, 0) = 0.0526315789473684;
+        coord(338, 0) = 0.1578947368421050;
+        coord(339, 0) = 0.2631578947368420;
+        coord(340, 0) = 0.3684210526315790;
+        coord(341, 0) = 0.4736842105263160;
+        coord(342, 0) = 0.5789473684210530;
+        coord(343, 0) = 0.6842105263157890;
+        coord(344, 0) = 0.7894736842105260;
+        coord(345, 0) = 0.8947368421052630;
+        coord(346, 0) = -0.8947368421052630;
+        coord(347, 0) = -0.7894736842105260;
+        coord(348, 0) = -0.6842105263157900;
+        coord(349, 0) = -0.5789473684210530;
+        coord(350, 0) = -0.4736842105263160;
+        coord(351, 0) = -0.3684210526315790;
+        coord(352, 0) = -0.2631578947368420;
+        coord(353, 0) = -0.1578947368421050;
+        coord(354, 0) = -0.0526315789473685;
+        coord(355, 0) = 0.0526315789473684;
+        coord(356, 0) = 0.1578947368421050;
+        coord(357, 0) = 0.2631578947368420;
+        coord(358, 0) = 0.3684210526315790;
+        coord(359, 0) = 0.4736842105263160;
+        coord(360, 0) = 0.5789473684210530;
+        coord(361, 0) = 0.6842105263157890;
+        coord(362, 0) = 0.7894736842105260;
+        coord(363, 0) = 0.8947368421052630;
+        coord(364, 0) = -0.8947368421052630;
+        coord(365, 0) = -0.7894736842105260;
+        coord(366, 0) = -0.6842105263157900;
+        coord(367, 0) = -0.5789473684210530;
+        coord(368, 0) = -0.4736842105263160;
+        coord(369, 0) = -0.3684210526315790;
+        coord(370, 0) = -0.2631578947368420;
+        coord(371, 0) = -0.1578947368421050;
+        coord(372, 0) = -0.0526315789473685;
+        coord(373, 0) = 0.0526315789473684;
+        coord(374, 0) = 0.1578947368421050;
+        coord(375, 0) = 0.2631578947368420;
+        coord(376, 0) = 0.3684210526315790;
+        coord(377, 0) = 0.4736842105263160;
+        coord(378, 0) = 0.5789473684210530;
+        coord(379, 0) = 0.6842105263157890;
+        coord(380, 0) = 0.7894736842105260;
+        coord(381, 0) = 0.8947368421052630;
+        coord(382, 0) = -0.8947368421052630;
+        coord(383, 0) = -0.7894736842105260;
+        coord(384, 0) = -0.6842105263157900;
+        coord(385, 0) = -0.5789473684210530;
+        coord(386, 0) = -0.4736842105263160;
+        coord(387, 0) = -0.3684210526315790;
+        coord(388, 0) = -0.2631578947368420;
+        coord(389, 0) = -0.1578947368421050;
+        coord(390, 0) = -0.0526315789473685;
+        coord(391, 0) = 0.0526315789473684;
+        coord(392, 0) = 0.1578947368421050;
+        coord(393, 0) = 0.2631578947368420;
+        coord(394, 0) = 0.3684210526315790;
+        coord(395, 0) = 0.4736842105263160;
+        coord(396, 0) = 0.5789473684210530;
+        coord(397, 0) = 0.6842105263157890;
+        coord(398, 0) = 0.7894736842105260;
+        coord(399, 0) = 0.8947368421052630;
+        coord(0, 1) = -1.0000000000000000;
+        coord(1, 1) = -1.0000000000000000;
+        coord(2, 1) = 1.0000000000000000;
+        coord(3, 1) = 1.0000000000000000;
+        coord(4, 1) = -1.0000000000000000;
+        coord(5, 1) = -1.0000000000000000;
+        coord(6, 1) = -1.0000000000000000;
+        coord(7, 1) = -1.0000000000000000;
+        coord(8, 1) = -1.0000000000000000;
+        coord(9, 1) = -1.0000000000000000;
+        coord(10, 1) = -1.0000000000000000;
+        coord(11, 1) = -1.0000000000000000;
+        coord(12, 1) = -1.0000000000000000;
+        coord(13, 1) = -1.0000000000000000;
+        coord(14, 1) = -1.0000000000000000;
+        coord(15, 1) = -1.0000000000000000;
+        coord(16, 1) = -1.0000000000000000;
+        coord(17, 1) = -1.0000000000000000;
+        coord(18, 1) = -1.0000000000000000;
+        coord(19, 1) = -1.0000000000000000;
+        coord(20, 1) = -1.0000000000000000;
+        coord(21, 1) = -1.0000000000000000;
+        coord(22, 1) = -0.8947368421052630;
+        coord(23, 1) = -0.7894736842105260;
+        coord(24, 1) = -0.6842105263157900;
+        coord(25, 1) = -0.5789473684210530;
+        coord(26, 1) = -0.4736842105263160;
+        coord(27, 1) = -0.3684210526315790;
+        coord(28, 1) = -0.2631578947368420;
+        coord(29, 1) = -0.1578947368421050;
+        coord(30, 1) = -0.0526315789473685;
+        coord(31, 1) = 0.0526315789473684;
+        coord(32, 1) = 0.1578947368421050;
+        coord(33, 1) = 0.2631578947368420;
+        coord(34, 1) = 0.3684210526315790;
+        coord(35, 1) = 0.4736842105263160;
+        coord(36, 1) = 0.5789473684210530;
+        coord(37, 1) = 0.6842105263157890;
+        coord(38, 1) = 0.7894736842105260;
+        coord(39, 1) = 0.8947368421052630;
+        coord(40, 1) = 1.0000000000000000;
+        coord(41, 1) = 1.0000000000000000;
+        coord(42, 1) = 1.0000000000000000;
+        coord(43, 1) = 1.0000000000000000;
+        coord(44, 1) = 1.0000000000000000;
+        coord(45, 1) = 1.0000000000000000;
+        coord(46, 1) = 1.0000000000000000;
+        coord(47, 1) = 1.0000000000000000;
+        coord(48, 1) = 1.0000000000000000;
+        coord(49, 1) = 1.0000000000000000;
+        coord(50, 1) = 1.0000000000000000;
+        coord(51, 1) = 1.0000000000000000;
+        coord(52, 1) = 1.0000000000000000;
+        coord(53, 1) = 1.0000000000000000;
+        coord(54, 1) = 1.0000000000000000;
+        coord(55, 1) = 1.0000000000000000;
+        coord(56, 1) = 1.0000000000000000;
+        coord(57, 1) = 1.0000000000000000;
+        coord(58, 1) = -0.8947368421052630;
+        coord(59, 1) = -0.7894736842105260;
+        coord(60, 1) = -0.6842105263157900;
+        coord(61, 1) = -0.5789473684210530;
+        coord(62, 1) = -0.4736842105263160;
+        coord(63, 1) = -0.3684210526315790;
+        coord(64, 1) = -0.2631578947368420;
+        coord(65, 1) = -0.1578947368421050;
+        coord(66, 1) = -0.0526315789473685;
+        coord(67, 1) = 0.0526315789473684;
+        coord(68, 1) = 0.1578947368421050;
+        coord(69, 1) = 0.2631578947368420;
+        coord(70, 1) = 0.3684210526315790;
+        coord(71, 1) = 0.4736842105263160;
+        coord(72, 1) = 0.5789473684210530;
+        coord(73, 1) = 0.6842105263157890;
+        coord(74, 1) = 0.7894736842105260;
+        coord(75, 1) = 0.8947368421052630;
+        coord(76, 1) = -0.8947368421052630;
+        coord(77, 1) = -0.8947368421052630;
+        coord(78, 1) = -0.8947368421052630;
+        coord(79, 1) = -0.8947368421052630;
+        coord(80, 1) = -0.8947368421052630;
+        coord(81, 1) = -0.8947368421052630;
+        coord(82, 1) = -0.8947368421052630;
+        coord(83, 1) = -0.8947368421052630;
+        coord(84, 1) = -0.8947368421052630;
+        coord(85, 1) = -0.8947368421052630;
+        coord(86, 1) = -0.8947368421052630;
+        coord(87, 1) = -0.8947368421052630;
+        coord(88, 1) = -0.8947368421052630;
+        coord(89, 1) = -0.8947368421052630;
+        coord(90, 1) = -0.8947368421052630;
+        coord(91, 1) = -0.8947368421052630;
+        coord(92, 1) = -0.8947368421052630;
+        coord(93, 1) = -0.8947368421052630;
+        coord(94, 1) = -0.7894736842105260;
+        coord(95, 1) = -0.7894736842105260;
+        coord(96, 1) = -0.7894736842105260;
+        coord(97, 1) = -0.7894736842105260;
+        coord(98, 1) = -0.7894736842105260;
+        coord(99, 1) = -0.7894736842105260;
+        coord(100, 1) = -0.7894736842105260;
+        coord(101, 1) = -0.7894736842105260;
+        coord(102, 1) = -0.7894736842105260;
+        coord(103, 1) = -0.7894736842105260;
+        coord(104, 1) = -0.7894736842105260;
+        coord(105, 1) = -0.7894736842105260;
+        coord(106, 1) = -0.7894736842105260;
+        coord(107, 1) = -0.7894736842105260;
+        coord(108, 1) = -0.7894736842105260;
+        coord(109, 1) = -0.7894736842105260;
+        coord(110, 1) = -0.7894736842105260;
+        coord(111, 1) = -0.7894736842105260;
+        coord(112, 1) = -0.6842105263157900;
+        coord(113, 1) = -0.6842105263157900;
+        coord(114, 1) = -0.6842105263157900;
+        coord(115, 1) = -0.6842105263157900;
+        coord(116, 1) = -0.6842105263157900;
+        coord(117, 1) = -0.6842105263157900;
+        coord(118, 1) = -0.6842105263157900;
+        coord(119, 1) = -0.6842105263157900;
+        coord(120, 1) = -0.6842105263157900;
+        coord(121, 1) = -0.6842105263157900;
+        coord(122, 1) = -0.6842105263157900;
+        coord(123, 1) = -0.6842105263157900;
+        coord(124, 1) = -0.6842105263157900;
+        coord(125, 1) = -0.6842105263157900;
+        coord(126, 1) = -0.6842105263157900;
+        coord(127, 1) = -0.6842105263157900;
+        coord(128, 1) = -0.6842105263157900;
+        coord(129, 1) = -0.6842105263157900;
+        coord(130, 1) = -0.5789473684210530;
+        coord(131, 1) = -0.5789473684210530;
+        coord(132, 1) = -0.5789473684210530;
+        coord(133, 1) = -0.5789473684210530;
+        coord(134, 1) = -0.5789473684210530;
+        coord(135, 1) = -0.5789473684210530;
+        coord(136, 1) = -0.5789473684210530;
+        coord(137, 1) = -0.5789473684210530;
+        coord(138, 1) = -0.5789473684210530;
+        coord(139, 1) = -0.5789473684210530;
+        coord(140, 1) = -0.5789473684210530;
+        coord(141, 1) = -0.5789473684210530;
+        coord(142, 1) = -0.5789473684210530;
+        coord(143, 1) = -0.5789473684210530;
+        coord(144, 1) = -0.5789473684210530;
+        coord(145, 1) = -0.5789473684210530;
+        coord(146, 1) = -0.5789473684210530;
+        coord(147, 1) = -0.5789473684210530;
+        coord(148, 1) = -0.4736842105263160;
+        coord(149, 1) = -0.4736842105263160;
+        coord(150, 1) = -0.4736842105263160;
+        coord(151, 1) = -0.4736842105263160;
+        coord(152, 1) = -0.4736842105263160;
+        coord(153, 1) = -0.4736842105263160;
+        coord(154, 1) = -0.4736842105263160;
+        coord(155, 1) = -0.4736842105263160;
+        coord(156, 1) = -0.4736842105263160;
+        coord(157, 1) = -0.4736842105263160;
+        coord(158, 1) = -0.4736842105263160;
+        coord(159, 1) = -0.4736842105263160;
+        coord(160, 1) = -0.4736842105263160;
+        coord(161, 1) = -0.4736842105263160;
+        coord(162, 1) = -0.4736842105263160;
+        coord(163, 1) = -0.4736842105263160;
+        coord(164, 1) = -0.4736842105263160;
+        coord(165, 1) = -0.4736842105263160;
+        coord(166, 1) = -0.3684210526315790;
+        coord(167, 1) = -0.3684210526315790;
+        coord(168, 1) = -0.3684210526315790;
+        coord(169, 1) = -0.3684210526315790;
+        coord(170, 1) = -0.3684210526315790;
+        coord(171, 1) = -0.3684210526315790;
+        coord(172, 1) = -0.3684210526315790;
+        coord(173, 1) = -0.3684210526315790;
+        coord(174, 1) = -0.3684210526315790;
+        coord(175, 1) = -0.3684210526315790;
+        coord(176, 1) = -0.3684210526315790;
+        coord(177, 1) = -0.3684210526315790;
+        coord(178, 1) = -0.3684210526315790;
+        coord(179, 1) = -0.3684210526315790;
+        coord(180, 1) = -0.3684210526315790;
+        coord(181, 1) = -0.3684210526315790;
+        coord(182, 1) = -0.3684210526315790;
+        coord(183, 1) = -0.3684210526315790;
+        coord(184, 1) = -0.2631578947368420;
+        coord(185, 1) = -0.2631578947368420;
+        coord(186, 1) = -0.2631578947368420;
+        coord(187, 1) = -0.2631578947368420;
+        coord(188, 1) = -0.2631578947368420;
+        coord(189, 1) = -0.2631578947368420;
+        coord(190, 1) = -0.2631578947368420;
+        coord(191, 1) = -0.2631578947368420;
+        coord(192, 1) = -0.2631578947368420;
+        coord(193, 1) = -0.2631578947368420;
+        coord(194, 1) = -0.2631578947368420;
+        coord(195, 1) = -0.2631578947368420;
+        coord(196, 1) = -0.2631578947368420;
+        coord(197, 1) = -0.2631578947368420;
+        coord(198, 1) = -0.2631578947368420;
+        coord(199, 1) = -0.2631578947368420;
+        coord(200, 1) = -0.2631578947368420;
+        coord(201, 1) = -0.2631578947368420;
+        coord(202, 1) = -0.1578947368421050;
+        coord(203, 1) = -0.1578947368421050;
+        coord(204, 1) = -0.1578947368421050;
+        coord(205, 1) = -0.1578947368421050;
+        coord(206, 1) = -0.1578947368421050;
+        coord(207, 1) = -0.1578947368421050;
+        coord(208, 1) = -0.1578947368421050;
+        coord(209, 1) = -0.1578947368421050;
+        coord(210, 1) = -0.1578947368421050;
+        coord(211, 1) = -0.1578947368421050;
+        coord(212, 1) = -0.1578947368421050;
+        coord(213, 1) = -0.1578947368421050;
+        coord(214, 1) = -0.1578947368421050;
+        coord(215, 1) = -0.1578947368421050;
+        coord(216, 1) = -0.1578947368421050;
+        coord(217, 1) = -0.1578947368421050;
+        coord(218, 1) = -0.1578947368421050;
+        coord(219, 1) = -0.1578947368421050;
+        coord(220, 1) = -0.0526315789473685;
+        coord(221, 1) = -0.0526315789473685;
+        coord(222, 1) = -0.0526315789473685;
+        coord(223, 1) = -0.0526315789473685;
+        coord(224, 1) = -0.0526315789473685;
+        coord(225, 1) = -0.0526315789473685;
+        coord(226, 1) = -0.0526315789473685;
+        coord(227, 1) = -0.0526315789473685;
+        coord(228, 1) = -0.0526315789473685;
+        coord(229, 1) = -0.0526315789473685;
+        coord(230, 1) = -0.0526315789473685;
+        coord(231, 1) = -0.0526315789473685;
+        coord(232, 1) = -0.0526315789473685;
+        coord(233, 1) = -0.0526315789473685;
+        coord(234, 1) = -0.0526315789473685;
+        coord(235, 1) = -0.0526315789473685;
+        coord(236, 1) = -0.0526315789473685;
+        coord(237, 1) = -0.0526315789473685;
+        coord(238, 1) = 0.0526315789473684;
+        coord(239, 1) = 0.0526315789473684;
+        coord(240, 1) = 0.0526315789473684;
+        coord(241, 1) = 0.0526315789473684;
+        coord(242, 1) = 0.0526315789473684;
+        coord(243, 1) = 0.0526315789473684;
+        coord(244, 1) = 0.0526315789473684;
+        coord(245, 1) = 0.0526315789473684;
+        coord(246, 1) = 0.0526315789473684;
+        coord(247, 1) = 0.0526315789473684;
+        coord(248, 1) = 0.0526315789473684;
+        coord(249, 1) = 0.0526315789473684;
+        coord(250, 1) = 0.0526315789473684;
+        coord(251, 1) = 0.0526315789473684;
+        coord(252, 1) = 0.0526315789473684;
+        coord(253, 1) = 0.0526315789473684;
+        coord(254, 1) = 0.0526315789473684;
+        coord(255, 1) = 0.0526315789473684;
+        coord(256, 1) = 0.1578947368421050;
+        coord(257, 1) = 0.1578947368421050;
+        coord(258, 1) = 0.1578947368421050;
+        coord(259, 1) = 0.1578947368421060;
+        coord(260, 1) = 0.1578947368421060;
+        coord(261, 1) = 0.1578947368421060;
+        coord(262, 1) = 0.1578947368421060;
+        coord(263, 1) = 0.1578947368421060;
+        coord(264, 1) = 0.1578947368421070;
+        coord(265, 1) = 0.1578947368421070;
+        coord(266, 1) = 0.1578947368421070;
+        coord(267, 1) = 0.1578947368421070;
+        coord(268, 1) = 0.1578947368421070;
+        coord(269, 1) = 0.1578947368421080;
+        coord(270, 1) = 0.1578947368421080;
+        coord(271, 1) = 0.1578947368421080;
+        coord(272, 1) = 0.1578947368421080;
+        coord(273, 1) = 0.1578947368421080;
+        coord(274, 1) = 0.2631578947368420;
+        coord(275, 1) = 0.2631578947368420;
+        coord(276, 1) = 0.2631578947368420;
+        coord(277, 1) = 0.2631578947368420;
+        coord(278, 1) = 0.2631578947368420;
+        coord(279, 1) = 0.2631578947368420;
+        coord(280, 1) = 0.2631578947368420;
+        coord(281, 1) = 0.2631578947368420;
+        coord(282, 1) = 0.2631578947368420;
+        coord(283, 1) = 0.2631578947368420;
+        coord(284, 1) = 0.2631578947368420;
+        coord(285, 1) = 0.2631578947368420;
+        coord(286, 1) = 0.2631578947368420;
+        coord(287, 1) = 0.2631578947368420;
+        coord(288, 1) = 0.2631578947368420;
+        coord(289, 1) = 0.2631578947368420;
+        coord(290, 1) = 0.2631578947368420;
+        coord(291, 1) = 0.2631578947368420;
+        coord(292, 1) = 0.3684210526315790;
+        coord(293, 1) = 0.3684210526315790;
+        coord(294, 1) = 0.3684210526315790;
+        coord(295, 1) = 0.3684210526315790;
+        coord(296, 1) = 0.3684210526315790;
+        coord(297, 1) = 0.3684210526315790;
+        coord(298, 1) = 0.3684210526315790;
+        coord(299, 1) = 0.3684210526315790;
+        coord(300, 1) = 0.3684210526315790;
+        coord(301, 1) = 0.3684210526315790;
+        coord(302, 1) = 0.3684210526315790;
+        coord(303, 1) = 0.3684210526315790;
+        coord(304, 1) = 0.3684210526315790;
+        coord(305, 1) = 0.3684210526315790;
+        coord(306, 1) = 0.3684210526315790;
+        coord(307, 1) = 0.3684210526315790;
+        coord(308, 1) = 0.3684210526315790;
+        coord(309, 1) = 0.3684210526315790;
+        coord(310, 1) = 0.4736842105263160;
+        coord(311, 1) = 0.4736842105263160;
+        coord(312, 1) = 0.4736842105263160;
+        coord(313, 1) = 0.4736842105263160;
+        coord(314, 1) = 0.4736842105263160;
+        coord(315, 1) = 0.4736842105263160;
+        coord(316, 1) = 0.4736842105263160;
+        coord(317, 1) = 0.4736842105263160;
+        coord(318, 1) = 0.4736842105263160;
+        coord(319, 1) = 0.4736842105263160;
+        coord(320, 1) = 0.4736842105263160;
+        coord(321, 1) = 0.4736842105263160;
+        coord(322, 1) = 0.4736842105263160;
+        coord(323, 1) = 0.4736842105263160;
+        coord(324, 1) = 0.4736842105263160;
+        coord(325, 1) = 0.4736842105263160;
+        coord(326, 1) = 0.4736842105263160;
+        coord(327, 1) = 0.4736842105263160;
+        coord(328, 1) = 0.5789473684210530;
+        coord(329, 1) = 0.5789473684210530;
+        coord(330, 1) = 0.5789473684210530;
+        coord(331, 1) = 0.5789473684210530;
+        coord(332, 1) = 0.5789473684210530;
+        coord(333, 1) = 0.5789473684210530;
+        coord(334, 1) = 0.5789473684210530;
+        coord(335, 1) = 0.5789473684210530;
+        coord(336, 1) = 0.5789473684210530;
+        coord(337, 1) = 0.5789473684210530;
+        coord(338, 1) = 0.5789473684210530;
+        coord(339, 1) = 0.5789473684210530;
+        coord(340, 1) = 0.5789473684210530;
+        coord(341, 1) = 0.5789473684210530;
+        coord(342, 1) = 0.5789473684210530;
+        coord(343, 1) = 0.5789473684210530;
+        coord(344, 1) = 0.5789473684210530;
+        coord(345, 1) = 0.5789473684210530;
+        coord(346, 1) = 0.6842105263157890;
+        coord(347, 1) = 0.6842105263157890;
+        coord(348, 1) = 0.6842105263157890;
+        coord(349, 1) = 0.6842105263157890;
+        coord(350, 1) = 0.6842105263157890;
+        coord(351, 1) = 0.6842105263157890;
+        coord(352, 1) = 0.6842105263157890;
+        coord(353, 1) = 0.6842105263157890;
+        coord(354, 1) = 0.6842105263157890;
+        coord(355, 1) = 0.6842105263157890;
+        coord(356, 1) = 0.6842105263157890;
+        coord(357, 1) = 0.6842105263157890;
+        coord(358, 1) = 0.6842105263157890;
+        coord(359, 1) = 0.6842105263157890;
+        coord(360, 1) = 0.6842105263157890;
+        coord(361, 1) = 0.6842105263157890;
+        coord(362, 1) = 0.6842105263157890;
+        coord(363, 1) = 0.6842105263157890;
+        coord(364, 1) = 0.7894736842105260;
+        coord(365, 1) = 0.7894736842105260;
+        coord(366, 1) = 0.7894736842105260;
+        coord(367, 1) = 0.7894736842105260;
+        coord(368, 1) = 0.7894736842105260;
+        coord(369, 1) = 0.7894736842105260;
+        coord(370, 1) = 0.7894736842105260;
+        coord(371, 1) = 0.7894736842105260;
+        coord(372, 1) = 0.7894736842105260;
+        coord(373, 1) = 0.7894736842105260;
+        coord(374, 1) = 0.7894736842105260;
+        coord(375, 1) = 0.7894736842105260;
+        coord(376, 1) = 0.7894736842105260;
+        coord(377, 1) = 0.7894736842105260;
+        coord(378, 1) = 0.7894736842105260;
+        coord(379, 1) = 0.7894736842105260;
+        coord(380, 1) = 0.7894736842105260;
+        coord(381, 1) = 0.7894736842105260;
+        coord(382, 1) = 0.8947368421052630;
+        coord(383, 1) = 0.8947368421052630;
+        coord(384, 1) = 0.8947368421052630;
+        coord(385, 1) = 0.8947368421052630;
+        coord(386, 1) = 0.8947368421052630;
+        coord(387, 1) = 0.8947368421052630;
+        coord(388, 1) = 0.8947368421052630;
+        coord(389, 1) = 0.8947368421052630;
+        coord(390, 1) = 0.8947368421052630;
+        coord(391, 1) = 0.8947368421052630;
+        coord(392, 1) = 0.8947368421052630;
+        coord(393, 1) = 0.8947368421052630;
+        coord(394, 1) = 0.8947368421052630;
+        coord(395, 1) = 0.8947368421052630;
+        coord(396, 1) = 0.8947368421052630;
+        coord(397, 1) = 0.8947368421052630;
+        coord(398, 1) = 0.8947368421052630;
+        coord(399, 1) = 0.8947368421052630;
     }
 
     return coord;
@@ -2109,13 +3013,17 @@ int GlobalSolid::solveDynamicProblem()
 
     if (rank == 0)
     {
-        exportToParaviewISO(0);
+        if (cells_.size() > 0)
+        {
+            exportToParaviewISO(0);
+        }
         text1 << "DeslocamentoxTempo.txt";
     }
-    else if (rank == 1)
+    else if (rank == 1 and elements_.size() > 0)
     {
         exportToParaviewFEM(0);
     }
+    exportToParaviewHammerPoints();
     std::ofstream file1(text1.str());
 
     double initialNorm = 0.0;
@@ -2437,24 +3345,20 @@ int GlobalSolid::solveDynamicProblem()
             }
         }
 
-        if (rank == 0)
+        if (rank == 0 and cells_.size() > 0)
         {
             exportToParaviewISO(timeStep);
-            file1 << timeStep * deltat_ << " " << nodes_[2]->getCurrentCoordinate()[1] - nodes_[2]->getInitialCoordinate()[1] << std::endl;
-
-            // file1 << timeStep * deltat_ << " " << controlPoints_[1999]->getCurrentCoordinate()[1] - controlPoints_[1999]->getInitialCoordinate()[1] << " " << controlPoints_[1999]->getCurrentCoordinate()[0] - controlPoints_[1999]->getInitialCoordinate()[0] << std::endl;
+            //file1 << timeStep * deltat_ << " " << controlPoints_[64]->getCurrentCoordinate()[1] - controlPoints_[64]->getInitialCoordinate()[1] << std::endl;
         }
-        else if (rank == 1)
+        else if (rank == 1 and elements_.size() > 0)
         {
-            for (Node *n : nodes_)
-            {
-                n->setZeroStressState();
-            }
-            for (Element *el : elements_)
-            {
-                el->StressCalculate(planeState_);
-            }
+            stressCalculateFEM();
             exportToParaviewFEM(timeStep);
+        }
+
+        if (rank == 0)
+        {
+            file1 << timeStep * deltat_ * 1000.0 << " " << (nodes_[3]->getCurrentCoordinate()[1] - nodes_[3]->getInitialCoordinate()[1]) * (-1.0) << std::endl;
         }
 
         // for (ControlPoint *cp : controlPoints_)
@@ -2800,7 +3704,7 @@ void GlobalSolid::incidenceLocalxGlobal()
                 coordFE += phi(i) * conec[i]->getCurrentCoordinate();
             }
 
-            if (DAhammer - blendZoneThickness_ <= 1.0e-10) //inside of blend zone
+            if (DAhammer <= blendZoneThickness_) //inside of blend zone
             {
                 insideBlendZone.push_back(false);
 
@@ -2813,28 +3717,30 @@ void GlobalSolid::incidenceLocalxGlobal()
                     xsiISO(1) = 0.0; //first attempt xs2
 
                     std::vector<ControlPoint *> conPoints = cell->getControlPoints();
-                    vector<double> wpc2(conPoints.size());
-                    for (int i = 0; i < conPoints.size(); i++)
+                    int npc = conPoints.size();
+                    vector<double> wpc(npc);
+                    for (int i = 0; i < npc; i++)
                     {
-                        wpc2(i) = conPoints[i]->getWeight();
+                        wpc(i) = conPoints[i]->getWeight();
                     }
+                    bounded_vector<int, 2> inc;
+                    inc = conPoints[npc - 1]->getINC();
 
                     int cont = 0;
-                    while (deltaxsi(0) >= 1.0e-06 and deltaxsi(1) >= 1.0e-06 and //newton-raphson para encontrar os xsis
-                           xsiISO(0) >= -1.0 and xsiISO(0) <= 1.0 and
-                           xsiISO(1) >= -1.0 and xsiISO(1) <= 1.0 and cont <= 15)
+                    double erro = 1.0;
+                    while (erro >= 1.0e-08 and cont <= 20)
                     {
                         std::pair<vector<double>, matrix<double>> functions;
-                        functions = cell->shapeFunctionAndDerivates(xsiISO);
+                        functions = cell->shapeFunctionAndDerivates(xsiISO, wpc, inc);
 
                         coordISO(0) = 0.0;
                         coordISO(1) = 0.0;
 
-                        for (int cp = 0; cp < conPoints.size(); cp++)
+                        for (int cp = 0; cp < npc; cp++)
                         {
                             bounded_vector<double, 2> coordinateCP = conPoints[cp]->getCurrentCoordinate();
-                            coordISO(0) += functions.first(cp) * coordinateCP(0) / wpc2(cp);
-                            coordISO(1) += functions.first(cp) * coordinateCP(1) / wpc2(cp);
+                            coordISO(0) += functions.first(cp) * coordinateCP(0);
+                            coordISO(1) += functions.first(cp) * coordinateCP(1);
                         }
 
                         bounded_matrix<double, 2, 2> jacobian = cell->referenceJacobianMatrix(functions.second);
@@ -2843,11 +3749,13 @@ void GlobalSolid::incidenceLocalxGlobal()
 
                         xsiISO = xsiISO + deltaxsi;
 
+                        erro = norm_2(deltaxsi);
+
                         cont++;
                     }
 
-                    if (xsiISO(0) >= -1.0 and xsiISO(0) <= 1.0 and //ponto de hammer encontrou uma célula
-                        xsiISO(1) >= -1.0 and xsiISO(1) <= 1.0)
+                    if (xsiISO(0) >= -1.0 - 1.0e-08 and xsiISO(0) <= 1.0 + 1.0e-08 and //ponto de hammer encontrou uma célula
+                        xsiISO(1) >= -1.0 - 1.0e-08 and xsiISO(1) <= 1.0 + 1.0e-08)
                     {
                         insideBlendZone[ih] = true;
                         blendZone = true;
@@ -2886,312 +3794,7 @@ void GlobalSolid::incidenceLocalxGlobal()
             el->setIncidenceOnGlobal(insideBlendZone, incidenceCell, xsiIncidenceCell, bValue, db_dxsiValue);
         }
     }
-
-    // /*Looping para:
-    //     -Encontrar pontos de controle dentro da malha local;
-    //         -Elemento em que o ponto de controle está inserido;
-    //         -Xsis correspondentes ao ponto de controle no elemento;
-    //     -Encontrar pontos de controle fora do domínio global;
-    //         -Adicionar condição de contorno;
-    // */
-    // if (cpOutsideDomain_.size() > 1)
-    // {
-    //     cpOutsideDomain_.erase(cpOutsideDomain_.begin(), cpOutsideDomain_.begin() + cpOutsideDomain_.size());
-    // }
-    // for (ControlPoint *cp : controlPoints_)
-    // {
-    //     bounded_vector<double, 2> coord = cp->getCurrentCoordinate() / cp->getWeight();
-    //     double distanceCP = 1000000.0;
-    //     double distance;
-
-    //     for (BoundaryElement *bound : boundaryFE_)
-    //     {
-    //         double xsiBoundary = 0.0; //primeira tentativa
-    //         double deltaxsi = 100000.0;
-    //         int cont = 0;
-    //         std::vector<Node *> boundaryConec = bound->getNodes();
-    //         bounded_vector<double, 2> coordBoundary, firstDerivate, secondDerivate, normal;
-
-    //         while (fabs(deltaxsi) >= 1.0e-06 and xsiBoundary >= -1.0 and xsiBoundary <= 1.0 and cont <= 15)
-    //         {
-    //             matrix<double> boundaryFunctions = bound->shapeFunctionsAndDerivates(xsiBoundary); //PHI, PHI', PHI''
-    //             coordBoundary(0) = 0.0;
-    //             coordBoundary(1) = 0.0;
-    //             firstDerivate(0) = 0.0;
-    //             firstDerivate(1) = 0.0;
-    //             secondDerivate(0) = 0.0;
-    //             secondDerivate(1) = 0.0;
-    //             int aux = 0;
-    //             for (Node *node : boundaryConec)
-    //             {
-    //                 bounded_vector<double, 2> coordinateNode = node->getCurrentCoordinate();
-
-    //                 coordBoundary(0) += boundaryFunctions(aux, 0) * coordinateNode(0);
-    //                 coordBoundary(1) += boundaryFunctions(aux, 0) * coordinateNode(1);
-
-    //                 firstDerivate(0) += boundaryFunctions(aux, 1) * coordinateNode(0);
-    //                 firstDerivate(1) += boundaryFunctions(aux, 1) * coordinateNode(1);
-
-    //                 secondDerivate(0) += boundaryFunctions(aux, 2) * coordinateNode(0);
-    //                 secondDerivate(1) += boundaryFunctions(aux, 2) * coordinateNode(1);
-    //                 aux = aux + 1;
-    //             }
-    //             double h = -((coord(0) - coordBoundary(0)) * (-firstDerivate(0)) + (coord(1) - coordBoundary(1)) * (-firstDerivate(1)));
-    //             double dh_dxsi = (-firstDerivate(0)) * (-firstDerivate(0)) + (-secondDerivate(0)) * (coord(0) - coordBoundary(0)) +
-    //                              (-firstDerivate(1)) * (-firstDerivate(1)) + (-secondDerivate(1)) * (coord(1) - coordBoundary(1));
-
-    //             deltaxsi = h / dh_dxsi;
-
-    //             xsiBoundary = xsiBoundary + deltaxsi;
-
-    //             cont++;
-    //         }
-
-    //         if (xsiBoundary <= -1.0)
-    //         {
-    //             matrix<double> boundaryFunctions = bound->shapeFunctionsAndDerivates(-1.0); //PHI, PHI', PHI''
-    //             int aux = 0;
-    //             coordBoundary(0) = 0.0;
-    //             coordBoundary(1) = 0.0;
-    //             firstDerivate(0) = 0.0;
-    //             firstDerivate(1) = 0.0;
-    //             for (Node *node : boundaryConec)
-    //             {
-    //                 bounded_vector<double, 2> coordinateNode = node->getCurrentCoordinate();
-    //                 coordBoundary(0) += boundaryFunctions(aux, 0) * coordinateNode(0);
-    //                 coordBoundary(1) += boundaryFunctions(aux, 0) * coordinateNode(1);
-
-    //                 firstDerivate(0) += boundaryFunctions(aux, 1) * coordinateNode(0);
-    //                 firstDerivate(1) += boundaryFunctions(aux, 1) * coordinateNode(1);
-
-    //                 aux = aux + 1;
-    //             }
-    //         }
-    //         else if (xsiBoundary >= 1.0)
-    //         {
-    //             matrix<double> boundaryFunctions = bound->shapeFunctionsAndDerivates(1.0); //PHI, PHI', PHI''
-    //             int aux = 0;
-    //             coordBoundary(0) = 0.0;
-    //             coordBoundary(1) = 0.0;
-    //             firstDerivate(0) = 0.0;
-    //             firstDerivate(1) = 0.0;
-    //             for (Node *node : boundaryConec)
-    //             {
-    //                 bounded_vector<double, 2> coordinateNode = node->getCurrentCoordinate();
-    //                 coordBoundary(0) += boundaryFunctions(aux, 0) * coordinateNode(0);
-    //                 coordBoundary(1) += boundaryFunctions(aux, 0) * coordinateNode(1);
-
-    //                 firstDerivate(0) += boundaryFunctions(aux, 1) * coordinateNode(0);
-    //                 firstDerivate(1) += boundaryFunctions(aux, 1) * coordinateNode(1);
-
-    //                 aux = aux + 1;
-    //             }
-    //         }
-
-    //         distance = sqrt((coord(0) - coordBoundary(0)) * (coord(0) - coordBoundary(0)) + (coord(1) - coordBoundary(1)) * (coord(1) - coordBoundary(1)));
-    //         normal(0) = firstDerivate(1);
-    //         normal(1) = -firstDerivate(0);
-    //         double aux = (coord(0) - coordBoundary(0)) * normal(0) + (coord(1) - coordBoundary(1)) * normal(1);
-
-    //         if (distance < 1.0e-10)
-    //         {
-    //             distance = 0.0;
-    //         }
-
-    //         if (distance < fabs(distanceCP))
-    //         {
-    //             if (aux > 0.0) //fora do domínio local
-    //             {
-    //                 distanceCP = -distance;
-    //             }
-    //             else if (aux < 0.0) //dentro do domínio local
-    //             {
-    //                 distanceCP = distance;
-    //             }
-    //             else if (aux == 0.0 and distance == 0.0) //caso único: exatamente sobre um elemento do contorno
-    //             {
-    //                 distanceCP = distance;
-    //             }
-    //         }
-    //     }
-    //     if (distanceCP - blendZoneThickness_ > 1.0e-10) //dentro do local, mas fora da blend zone
-    //     {
-    //         std::cout << cp->getIndex() << " " << distanceCP << " " << distanceCP - blendZoneThickness_ << std::endl;
-
-    //         DirichletCondition *dir0 = new DirichletCondition(cp, 0, 0.0);
-    //         cpOutsideDomain_.push_back(dir0);
-
-    //         DirichletCondition *dir1 = new DirichletCondition(cp, 1, 0.0);
-    //         cpOutsideDomain_.push_back(dir1);
-
-    //         for (Element *el : elements_)
-    //         {
-    //             bounded_vector<double, 2> xsiFE, coordFE, deltaxsi;
-    //             deltaxsi(0) = 100000.0;
-    //             deltaxsi(1) = 100000.0;
-    //             xsiFE(0) = 0.5; //first attempt xs1
-    //             xsiFE(1) = 0.5; //first attempt xs2
-
-    //             std::vector<Node *> conec = el->getConnection();
-
-    //             int cont = 0;
-    //             while (deltaxsi(0) >= 1.0e-06 and deltaxsi(1) >= 1.0e-06 and
-    //                    xsiFE(0) >= 0.0 and xsiFE(0) <= 1.0 and
-    //                    xsiFE(1) >= 0.0 and xsiFE(1) <= 1.0 and cont <= 15)
-    //             {
-
-    //                 coordFE = el->calculateGlobalCoordinate(xsiFE);
-
-    //                 bounded_matrix<double, 2, 2> jacobian = el->referenceJacobianMatrix(xsiFE(0), xsiFE(1));
-    //                 bounded_matrix<double, 2, 2> inverse = inverseMatrix(jacobian);
-    //                 deltaxsi = prod(inverse, coord - coordFE);
-
-    //                 xsiFE = xsiFE + deltaxsi;
-
-    //                 cont++;
-    //             }
-
-    //             if (xsiFE(0) >= 0.0 and xsiFE(0) <= 1.0 and //ponto de hammer encontrou uma célula
-    //                 xsiFE(1) >= 0.0 and xsiFE(1) <= 1.0 and
-    //                 xsiFE(0) + xsiFE(1) <= 1.0) //só vai funcionar para triângulos não muito deformados...
-    //             {
-    //                 CP_BlendingZone *inside = new CP_BlendingZone(cp, el, xsiFE);
-    //                 cpsInsideBledingZone_.push_back(inside);
-
-    //                 break;
-    //             }
-    //         }
-    //     }
-    // }
-    // if (distanceCP >= 0.0) //teste
-    // {
-    //     for (Element *el : elements_)
-    //     {
-    //         bounded_vector<double, 2> xsiFE, coordFE, deltaxsi;
-    //         deltaxsi(0) = 100000.0;
-    //         deltaxsi(1) = 100000.0;
-    //         xsiFE(0) = 0.5; //first attempt xs1
-    //         xsiFE(1) = 0.5; //first attempt xs2
-
-    //         std::vector<Node *> conec = el->getConnection();
-
-    //         int cont = 0;
-    //         while (deltaxsi(0) >= 1.0e-06 and deltaxsi(1) >= 1.0e-06 and
-    //                xsiFE(0) >= 0.0 and xsiFE(0) <= 1.0 and
-    //                xsiFE(1) >= 0.0 and xsiFE(1) <= 1.0 and cont <= 15)
-    //         {
-
-    //             coordFE = el->calculateGlobalCoordinate(xsiFE);
-
-    //             bounded_matrix<double, 2, 2> jacobian = el->referenceJacobianMatrix(xsiFE(0), xsiFE(1));
-    //             bounded_matrix<double, 2, 2> inverse = inverseMatrix(jacobian);
-    //             deltaxsi = prod(inverse, coord - coordFE);
-
-    //             xsiFE = xsiFE + deltaxsi;
-
-    //             cont++;
-    //         }
-
-    //         if (xsiFE(0) >= 0.0 and xsiFE(0) <= 1.0 and //ponto de hammer encontrou uma célula
-    //             xsiFE(1) >= 0.0 and xsiFE(1) <= 1.0 and
-    //             xsiFE(0) + xsiFE(1) <= 1.0) //só vai funcionar para triângulos não muito deformados...
-    //         {
-    //             CP_BlendingZone *inside = new CP_BlendingZone(cp, el, xsiFE);
-    //             cpsInsideBledingZone_.push_back(inside);
-
-    //             break;
-    //         }
-    //     }
-    // }
-
-    // else
-    // {
-    //     cp->setInsideLocal(false);
-    // }
 }
-// for (Element *el : elements_) ///COLOCAR ELEMENTS_PART
-// {
-//     // std::cout << "rank: " << rank << " index: " << el->getIndex() << std::endl;
-//     matrix<double> integrationPoints = el->hammerQuadrature();
-//     std::vector<double> distanceFE = el->getDistanceFromFEBoundary();
-//     std::vector<bool> insideBlendZone;
-//     std::vector<bounded_vector<double, 2>> xsiIncidenceCell;
-//     std::vector<Cell *> incidenceCell;
-
-//     for (int ih = 0; ih < integrationPoints.size1(); ih++)
-//     {
-//         if (distanceFE[ih] - blendZoneThickness_ <= 0.0) //inside of blend zone
-//         {
-//             bounded_vector<double, 2> xsiFE, coordFE;
-//             xsiFE(0) = integrationPoints(ih, 0);
-//             xsiFE(1) = integrationPoints(ih, 1);
-
-//             coordFE = el->calculateGlobalCoordinate(xsiFE); //coordenates of hammer points
-//             insideBlendZone.push_back(false);
-
-//             for (Cell *cell : cells_)
-//             {
-//                 bounded_vector<double, 2> xsiISO, coordISO, deltaxsi;
-//                 deltaxsi(0) = 100000.0;
-//                 deltaxsi(1) = 100000.0;
-//                 xsiISO(0) = 0.0; //first attempt xs1
-//                 xsiISO(1) = 0.0; //first attempt xs2
-
-//                 std::vector<ControlPoint *> conPoints = cell->getControlPoints();
-//                 vector<double> wpc2(conPoints.size());
-//                 for (int i = 0; i < conPoints.size(); i++)
-//                 {
-//                     wpc2(i) = conPoints[i]->getWeight();
-//                 }
-
-//                 int cont = 0;
-//                 while (deltaxsi(0) >= 1.0e-06 and deltaxsi(1) >= 1.0e-06 and
-//                        xsiISO(0) >= -1.0 and xsiISO(0) <= 1.0 and
-//                        xsiISO(1) >= -1.0 and xsiISO(1) <= 1.0 and cont <= 15)
-//                 {
-//                     std::pair<vector<double>, matrix<double>> functions;
-//                     functions = cell->shapeFunctionAndDerivates(xsiISO);
-
-//                     coordISO(0) = 0.0;
-//                     coordISO(1) = 0.0;
-
-//                     for (int cp = 0; cp < conPoints.size(); cp++)
-//                     {
-//                         bounded_vector<double, 2> coordinateCP = conPoints[cp]->getCurrentCoordinate();
-//                         coordISO(0) += functions.first(cp) * coordinateCP(0) / wpc2(cp);
-//                         coordISO(1) += functions.first(cp) * coordinateCP(1) / wpc2(cp);
-//                     }
-
-//                     bounded_matrix<double, 2, 2> jacobian = cell->referenceJacobianMatrix(functions.second);
-//                     bounded_matrix<double, 2, 2> inverse = inverseMatrix(jacobian);
-//                     deltaxsi = prod(inverse, coordFE - coordISO);
-
-//                     xsiISO = xsiISO + deltaxsi;
-
-//                     cont++;
-//                 }
-
-//                 if (xsiISO(0) >= -1.0 and xsiISO(0) <= 1.0 and
-//                     xsiISO(1) >= -1.0 and xsiISO(1) <= 1.0)
-//                 {
-//                     insideBlendZone[ih] = true;
-//                     xsiIncidenceCell.push_back(xsiISO);
-//                     incidenceCell.push_back(cell);
-
-//                     // std::cout << "INDEX: " << el->getIndex() << " HAMMER: " << ih << " ISO: " << cell->calculateGlobalCoordinate(xsiISO)(0) << " " << cell->calculateGlobalCoordinate(xsiISO)(1) << std::endl;
-//                     // std::cout << "INDEX: " << el->getIndex() << " HAMMER: " << ih << " fe: " << el->calculateGlobalCoordinate(xsiFE)(0) << " " << el->calculateGlobalCoordinate(xsiFE)(1) << std::endl;
-
-//                     break;
-//                 }
-//             }
-//         }
-//         else
-//         {
-//             insideBlendZone.push_back(false);
-//         }
-//     }
-//     el->setIncidenceOnGlobal(insideBlendZone, incidenceCell, xsiIncidenceCell);
-// }
 
 bounded_matrix<double, 2, 2> GlobalSolid::inverseMatrix(const bounded_matrix<double, 2, 2> &matrix)
 {
@@ -3227,7 +3830,7 @@ void GlobalSolid::computeDistanceFromFEBoundary()
                     std::vector<Node *> boundaryConec = bound->getNodes();
                     bounded_vector<double, 2> coordBoundary, firstDerivate, secondDerivate;
 
-                    while (fabs(deltaxsi) >= 1.0e-06 and xsiBoundary >= -1.0 and xsiBoundary <= 1.0 and cont <= 15)
+                    while ((fabs(deltaxsi) >= 1.0e-08) and (cont <= 20))
                     {
                         matrix<double> boundaryFunctions = bound->shapeFunctionsAndDerivates(xsiBoundary); //PHI, PHI', PHI''
                         coordBoundary(0) = 0.0;
@@ -3301,99 +3904,70 @@ void GlobalSolid::computeDistanceFromFEBoundary()
                     }
                 }
                 no->setDistanceToBoundary(distanceNode);
+
+                bounded_vector<double, 2> coordFE = no->getCurrentCoordinate();
+                if (distanceNode <= blendZoneThickness_)
+                {
+                    for (Cell *cell : cells_)
+                    {
+                        bounded_vector<double, 2> xsiISO, coordISO, deltaxsi;
+                        deltaxsi(0) = 100000.0;
+                        deltaxsi(1) = 100000.0;
+                        xsiISO(0) = 0.0; //first attempt xs1
+                        xsiISO(1) = 0.0; //first attempt xs2
+
+                        std::vector<ControlPoint *> conPoints = cell->getControlPoints();
+                        int npc = conPoints.size();
+                        vector<double> wpc(npc);
+                        for (int i = 0; i < npc; i++)
+                        {
+                            wpc(i) = conPoints[i]->getWeight();
+                        }
+                        bounded_vector<int, 2> inc;
+                        inc = conPoints[npc - 1]->getINC();
+
+                        int cont = 0;
+                        double erro = 1.0;
+
+                        while ((erro >= 1.0e-08) and cont <= 20)
+                        {
+                            std::pair<vector<double>, matrix<double>> functions;
+                            functions = cell->shapeFunctionAndDerivates(xsiISO, wpc, inc);
+
+                            coordISO(0) = 0.0;
+                            coordISO(1) = 0.0;
+
+                            for (int cp = 0; cp < npc; cp++)
+                            {
+                                bounded_vector<double, 2> coordinateCP = conPoints[cp]->getCurrentCoordinate();
+                                coordISO(0) += functions.first(cp) * coordinateCP(0);
+                                coordISO(1) += functions.first(cp) * coordinateCP(1);
+                            }
+
+                            bounded_matrix<double, 2, 2> jacobian = cell->currentJacobianMatrix(functions.second);
+                            bounded_matrix<double, 2, 2> inverse = inverseMatrix(jacobian);
+                            deltaxsi = prod(inverse, coordFE - coordISO);
+
+                            xsiISO = xsiISO + deltaxsi;
+
+                            erro = norm_2(deltaxsi);
+
+                            cont++;
+                        }
+
+                        if (xsiISO(0) >= -1.0 - 1.0e-08 and xsiISO(0) <= 1.0 + 1.0e-08 and //o nó encontrou uma célula
+                            xsiISO(1) >= -1.0 - 1.0e-08 and xsiISO(1) <= 1.0 + 1.0e-08)
+                        {
+                            no->setCellIndex(cell->getIndex());
+                            no->setXsisGlobal(xsiISO);
+
+                            break;
+                        }
+                    }
+                }
             }
         }
     }
-    // for (Node *no : nodes_)
-    // {
-    //     double distanceNode = 1000000.0;
-    //     bounded_vector<double, 2> coord = no->getCurrentCoordinate();
-
-    //     for (BoundaryElement *bound : boundaryFE_)
-    //     {
-    //         double distance;
-    //         double xsiBoundary = 0.0; //primeira tentativa
-    //         double deltaxsi = 100000.0;
-    //         int cont = 0;
-    //         std::vector<Node *> boundaryConec = bound->getNodes();
-    //         bounded_vector<double, 2> coordBoundary, firstDerivate, secondDerivate;
-
-    //         while (fabs(deltaxsi) >= 1.0e-06 and xsiBoundary >= -1.0 and xsiBoundary <= 1.0 and cont <= 15)
-    //         {
-    //             matrix<double> boundaryFunctions = bound->shapeFunctionsAndDerivates(xsiBoundary); //PHI, PHI', PHI''
-    //             coordBoundary(0) = 0.0;
-    //             coordBoundary(1) = 0.0;
-    //             firstDerivate(0) = 0.0;
-    //             firstDerivate(1) = 0.0;
-    //             secondDerivate(0) = 0.0;
-    //             secondDerivate(1) = 0.0;
-    //             int aux = 0;
-    //             for (Node *node : boundaryConec)
-    //             {
-    //                 bounded_vector<double, 2> coordinateNode = node->getCurrentCoordinate();
-
-    //                 coordBoundary(0) += boundaryFunctions(aux, 0) * coordinateNode(0);
-    //                 coordBoundary(1) += boundaryFunctions(aux, 0) * coordinateNode(1);
-
-    //                 firstDerivate(0) += boundaryFunctions(aux, 1) * coordinateNode(0);
-    //                 firstDerivate(1) += boundaryFunctions(aux, 1) * coordinateNode(1);
-
-    //                 secondDerivate(0) += boundaryFunctions(aux, 2) * coordinateNode(0);
-    //                 secondDerivate(1) += boundaryFunctions(aux, 2) * coordinateNode(1);
-    //                 aux = aux + 1;
-    //             }
-    //             double h = -((coord(0) - coordBoundary(0)) * (-firstDerivate(0)) + (coord(1) - coordBoundary(1)) * (-firstDerivate(1)));
-    //             double dh_dxsi = (-firstDerivate(0)) * (-firstDerivate(0)) + (-secondDerivate(0)) * (coord(0) - coordBoundary(0)) +
-    //                              (-firstDerivate(1)) * (-firstDerivate(1)) + (-secondDerivate(1)) * (coord(1) - coordBoundary(1));
-
-    //             deltaxsi = h / dh_dxsi;
-
-    //             xsiBoundary = xsiBoundary + deltaxsi;
-
-    //             cont++;
-    //         }
-
-    //         if (xsiBoundary <= -1.0)
-    //         {
-    //             matrix<double> boundaryFunctions = bound->shapeFunctionsAndDerivates(-1.0); //PHI, PHI', PHI''
-    //             int aux = 0;
-    //             coordBoundary(0) = 0.0;
-    //             coordBoundary(1) = 0.0;
-    //             for (Node *node : boundaryConec)
-    //             {
-    //                 bounded_vector<double, 2> coordinateNode = node->getCurrentCoordinate();
-    //                 coordBoundary(0) += boundaryFunctions(aux, 0) * coordinateNode(0);
-    //                 coordBoundary(1) += boundaryFunctions(aux, 0) * coordinateNode(1);
-
-    //                 aux = aux + 1;
-    //             }
-    //         }
-    //         else if (xsiBoundary >= 1.0)
-    //         {
-    //             matrix<double> boundaryFunctions = bound->shapeFunctionsAndDerivates(1.0); //PHI, PHI', PHI''
-    //             int aux = 0;
-    //             coordBoundary(0) = 0.0;
-    //             coordBoundary(1) = 0.0;
-    //             for (Node *node : boundaryConec)
-    //             {
-    //                 bounded_vector<double, 2> coordinateNode = node->getCurrentCoordinate();
-    //                 coordBoundary(0) += boundaryFunctions(aux, 0) * coordinateNode(0);
-    //                 coordBoundary(1) += boundaryFunctions(aux, 0) * coordinateNode(1);
-
-    //                 aux = aux + 1;
-    //             }
-    //         }
-
-    //         distance = sqrt((coord(0) - coordBoundary(0)) * (coord(0) - coordBoundary(0)) + (coord(1) - coordBoundary(1)) * (coord(1) - coordBoundary(1)));
-
-    //         if (distance < distanceNode)
-    //         {
-    //             distanceNode = distance;
-    //         }
-    //     }
-    //     no->setDistanceToBoundary(distanceNode);
-    //     // std::cout<<"NODE: "<<no->getIndex() <<" DISTANCE: "<<distanceNode<<std::endl;
-    // }
 
     for (Cell *cell : cells_part)
     {
@@ -3417,7 +3991,7 @@ void GlobalSolid::computeDistanceFromFEBoundary()
                 std::vector<Node *> boundaryConec = bound->getNodes();
                 bounded_vector<double, 2> coordBoundary, firstDerivate, secondDerivate, normal;
 
-                while (fabs(deltaxsi) >= 1.0e-06 and xsiBoundary >= -1.0 and xsiBoundary <= 1.0 and cont <= 15)
+                while (fabs(deltaxsi) >= 1.0e-08 and cont <= 20)
                 {
                     matrix<double> boundaryFunctions = bound->shapeFunctionsAndDerivates(xsiBoundary); //PHI, PHI', PHI''
                     coordBoundary(0) = 0.0;
@@ -3524,218 +4098,254 @@ void GlobalSolid::computeDistanceFromFEBoundary()
     }
 }
 
-// void GlobalSolid::testeParaviewFE()
-// {
-//     std::stringstream name;
-//     name << "hammerPointsFE.vtu";
-//     std::ofstream file(name.str());
+void GlobalSolid::exportToParaviewHammerPoints()
+{
+    int rank;
+    MPI_Comm_rank(PETSC_COMM_WORLD, &rank);
+    MPI_Barrier(PETSC_COMM_WORLD);
 
-//     matrix<double> hammer = elements_[0]->hammerQuadrature();
-//     int nn = hammer.size1();
+    std::stringstream name;
+    if (rank == 0)
+    {
+        name << "hammerPointsFE.vtu";
+    }
+    std::ofstream file(name.str());
 
-//     //header
-//     file << "<?xml version=\"1.0\"?>"
-//          << "\n"
-//          << "<VTKFile type=\"UnstructuredGrid\">"
-//          << "\n"
-//          << "  <UnstructuredGrid>"
-//          << "\n"
-//          << "  <Piece NumberOfPoints=\"" << nn * elements_.size()
-//          << "\"  NumberOfCells=\"" << nn * elements_.size()
-//          << "\">"
-//          << "\n";
+    int nn = 0;
+    for (int i = 0; i < elements_.size(); i++)
+    {
+        int teste;
+        if (elementPartition_[i] == rank)
+        {
+            if (elements_[i]->ipInsideBlendZone().size() > 0)
+            {
+                teste = 1;
+            }
+            else
+            {
+                teste = 0;
+            }
+        }
+        MPI_Bcast(&teste, 1, MPI_INT, elementPartition_[i], PETSC_COMM_WORLD);
+        MPI_Barrier(PETSC_COMM_WORLD);
+        if (teste == 0)
+        {
+            nn += hammerPoints_;
+        }
+        else
+        {
+            nn += hammerPointsBlendZone_;
+        }
+        MPI_Barrier(PETSC_COMM_WORLD);
+    }
 
-//     //nodal coordinates
-//     file << "    <Points>"
-//          << "\n"
-//          << "      <DataArray type=\"Float64\" "
-//          << "NumberOfComponents=\"3\" format=\"ascii\">"
-//          << "\n";
-//     for (Element *el : elements_)
-//     {
-//         matrix<double> hammer = el->hammerQuadrature();
-//         for (int i = 0; i < hammer.size1(); i++)
-//         {
-//             bounded_vector<double, 2> xsi;
-//             xsi(0) = hammer(i, 0);
-//             xsi(1) = hammer(i, 1);
-//             bounded_vector<double, 2> coord = el->calculateGlobalCoordinate(xsi);
-//             file << coord(0) << " " << coord(1) << " " << 0.0 << "\n";
-//         }
-//     }
-//     file << "      </DataArray>"
-//          << "\n"
-//          << "    </Points>"
-//          << "\n";
+    //matrix<double> hammer = elements_[0]->hammerQuadrature();
+    //int nn = hammer.size1();
 
-//     //element connectivity
-//     file << "    <Cells>"
-//          << "\n"
-//          << "      <DataArray type=\"Int32\" "
-//          << "Name=\"connectivity\" format=\"ascii\">"
-//          << "\n";
-//     int aux = 0;
-//     for (Element *el : elements_)
-//     {
-//         for (int i = 0; i < nn; i++)
-//         {
-//             file << aux++ << std::endl;
-//         }
-//     }
-//     file << "      </DataArray>"
-//          << "\n";
+    //header
+    if (rank == 0)
+    {
+        file << "<?xml version=\"1.0\"?>"
+             << "\n"
+             << "<VTKFile type=\"UnstructuredGrid\">"
+             << "\n"
+             << "  <UnstructuredGrid>"
+             << "\n"
+             << "  <Piece NumberOfPoints=\"" << nn
+             << "\"  NumberOfCells=\"" << nn
+             << "\">"
+             << "\n";
 
-//     //offsets
-//     file << "      <DataArray type=\"Int32\""
-//          << " Name=\"offsets\" format=\"ascii\">"
-//          << "\n";
-//     aux = 0;
-//     for (Element *el : elements_)
-//     {
-//         for (int i = 0; i < nn; i++)
-//         {
-//             file << aux++ << std::endl;
-//         }
-//     }
-//     file << "      </DataArray>"
-//          << "\n";
+        //nodal coordinates
+        file << "    <Points>"
+             << "\n"
+             << "      <DataArray type=\"Float64\" "
+             << "NumberOfComponents=\"3\" format=\"ascii\">"
+             << "\n";
+    }
 
-//     //elements type
-//     file << "      <DataArray type=\"UInt8\" Name=\"types\" "
-//          << "format=\"ascii\">"
-//          << "\n";
-//     for (Element *el : elements_)
-//     {
-//         for (int i = 0; i < nn; i++)
-//         {
-//             file << 1 << std::endl;
-//         }
-//     }
-//     file << "      </DataArray>"
-//          << "\n"
-//          << "    </Cells>"
-//          << "\n";
+    for (int i = 0; i < elements_.size(); i++)
+    {
+        matrix<double> hammer;
+        int teste;
+        if (elementPartition_[i] == rank)
+        {
+            if (elements_[i]->ipInsideBlendZone().size() > 0)
+            {
+                teste = 1;
+            }
+            else
+            {
+                teste = 0;
+            }
+        }
+        MPI_Bcast(&teste, 1, MPI_INT, elementPartition_[i], PETSC_COMM_WORLD);
+        MPI_Barrier(PETSC_COMM_WORLD);
+        if (teste == 0)
+        {
+            hammer = elements_[i]->hammerQuadrature(hammerPoints_);
+        }
+        else
+        {
+            hammer = elements_[i]->hammerQuadrature(hammerPointsBlendZone_);
+        }
+        if (rank == 0)
+        {
+            for (int j = 0; j < hammer.size1(); j++)
+            {
+                bounded_vector<double, 2> xsi;
+                xsi(0) = hammer(j, 0);
+                xsi(1) = hammer(j, 1);
+                bounded_vector<double, 2> coord = elements_[i]->calculateGlobalCoordinate(xsi);
+                file << coord(0) << " " << coord(1) << " " << 1.0 << "\n";
+            }
+        }
+        MPI_Barrier(PETSC_COMM_WORLD);
+    }
+    if (rank == 0)
+    {
+        file << "      </DataArray>"
+             << "\n"
+             << "    </Points>"
+             << "\n";
 
-//     //nodal results
-//     file << "    <PointData>"
-//          << "\n";
-//     file << "      <DataArray type=\"Float64\" NumberOfComponents=\"3\" "
-//          << "Name=\"Blend\" format=\"ascii\">"
-//          << "\n";
-//     for (Element *el : elements_)
-//     {
-//         std::vector<bool> blend = el->ipInsideBlendZone();
-//         std::vector<double> b = el->getBlendValue();
-//         int au = 0;
-//         for (int i = 0; i < blend.size(); i++)
-//         {
-//             double tt = 0.0;
-//             if (blend[i] == true)
-//             {
-//                 tt = b[au++];
-//             }
-//             file << blend[i] << " " << tt << " " << 1.0 - tt << "\n";
-//         }
-//     }
-//     file << "      </DataArray> "
-//          << "\n";
+        //element connectivity
+        file << "    <Cells>"
+             << "\n"
+             << "      <DataArray type=\"Int32\" "
+             << "Name=\"connectivity\" format=\"ascii\">"
+             << "\n";
+        int aux = 0;
 
-//     // file << "      <DataArray type=\"Float64\" NumberOfComponents=\"6\" "
-//     //      << "Name=\"Local\" format=\"ascii\">"
-//     //      << "\n";
-//     // for (Element *el : elements_)
-//     // {
-//     //     matrix<double> hammer = el->hammerQuadrature();
-//     //     std::vector<bool> blend = el->ipInsideBlendZone();
-//     //     std::vector<double> dist = el->getDistanceFromFEBoundary();
-//     //     vector<double> phi;
+        for (int i = 0; i < nn; i++)
+        {
+            file << aux++ << std::endl;
+        }
 
-//     //     for (int i = 0; i < nn; i++)
-//     //     {
-//     //         phi = el->domainShapeFunction(hammer(i, 0), hammer(i, 1));
-//     //         double tt = 0.0;
-//     //         if (blend[i] == true)
-//     //         {
-//     //             tt = el->blendFunction(dist[i], blendZoneThickness_);
-//     //         }
-//     //         for (int j = 0; j < 6; j++)
-//     //         {
-//     //             file << (1.0 - tt) * phi(j) << " ";
-//     //         }
-//     //         file << "\n";
-//     //     }
-//     // }
-//     // file << "      </DataArray> "
-//     //      << "\n";
+        file << "      </DataArray>"
+             << "\n";
 
-//     // file << "      <DataArray type=\"Float64\" NumberOfComponents=\"9\" "
-//     //      << "Name=\"Global\" format=\"ascii\">"
-//     //      << "\n";
-//     // for (Element *el : elements_)
-//     // {
-//     //     matrix<double> hammer = el->hammerQuadrature();
-//     //     std::vector<bool> blend = el->ipInsideBlendZone();
-//     //     std::vector<double> dist = el->getDistanceFromFEBoundary();
-//     //     std::vector<Cell *> cell = el->incidenceCell();
-//     //     std::vector<bounded_vector<double, 2>> xsiGlobal = el->xsiIncidenceCell();
+        //offsets
+        file << "      <DataArray type=\"Int32\""
+             << " Name=\"offsets\" format=\"ascii\">"
+             << "\n";
 
-//     //     //vector<double> phi;
-//     //     int aa = 0;
-//     //     for (int i = 0; i < hammer.size1(); i++)
-//     //     {
-//     //         double tt = 0.0;
-//     //         if (blend[i] == true)
-//     //         {
-//     //             tt = el->blendFunction(dist[i], blendZoneThickness_);
-//     //             std::pair<vector<double>, matrix<double>> phi = cell[aa]->shapeFunctionAndDerivates(xsiGlobal[aa]); //PHI, PHI'
-//     //             phi.first = tt * phi.first;
+        aux = 0;
 
-//     //             for (int j = 0; j < phi.first.size(); j++)
-//     //             {
-//     //                 file << phi.first(j) << " ";
-//     //             }
+        for (int i = 0; i < nn; i++)
+        {
+            file << aux++ << std::endl;
+        }
 
-//     //             aa++;
-//     //         }
-//     //         else
-//     //         {
-//     //             for (int j = 0; j < 9; j++)
-//     //             {
-//     //                 file << 0.0 << " ";
-//     //             }
-//     //         }
-//     //         file << "\n";
-//     //     }
-//     // }
-//     // file << "      </DataArray> "
-//     //      << "\n";
+        file << "      </DataArray>"
+             << "\n";
 
-//     file << "    </PointData>"
-//          << "\n";
-//     //elemental results
-//     file << "    <CellData>"
-//          << "\n";
+        //elements type
+        file << "      <DataArray type=\"UInt8\" Name=\"types\" "
+             << "format=\"ascii\">"
+             << "\n";
 
-//     // file << "      <DataArray type=\"Float64\" NumberOfComponents=\"1\" "
-//     //      << "Name=\"Process\" format=\"ascii\">" << std::endl;
+        for (int i = 0; i < nn; i++)
+        {
+            file << 1 << std::endl;
+        }
 
-//     // for (Element *el : elements_)
-//     // {
-//     //     file << elementPartition_[el->getIndex()] << "\n";
-//     // }
-//     // file << "      </DataArray> "
-//     //      << "\n";
+        file << "      </DataArray>"
+             << "\n"
+             << "    </Cells>"
+             << "\n";
 
-//     file << "    </CellData>"
-//          << "\n";
-//     //footnote
-//     file << "  </Piece>"
-//          << "\n"
-//          << "  </UnstructuredGrid>"
-//          << "\n"
-//          << "</VTKFile>"
-//          << "\n";
-// }
+        //nodal results
+        file << "    <PointData>"
+             << "\n";
+        file << "      <DataArray type=\"Float64\" NumberOfComponents=\"3\" "
+             << "Name=\"Blend\" format=\"ascii\">"
+             << "\n";
+    }
+    MPI_Barrier(PETSC_COMM_WORLD);
+    for (int i = 0; i < elements_.size(); i++)
+    {
+        int teste;
+        std::vector<bool> blend;
+        std::vector<double> b;
+        double bvalue;
+        int inside;
+
+        if (elementPartition_[i] == rank)
+        {
+            if (elements_[i]->ipInsideBlendZone().size() > 0)
+            {
+                teste = 1;
+                blend = elements_[i]->ipInsideBlendZone();
+                b = elements_[i]->getBlendValue();
+            }
+            else
+            {
+                teste = 0;
+            }
+        }
+        MPI_Bcast(&teste, 1, MPI_INT, elementPartition_[i], PETSC_COMM_WORLD);
+        MPI_Barrier(PETSC_COMM_WORLD);
+
+        if (teste == 0 and rank == 0)
+        {
+            for (int j = 0; j < hammerPoints_; j++)
+            {
+                file << 0 << " " << 0.0 << " " << 1.0 << "\n";
+            }
+        }
+
+        if (teste == 1)
+        {
+            int aux = 0;
+            for (int h = 0; h < hammerPointsBlendZone_; h++)
+            {
+                if (elementPartition_[i] == rank)
+                {
+                    inside = blend[h];
+                    if (inside == 1)
+                    {
+                        bvalue = b[aux++];
+                    }
+                    else
+                    {
+                        bvalue = 0;
+                    }
+                }
+                MPI_Bcast(&bvalue, 1, MPI_DOUBLE, elementPartition_[i], PETSC_COMM_WORLD);
+                MPI_Bcast(&inside, 1, MPI_INT, elementPartition_[i], PETSC_COMM_WORLD);
+                MPI_Barrier(PETSC_COMM_WORLD);
+                if (rank == 0)
+                {
+                    file << inside << " " << bvalue << " " << 1.0 - bvalue << "\n";
+                }
+            }
+        }
+        MPI_Barrier(PETSC_COMM_WORLD);
+    }
+
+    if (rank == 0)
+    {
+        file << "      </DataArray> "
+             << "\n";
+
+        file << "    </PointData>"
+             << "\n";
+        //elemental results
+        file << "    <CellData>"
+             << "\n";
+
+        file << "    </CellData>"
+             << "\n";
+        //footnote
+        file << "  </Piece>"
+             << "\n"
+             << "  </UnstructuredGrid>"
+             << "\n"
+             << "</VTKFile>"
+             << "\n";
+    }
+}
 
 bounded_vector<double, 2> GlobalSolid::blendFunction(const double &DA)
 {
@@ -3800,10 +4410,14 @@ void GlobalSolid::checkInactivesCPandNode()
         Idof = cp->getIndex();
         VecGetValues(All, Ione, &Idof, &val);
 
-        if (val < 1.0e-06)
+        if (val < 1.0e-14)
         {
             inactiveCP.push_back(cp);
             inactiveCPandNode_.push_back(Idof);
+            // if (rank == 0)
+            // {
+            //     std::cout << "O PONTO DE CONTROLE " << cp->getIndex() << " FOI DESATIVADO." << std::endl;
+            // }
         }
     }
     for (Node *node : nodes_)
@@ -3811,19 +4425,23 @@ void GlobalSolid::checkInactivesCPandNode()
         Idof = node->getIndex();
         VecGetValues(All, Ione, &Idof, &val);
 
-        if (val < 1.0e-06)
+        if (val < 1.0e-14)
         {
             inactiveNode.push_back(node);
             inactiveCPandNode_.push_back(Idof);
+            // if (rank == 0)
+            // {
+            //     std::cout << "O NÓ " << node->getIndexFE() << " FOI DESATIVADO." << std::endl;
+            // }
         }
     }
 
     VecDestroy(&b);
 
-    std::cout << "INATIVOS: " << inactiveCPandNode_.size() << std::endl;
-
-    // if (rank == 0)
-    // {
+    if (rank == 0)
+    {
+        std::cout << "INATIVOS: " << inactiveCPandNode_.size() << std::endl;
+    }
     for (ControlPoint *cp : inactiveCP)
     {
         bounded_vector<double, 2> coord = cp->getCurrentCoordinate();
@@ -3839,9 +4457,8 @@ void GlobalSolid::checkInactivesCPandNode()
             std::vector<Node *> conec = el->getConnection();
 
             int cont = 0;
-            while (deltaxsi(0) >= 1.0e-06 and deltaxsi(1) >= 1.0e-06 and
-                   xsiFE(0) >= 0.0 and xsiFE(0) <= 1.0 and
-                   xsiFE(1) >= 0.0 and xsiFE(1) <= 1.0 and cont <= 15)
+            double error = 1.0;
+            while (error >= 1.0e-08 and cont <= 15)
             {
 
                 coordFE = el->calculateGlobalCoordinate(xsiFE);
@@ -3851,6 +4468,8 @@ void GlobalSolid::checkInactivesCPandNode()
                 deltaxsi = prod(inverse, coord - coordFE);
 
                 xsiFE = xsiFE + deltaxsi;
+
+                error = norm_2(deltaxsi);
 
                 cont++;
             }
@@ -3866,10 +4485,7 @@ void GlobalSolid::checkInactivesCPandNode()
             }
         }
     }
-    // }
 
-    // if (rank == 0)
-    // {
     for (Node *no : inactiveNode)
     {
         std::cout << "NO DESATIVADO " << no->getIndex() << std::endl;
@@ -3884,28 +4500,30 @@ void GlobalSolid::checkInactivesCPandNode()
             xsiISO(1) = 0.0; //first attempt xs2
 
             std::vector<ControlPoint *> conPoints = cell->getControlPoints();
-            vector<double> wpc2(conPoints.size());
-            for (int i = 0; i < conPoints.size(); i++)
+            int npc = conPoints.size();
+            vector<double> wpc(npc);
+            for (int i = 0; i < npc; i++)
             {
-                wpc2(i) = conPoints[i]->getWeight();
+                wpc(i) = conPoints[i]->getWeight();
             }
+            bounded_vector<int, 2> inc;
+            inc = conPoints[npc - 1]->getINC();
 
             int cont = 0;
-            while (deltaxsi(0) >= 1.0e-06 and deltaxsi(1) >= 1.0e-06 and //newton-raphson para encontrar os xsis
-                   xsiISO(0) >= -1.0 and xsiISO(0) <= 1.0 and
-                   xsiISO(1) >= -1.0 and xsiISO(1) <= 1.0 and cont <= 15)
+            double error = 1.0;
+            while (error >= 1.0e-08 and cont <= 15)
             {
                 std::pair<vector<double>, matrix<double>> functions;
-                functions = cell->shapeFunctionAndDerivates(xsiISO);
+                functions = cell->shapeFunctionAndDerivates(xsiISO, wpc, inc);
 
                 coordISO(0) = 0.0;
                 coordISO(1) = 0.0;
 
-                for (int cp = 0; cp < conPoints.size(); cp++)
+                for (int cp = 0; cp < npc; cp++)
                 {
                     bounded_vector<double, 2> coordinateCP = conPoints[cp]->getCurrentCoordinate();
-                    coordISO(0) += functions.first(cp) * coordinateCP(0) / wpc2(cp);
-                    coordISO(1) += functions.first(cp) * coordinateCP(1) / wpc2(cp);
+                    coordISO(0) += functions.first(cp) * coordinateCP(0);
+                    coordISO(1) += functions.first(cp) * coordinateCP(1);
                 }
 
                 bounded_matrix<double, 2, 2> jacobian = cell->referenceJacobianMatrix(functions.second);
@@ -3914,11 +4532,13 @@ void GlobalSolid::checkInactivesCPandNode()
 
                 xsiISO = xsiISO + deltaxsi;
 
+                error = norm_2(deltaxsi);
+
                 cont++;
             }
 
-            if (xsiISO(0) >= -1.0 and xsiISO(0) <= 1.0 and //ponto de hammer encontrou uma célula
-                xsiISO(1) >= -1.0 and xsiISO(1) <= 1.0)
+            if (xsiISO(0) >= -1.0 - 1.0e-08 and xsiISO(0) <= 1.0 + 1.0e-08 and //ponto de hammer encontrou uma célula
+                xsiISO(1) >= -1.0 - 1.0e-08 and xsiISO(1) <= 1.0 + 1.0e-08)
             {
 
                 InactiveNode *inactive = new InactiveNode(no, cell, xsiISO);
@@ -3928,5 +4548,186 @@ void GlobalSolid::checkInactivesCPandNode()
             }
         }
     }
-    // }
+}
+
+void GlobalSolid::shareDataBetweenRanks()
+{
+    int rank;
+    MPI_Comm_rank(PETSC_COMM_WORLD, &rank);
+
+    for (int el = 0; el < elements_.size(); el++) //compartilhar distância dos nós ao contorno, célula em que o nó está inserido e xsisGlobal correspondentes com o RANK 1, que irá necessitar de todos quando for exportar os dados
+    {
+        if (elementPartition_[el] != 1)
+        {
+            std::vector<Node *> conec = elements_[el]->getConnection();
+
+            vector<int> cellIndex(conec.size(), -1);
+            vector<double> distanceBoundary(conec.size(), 10000.0);
+            vector<double> xsisGlobal1(conec.size(), 10000.0);
+            vector<double> xsisGlobal2(conec.size(), 10000.0);
+
+            bounded_vector<double, 2> xsi;
+
+            if (elementPartition_[el] == rank)
+            {
+                for (int i = 0; i < conec.size(); i++)
+                {
+                    xsi = conec[i]->getXsisGlobal();
+                    cellIndex(i) = conec[i]->getCellIndex();
+                    distanceBoundary(i) = conec[i]->getDistanceToBoundary();
+                    xsisGlobal1(i) = xsi(0);
+                    xsisGlobal2(i) = xsi(1);
+                }
+            }
+            //std::cout<<"TESETE 1   "<< rank<<std::endl;
+            MPI_Bcast(&cellIndex[0], conec.size(), MPI_INT, elementPartition_[el], PETSC_COMM_WORLD);
+            MPI_Bcast(&distanceBoundary[0], conec.size(), MPI_DOUBLE, elementPartition_[el], PETSC_COMM_WORLD);
+            MPI_Bcast(&xsisGlobal1[0], conec.size(), MPI_DOUBLE, elementPartition_[el], PETSC_COMM_WORLD);
+            MPI_Bcast(&xsisGlobal2[0], conec.size(), MPI_DOUBLE, elementPartition_[el], PETSC_COMM_WORLD);
+            //std::cout<<"TESETE 2   "<<rank<< std::endl;
+            MPI_Barrier(PETSC_COMM_WORLD);
+
+            if (rank == 1)
+            {
+                for (int i = 0; i < conec.size(); i++)
+                {
+                    if (conec[i]->getDistanceToBoundary() == -10000.0 and distanceBoundary(i) != -10000.0)
+                    {
+                        conec[i]->setCellIndex(cellIndex(i));
+                        conec[i]->setDistanceToBoundary(distanceBoundary(i));
+                        xsi(0) = xsisGlobal1(i);
+                        xsi(1) = xsisGlobal2(i);
+                        conec[i]->setXsisGlobal(xsi);
+                    }
+                }
+            }
+        }
+    }
+    if (rank == 1)
+    {
+        for (Node *no : nodes_)
+        {
+            no->setValuesOfBlendingFunction(blendFunction(no->getDistanceToBoundary()));
+        }
+    }
+}
+
+matrix<double> GlobalSolid::coordinatesFEM(const int &order)
+{
+    int n = (order + 1) * (order + 2) / 2.0;
+    matrix<double> xsi(n, 2);
+
+    if (order == 1)
+    {
+        xsi(0, 0) = 1.0;
+        xsi(0, 1) = 0.0;
+
+        xsi(1, 0) = 0.0;
+        xsi(1, 1) = 1.0;
+
+        xsi(2, 0) = 0.0;
+        xsi(2, 1) = 0.0;
+    }
+    else if (order == 2)
+    {
+        xsi(0, 0) = 1.0;
+        xsi(0, 1) = 0.0;
+
+        xsi(1, 0) = 0.0;
+        xsi(1, 1) = 1.0;
+
+        xsi(2, 0) = 0.0;
+        xsi(2, 1) = 0.0;
+
+        xsi(3, 0) = 0.5;
+        xsi(3, 1) = 0.5;
+
+        xsi(4, 0) = 0.0;
+        xsi(4, 1) = 0.5;
+
+        xsi(5, 0) = 0.5;
+        xsi(5, 1) = 0.0;
+    }
+    else
+    {
+        xsi(0, 0) = 1.0;
+        xsi(0, 1) = 0.0;
+
+        xsi(1, 0) = 0.0;
+        xsi(1, 1) = 1.0;
+
+        xsi(2, 0) = 0.0;
+        xsi(2, 1) = 0.0;
+
+        xsi(3, 0) = 0.666666666666667;
+        xsi(3, 1) = 0.333333333333333;
+
+        xsi(4, 0) = 0.333333333333333;
+        xsi(4, 1) = 0.666666666666667;
+
+        xsi(5, 0) = 0.0;
+        xsi(5, 1) = 0.666666666666667;
+
+        xsi(6, 0) = 0.0;
+        xsi(6, 1) = 0.333333333333333;
+
+        xsi(7, 0) = 0.333333333333333;
+        xsi(7, 1) = 0.0;
+
+        xsi(8, 0) = 0.666666666666667;
+        xsi(8, 1) = 0.0;
+
+        xsi(9, 0) = 0.333333333333333;
+        xsi(9, 1) = 0.333333333333333;
+    }
+    return xsi;
+}
+
+void GlobalSolid::stressCalculateFEM()
+{
+    for (Node *n : nodes_)
+    {
+        n->setZeroStressState();
+    }
+
+    int order, nnod;
+    std::string elementType = meshes_[0]->getElementType();
+    if (elementType == "T3")
+    {
+        order = 1;
+    }
+    else if (elementType == "T6")
+    {
+        order = 2;
+    }
+    else if (elementType == "T10")
+    {
+        order = 3;
+    }
+    nnod = (order + 1) * (order + 2) / 2.0;
+
+    matrix<double> xsiLocal = coordinatesFEM(order);
+
+    for (Element *el : elements_)
+    {
+        std::vector<Node *> conec = el->getConnection();
+        for (int i = 0; i < nnod; i++)
+        {
+            bounded_vector<double, 2> qxsi;
+            qxsi(0) = xsiLocal(i, 0);
+            qxsi(1) = xsiLocal(i, 1);
+
+            int cellIndex = conec[i]->getCellIndex();
+
+            if (cellIndex == -1)
+            {
+                conec[i]->setStressState(el->getCauchyStress(qxsi, planeState_));
+            }
+            else
+            {
+                Cell *cell = cells_[cellIndex];
+                conec[i]->setStressState(el->getCauchyStressBlendZone(qxsi, planeState_, cell, conec[i]->getXsisGlobal(), conec[i]->getValuesOfBlendingFunction()));
+            }
+        }
+    }
 }

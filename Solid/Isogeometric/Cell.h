@@ -32,9 +32,9 @@ public:
 
     ControlPoint *getControlPoint(const int &index);
 
-    bounded_matrix<double, 2, 2> referenceJacobianMatrix(const matrix<double> &dphi_dxsi);//, const vector<double> &wpc);
+    bounded_matrix<double, 2, 2> referenceJacobianMatrix(const matrix<double> &dphi_dxsi); //, const vector<double> &wpc);
 
-    bounded_matrix<double, 2, 2> currentJacobianMatrix(const matrix<double> &dphi_dxsi);//, const vector<double> &wpc);
+    bounded_matrix<double, 2, 2> currentJacobianMatrix(const matrix<double> &dphi_dxsi); //, const vector<double> &wpc);
 
     double jacobianDeterminant(const bounded_matrix<double, 2, 2> &jacobianMatrix);
 
@@ -61,19 +61,21 @@ public:
                                  const vector<double> &wpc,
                                  const bounded_vector<double, 2> inc);
 
-    std::pair<vector<double>, matrix<double>> shapeFunctionAndDerivates(const bounded_vector<double, 2> &qxsi);
-                                                                        // const vector<double> &wpc,
-                                                                        // const bounded_vector<double, 2> inc);
+    std::pair<vector<double>, matrix<double>> shapeFunctionAndDerivates(const bounded_vector<double, 2> &qxsi,
+                                                                        const vector<double> &wpc,
+                                                                        const bounded_vector<double, 2> inc);
+    // const vector<double> &wpc,
+    // const bounded_vector<double, 2> inc);
 
     matrix<double> boundaryIsoQuadrature(const int &points);
 
     std::pair<vector<double>, vector<double>> boundaryShapeFunctionAndDerivates(const double &xsi,
-                                                                        const vector<double> &wpc,
-                                                                        const bounded_vector<double, 2> inc, const int &curveNumber);
+                                                                                const vector<double> &wpc,
+                                                                                const bounded_vector<double, 2> inc, const int &curveNumber);
 
     vector<double> computeDistribuitedLoads(const bounded_vector<double, 2> &value, const int &quadraturePoints, const int &curveNumber);
 
-    std::vector<ControlPoint * > getControlPointsOnSide(const int &side);
+    std::vector<ControlPoint *> getControlPointsOnSide(const int &side);
 
     void computeDistanceFromFEBoundary(const int &pointsQuadrature, std::vector<BoundaryElement *> boundaryFE);
 
@@ -82,6 +84,8 @@ public:
     bounded_vector<double, 2> calculateGlobalCoordinate(const bounded_vector<double, 2> &qxsi);
 
     vector<double> diagonalMass(const int &points);
+
+    bounded_matrix<double, 2, 2 > get2PiolaStress(const bounded_vector<double, 2> &qxsi, const std::string &ep);
 
 private:
     int index_; //cell number //OK

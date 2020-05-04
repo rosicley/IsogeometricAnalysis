@@ -80,6 +80,8 @@ public:
 
     void exportToParaviewFEM(const int &number);
 
+    //void exportToParaviewFEM_Blended(const int &number);
+
     void exportMirror();
 
     void dataReading(const std::string &inputParameters,
@@ -102,6 +104,8 @@ public:
 
     matrix<double> coordinatesForInterpolation(const int &orderElemement);
 
+    matrix<double> coordinatesFEM(const int &orderElement);
+
     bounded_matrix<double, 2, 2> inverseMatrix(const bounded_matrix<double, 2, 2> &matrix);
 
     void ISOdomainDecompositionMETIS();
@@ -114,13 +118,15 @@ public:
 
     void checkInactivesCPandNode();
 
-    void testeParaviewFE();
-
-    void testeParaviewISO();
+    void exportToParaviewHammerPoints();
 
     void teste();
 
     vector<double> diagonalMassMatrix();
+
+    void shareDataBetweenRanks();
+
+    void stressCalculateFEM();
 
 private:
     std::vector<Patch *> patches_;
@@ -196,4 +202,6 @@ private:
     int hammerPoints_; //number of hammer points for elements outside the blend zone
 
     int hammerPointsBlendZone_; //number of hammer points for elements inside the blend zone
+
+    std::vector<std::vector<BoundaryElement *>> boundary_;
 };

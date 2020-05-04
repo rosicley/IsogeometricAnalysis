@@ -39,6 +39,12 @@ public:
 
 	double getDistanceToBoundary();
 
+	int getCellIndex();
+
+	bounded_vector<double, 2> getXsisGlobal();
+
+	bounded_vector<double, 2> getValuesOfBlendingFunction();
+
 	void setPastCoordinate(const bounded_vector<double, 2> &pastCoordinate);
 
 	void setPastVelocity(const bounded_vector<double, 2> &pastVelocity);
@@ -63,7 +69,11 @@ public:
 
 	void setDistanceToBoundary(const double &distance);
 
-	//void setIndexFE(const int &index);
+	void setCellIndex(const int &cellIndex);
+
+	void setXsisGlobal(const bounded_vector<double, 2> &xsis);
+
+	void setValuesOfBlendingFunction(const bounded_vector<double, 2> &bvalues);
 
 private:
 	int index_;
@@ -87,4 +97,11 @@ private:
 	bounded_vector<double, 5> stressState_; //{SigmaX1, SigmaX2, TalX1X2, contador}
 
 	double distanceToBoundary_;
+
+	int cellIndex_; 
+
+	bounded_vector<double, 2> xsisglobal_;
+
+	bounded_vector<double, 2> blendingFunction_;
+	
 };
