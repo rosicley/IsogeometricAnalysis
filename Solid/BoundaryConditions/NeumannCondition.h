@@ -45,6 +45,8 @@ public:
 
     double getValue();
 
+    void incrementValue(const double &value);
+
 private:
     Node *node_;
 

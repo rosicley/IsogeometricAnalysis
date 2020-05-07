@@ -1,15 +1,11 @@
 #include "GlobalSolid.h"
 
-GlobalSolid::GlobalSolid() {}
-
-GlobalSolid::GlobalSolid(const std::string &planeState)
+GlobalSolid::GlobalSolid()
 {
-    planeState_ = planeState;
-    deltat_ = 1.0;
-    gamma_ = 0.5;
-    beta_ = 0.25;
-    shapeForces_(0) = 0.0;
-    shapeForces_(1) = 0.0;
+    char buff[FILENAME_MAX];
+    getCurrentDir(buff, FILENAME_MAX);
+    std::string current_working_dir(buff);
+    current_working_dir_ = current_working_dir;
 }
 
 GlobalSolid::~GlobalSolid() {}
@@ -92,11 +88,11 @@ void GlobalSolid::addPatch(const int &index, const int &npc, const int &indexMat
     patches_.push_back(patch);
 }
 
-void GlobalSolid::addMesh(const int &index, const int &indexMaterial, const double &thickness, const std::string &elementType)
-{
-    Mesh *mesh = new Mesh(index, materials_[indexMaterial], thickness, elementType);
-    meshes_.push_back(mesh);
-}
+// void GlobalSolid::addMesh(const int &index, const int &indexMaterial, const double &thickness, const std::string &elementType)
+// {
+//     Mesh *mesh = new Mesh(index, materials_[indexMaterial], thickness, elementType);
+//     meshes_.push_back(mesh);
+// }
 
 void GlobalSolid::addNode(const int &index, const int &indexFE,
                           const bounded_vector<double, 2> &initialCoordinate)
@@ -105,21 +101,15 @@ void GlobalSolid::addNode(const int &index, const int &indexFE,
     nodes_.push_back(node);
 }
 
-void GlobalSolid::dataReading(const std::string &inputParameters, const std::string &inputProperties, const std::string &inputMeshIso, const std::string &inputMeshFE, const bool &rhino)
+void GlobalSolid::dataReading(const std::string &inputParameters, const std::string &inputProperties, const std::string &inputMeshIso, const bool &rhino)
 {
-    std::ifstream parameters(inputParameters);
-    std::ifstream properties(inputProperties);
-    std::ifstream isogeometric(inputMeshIso);
-    std::string line;
-
-    //std::stringstream text1;
-    //text1 << "ISOmirror.txt";
-    //std::ofstream mirror(text1.str());
-
     int rank;
     MPI_Comm_rank(PETSC_COMM_WORLD, &rank);
+    std::string line;
 
-    //READING ANALYSIS PARAMETERS
+    //Opening parameters file
+    std::ifstream parameters(inputParameters);
+    //Reading analysis parameters
     std::getline(parameters, line);
     std::getline(parameters, line);
     std::getline(parameters, line);
@@ -176,14 +166,12 @@ void GlobalSolid::dataReading(const std::string &inputParameters, const std::str
     std::getline(parameters, line);
     std::getline(parameters, line);
     parameters >> orderParaview_;
-    std::getline(parameters, line);
-    std::getline(parameters, line);
-    std::getline(parameters, line);
-    std::getline(parameters, line);
-    std::getline(parameters, line);
-    parameters >> blendZoneThickness_;
+    //Closing parameters file
+    parameters.close();
 
-    //READING SOLID PROPERTIES
+    //Opening properties file
+    std::ifstream properties(inputProperties);
+    //Reading solid properties
     int nmaterial;
     double young, poisson, density;
     std::getline(properties, line);
@@ -200,409 +188,414 @@ void GlobalSolid::dataReading(const std::string &inputParameters, const std::str
         properties >> young >> poisson >> density;
         addMaterial(i, young, poisson, density);
     }
+    //Closing properties file
+    properties.close();
 
-    //READING ISOGEOMETRIC MESH
-    int npatch;       //nº de patchs
-    int cellCont = 0; //contador de células
-    int cellpatches = 0;
-    std::getline(isogeometric, line);
-    std::getline(isogeometric, line);
-    std::getline(isogeometric, line);
-    isogeometric >> npatch;
-    std::getline(isogeometric, line);
-    for (int ipatch = 0; ipatch < npatch; ipatch++)
+    FILE *iso;
+    iso = fopen(inputMeshIso.c_str(), "r");
+    if (iso != NULL) //the file exists
     {
-        int npc, imaterial, dim_u, dim_v;
-        double thickness;
-        bounded_vector<int, 2> npc_dir, degree; //NUMBER OF CONTROL POINTS(U, V);ORDER(U,V)
-        std::getline(isogeometric, line);
-        std::getline(isogeometric, line);
-        std::getline(isogeometric, line);
-        std::getline(isogeometric, line);
-        isogeometric >> npc;
-        std::getline(isogeometric, line);
-        std::getline(isogeometric, line);
-        std::getline(isogeometric, line);
-        std::getline(isogeometric, line);
-        std::getline(isogeometric, line);
-        isogeometric >> imaterial;
-        std::getline(isogeometric, line);
-        std::getline(isogeometric, line);
-        std::getline(isogeometric, line);
-        std::getline(isogeometric, line);
-        std::getline(isogeometric, line);
-        isogeometric >> thickness;
-        addPatch(ipatch, npc, imaterial, thickness);
-        std::getline(isogeometric, line);
-        std::getline(isogeometric, line);
-        std::getline(isogeometric, line);
-        std::getline(isogeometric, line);
-        std::getline(isogeometric, line);
+        fclose(iso);
 
-        //CREATE CONTROL POINTS IN PATCH
-        matrix<double> auxil(npc, 3);
-        if (rhino == true)
+        //Opening the file
+        std::ifstream isogeometric(inputMeshIso);
+        //READING ISOGEOMETRIC MESH
+        int npatch;       //nº de patchs
+        int cellCont = 0; //contador de células
+        int cellpatches = 0;
+        std::getline(isogeometric, line);
+        std::getline(isogeometric, line);
+        std::getline(isogeometric, line);
+        isogeometric >> npatch;
+        std::getline(isogeometric, line);
+        for (int ipatch = 0; ipatch < npatch; ipatch++)
         {
-            for (int ipc = 0; ipc < npc; ipc++)
+            int npc, imaterial, dim_u, dim_v;
+            double thickness;
+            bounded_vector<int, 2> npc_dir, degree; //NUMBER OF CONTROL POINTS(U, V);ORDER(U,V)
+            std::getline(isogeometric, line);
+            std::getline(isogeometric, line);
+            std::getline(isogeometric, line);
+            std::getline(isogeometric, line);
+            isogeometric >> npc;
+            std::getline(isogeometric, line);
+            std::getline(isogeometric, line);
+            std::getline(isogeometric, line);
+            std::getline(isogeometric, line);
+            std::getline(isogeometric, line);
+            isogeometric >> imaterial;
+            std::getline(isogeometric, line);
+            std::getline(isogeometric, line);
+            std::getline(isogeometric, line);
+            std::getline(isogeometric, line);
+            std::getline(isogeometric, line);
+            isogeometric >> thickness;
+            addPatch(ipatch, npc, imaterial, thickness);
+            std::getline(isogeometric, line);
+            std::getline(isogeometric, line);
+            std::getline(isogeometric, line);
+            std::getline(isogeometric, line);
+            std::getline(isogeometric, line);
+
+            //CREATE CONTROL POINTS IN PATCH
+            matrix<double> auxil(npc, 3);
+            if (rhino == true)
             {
-                double aux;
-                isogeometric >> auxil(ipc, 0) >> auxil(ipc, 1) >> aux >> auxil(ipc, 2);
+                for (int ipc = 0; ipc < npc; ipc++)
+                {
+                    double aux;
+                    isogeometric >> auxil(ipc, 0) >> auxil(ipc, 1) >> aux >> auxil(ipc, 2);
+                    std::getline(isogeometric, line);
+                }
+            }
+            else
+            {
+                for (int ipc = 0; ipc < npc; ipc++)
+                {
+                    bounded_vector<double, 2> coord;
+                    double aux, weight;
+                    isogeometric >> coord(0) >> coord(1) >> aux >> weight;
+                    patches_[ipatch]->addControlPoint(ipc, coord, weight);
+                    std::getline(isogeometric, line);
+                }
+            }
+            std::getline(isogeometric, line);
+            std::getline(isogeometric, line);
+            std::getline(isogeometric, line);
+            std::getline(isogeometric, line);
+            isogeometric >> npc_dir(0) >> npc_dir(1);
+            if (rhino == true)
+            {
+                for (int j = 0; j < npc_dir(1); j++)
+                {
+                    for (int i = 0; i < npc_dir(0); i++)
+                    {
+                        bounded_vector<double, 2> coord;
+                        double aux, weight;
+                        coord(0) = auxil(i * npc_dir(1) + j, 0);
+                        coord(1) = auxil(i * npc_dir(1) + j, 1);
+                        weight = auxil(i * npc_dir(1) + j, 2);
+                        patches_[ipatch]->addControlPoint(j * npc_dir(0) + i, coord, weight);
+                    }
+                }
+            }
+            std::getline(isogeometric, line);
+            std::getline(isogeometric, line);
+            std::getline(isogeometric, line);
+            std::getline(isogeometric, line);
+            std::getline(isogeometric, line);
+            isogeometric >> degree(0) >> degree(1);
+            patches_[ipatch]->setDegree(degree);
+            patches_[ipatch]->setNpc_Dir(npc_dir);
+            dim_u = npc_dir(0) + degree(0) + 1;
+            dim_v = npc_dir(1) + degree(1) + 1;
+            vector<double> uknot(dim_u);
+            vector<double> vknot(dim_v);
+            std::getline(isogeometric, line);
+            std::getline(isogeometric, line);
+            std::getline(isogeometric, line);
+            std::getline(isogeometric, line);
+            std::getline(isogeometric, line);
+            for (int iu = 0; iu < dim_u; iu++)
+            {
+                isogeometric >> uknot(iu);
                 std::getline(isogeometric, line);
             }
-        }
-        else
-        {
-            for (int ipc = 0; ipc < npc; ipc++)
+            std::getline(isogeometric, line);
+            std::getline(isogeometric, line);
+            std::getline(isogeometric, line);
+            std::getline(isogeometric, line);
+            for (int iv = 0; iv < dim_v; iv++)
             {
-                bounded_vector<double, 2> coord;
-                double aux, weight;
-                isogeometric >> coord(0) >> coord(1) >> aux >> weight;
-                patches_[ipatch]->addControlPoint(ipc, coord, weight);
+                isogeometric >> vknot(iv);
                 std::getline(isogeometric, line);
             }
-        }
-        std::getline(isogeometric, line);
-        std::getline(isogeometric, line);
-        std::getline(isogeometric, line);
-        std::getline(isogeometric, line);
-        isogeometric >> npc_dir(0) >> npc_dir(1);
-        if (rhino == true)
-        {
+            patches_[ipatch]->setKnotsVectors(uknot, vknot);
+
+            //CONDIÇÕES DE CONTORNO RELACIONADAS COM O PATCH ipatch
+            std::getline(isogeometric, line);
+            std::getline(isogeometric, line);
+            std::getline(isogeometric, line);
+            std::getline(isogeometric, line);
+            int nneuman, ndirichlet, ipc;
+            bounded_vector<double, 2> value;
+            bounded_vector<int, 2> free;
+            isogeometric >> nneuman;
+            std::getline(isogeometric, line);
+            std::getline(isogeometric, line);
+            std::getline(isogeometric, line);
+            std::getline(isogeometric, line);
+            std::getline(isogeometric, line);
+
+            std::string typecond;
+
+            std::vector<bounded_vector<double, 3>> neummanCurve;
+
+            for (int ineuman = 0; ineuman < nneuman; ineuman++)
+            {
+                isogeometric >> typecond;
+                if (typecond == "POINT")
+                {
+                    isogeometric >> ipc >> value(0) >> value(1);
+                    addNeumannCondition(ipc, ipatch, value);
+                    std::getline(isogeometric, line);
+                }
+                else if (typecond == "CURVE")
+                {
+                    bounded_vector<double, 3> aux;
+
+                    isogeometric >> ipc >> aux(1) >> aux(2);
+                    aux(0) = static_cast<double>(ipc);
+
+                    neummanCurve.push_back(aux);
+                    std::getline(isogeometric, line);
+                }
+            }
+            std::getline(isogeometric, line);
+            std::getline(isogeometric, line);
+            std::getline(isogeometric, line);
+            std::getline(isogeometric, line);
+            isogeometric >> ndirichlet;
+            std::getline(isogeometric, line);
+            std::getline(isogeometric, line);
+            std::getline(isogeometric, line);
+            std::getline(isogeometric, line);
+            std::getline(isogeometric, line);
+            for (int idirichlet = 0; idirichlet < ndirichlet; idirichlet++)
+            {
+                isogeometric >> typecond;
+                if (typecond == "POINT")
+                {
+                    isogeometric >> ipc >> free(0) >> free(1) >> value(0) >> value(1);
+                    addDirichletCondition(ipc, ipatch, free, value);
+                    std::getline(isogeometric, line);
+                }
+                else if (typecond == "CURVE")
+                {
+                    isogeometric >> ipc >> free(0) >> free(1) >> value(0) >> value(1);
+                    if (ipc == 0)
+                    {
+                        for (int cp = 0; cp < npc_dir(0); cp++)
+                        {
+                            addDirichletCondition(cp, ipatch, free, value);
+                        }
+                    }
+                    else if (ipc == 1)
+                    {
+                        int aux = npc_dir(0) - 1;
+                        for (int ih = 0; ih < npc_dir(1); ih++)
+                        {
+                            addDirichletCondition(aux, ipatch, free, value);
+                            aux = aux + npc_dir(0);
+                        }
+                    }
+                    else if (ipc == 2)
+                    {
+                        int aux = (npc_dir(1) - 1) * npc_dir(0);
+                        for (int ih = 0; ih < npc_dir(0); ih++)
+                        {
+                            addDirichletCondition(aux, ipatch, free, value);
+                            aux = aux + 1;
+                        }
+                    }
+                    else if (ipc == 3)
+                    {
+                        int aux = 0;
+                        for (int ih = 0; ih < npc_dir(1); ih++)
+                        {
+                            addDirichletCondition(aux, ipatch, free, value);
+                            aux = aux + npc_dir(0);
+                        }
+                    }
+                    std::getline(isogeometric, line);
+                }
+            }
+
+            /////////////////////////////////FIM DE LEITURA DO PATCH//////////////////////////////////
+            /////////////////////////////////CRIANDO CÉLULAS DO PATCH/////////////////////////////////
+
+            int ngp = 0;
+            bounded_vector<int, 2> INC, span;
+            span(0) = 0;
+            span(1) = 0;
+            std::vector<ControlPoint *> pointsPatch;
+            pointsPatch = patches_[ipatch]->getControlPoints();
+            ngp = 0;
+            int auxU = (degree(0) + 1);
+            int auxV = (degree(1) + 1);
+            int auxUV = auxU * auxV;
+
+            for (int i = 0; i < npc_dir(0); i++)
+            {
+                if ((uknot(i)) != (uknot(i + 1)))
+                {
+                    span(0) = span(0) + 1;
+                }
+            }
+            for (int j = 0; j < npc_dir(1); j++)
+            {
+                if ((vknot(j)) != (vknot(j + 1)))
+                {
+                    span(1) = span(1) + 1;
+                }
+            }
+            patches_[ipatch]->setSpanNumber(span);
+
             for (int j = 0; j < npc_dir(1); j++)
             {
                 for (int i = 0; i < npc_dir(0); i++)
                 {
-                    bounded_vector<double, 2> coord;
-                    double aux, weight;
-                    coord(0) = auxil(i * npc_dir(1) + j, 0);
-                    coord(1) = auxil(i * npc_dir(1) + j, 1);
-                    weight = auxil(i * npc_dir(1) + j, 2);
-                    patches_[ipatch]->addControlPoint(j * npc_dir(0) + i, coord, weight);
-                }
-            }
-        }
-        std::getline(isogeometric, line);
-        std::getline(isogeometric, line);
-        std::getline(isogeometric, line);
-        std::getline(isogeometric, line);
-        std::getline(isogeometric, line);
-        isogeometric >> degree(0) >> degree(1);
-        patches_[ipatch]->setDegree(degree);
-        patches_[ipatch]->setNpc_Dir(npc_dir);
-        dim_u = npc_dir(0) + degree(0) + 1;
-        dim_v = npc_dir(1) + degree(1) + 1;
-        vector<double> uknot(dim_u);
-        vector<double> vknot(dim_v);
-        std::getline(isogeometric, line);
-        std::getline(isogeometric, line);
-        std::getline(isogeometric, line);
-        std::getline(isogeometric, line);
-        std::getline(isogeometric, line);
-        for (int iu = 0; iu < dim_u; iu++)
-        {
-            isogeometric >> uknot(iu);
-            std::getline(isogeometric, line);
-        }
-        std::getline(isogeometric, line);
-        std::getline(isogeometric, line);
-        std::getline(isogeometric, line);
-        std::getline(isogeometric, line);
-        for (int iv = 0; iv < dim_v; iv++)
-        {
-            isogeometric >> vknot(iv);
-            std::getline(isogeometric, line);
-        }
-        patches_[ipatch]->setKnotsVectors(uknot, vknot);
+                    INC(0) = i;
+                    INC(1) = j;
+                    pointsPatch[ngp]->setINC(INC);
+                    ngp++;
 
-        //CONDIÇÕES DE CONTORNO RELACIONADAS COM O PATCH ipatch
-        std::getline(isogeometric, line);
-        std::getline(isogeometric, line);
-        std::getline(isogeometric, line);
-        std::getline(isogeometric, line);
-        int nneuman, ndirichlet, ipc;
-        bounded_vector<double, 2> value;
-        bounded_vector<int, 2> free;
-        isogeometric >> nneuman;
-        std::getline(isogeometric, line);
-        std::getline(isogeometric, line);
-        std::getline(isogeometric, line);
-        std::getline(isogeometric, line);
-        std::getline(isogeometric, line);
-
-        std::string typecond;
-        //std::vector<int> neumanCurve;
-        //std::vector<double> neumanValue0;
-        //std::vector<double> neumanValue1;
-
-        std::vector<bounded_vector<double, 3>> neummanCurve;
-
-        for (int ineuman = 0; ineuman < nneuman; ineuman++)
-        {
-            isogeometric >> typecond;
-            if (typecond == "POINT")
-            {
-                isogeometric >> ipc >> value(0) >> value(1);
-                addNeumannCondition(ipc, ipatch, value);
-                std::getline(isogeometric, line);
-            }
-            else if (typecond == "CURVE")
-            {
-                bounded_vector<double, 3> aux;
-
-                isogeometric >> ipc >> aux(1) >> aux(2);
-                aux(0) = static_cast<double>(ipc);
-
-                neummanCurve.push_back(aux);
-                std::getline(isogeometric, line);
-            }
-        }
-        std::getline(isogeometric, line);
-        std::getline(isogeometric, line);
-        std::getline(isogeometric, line);
-        std::getline(isogeometric, line);
-        isogeometric >> ndirichlet;
-        std::getline(isogeometric, line);
-        std::getline(isogeometric, line);
-        std::getline(isogeometric, line);
-        std::getline(isogeometric, line);
-        std::getline(isogeometric, line);
-        for (int idirichlet = 0; idirichlet < ndirichlet; idirichlet++)
-        {
-            isogeometric >> typecond;
-            if (typecond == "POINT")
-            {
-                isogeometric >> ipc >> free(0) >> free(1) >> value(0) >> value(1);
-                addDirichletCondition(ipc, ipatch, free, value);
-                std::getline(isogeometric, line);
-            }
-            else if (typecond == "CURVE")
-            {
-                isogeometric >> ipc >> free(0) >> free(1) >> value(0) >> value(1);
-                if (ipc == 0)
-                {
-                    for (int cp = 0; cp < npc_dir(0); cp++)
+                    // finding the elements
+                    if ((i >= degree(0)) && (j >= degree(1)))
                     {
-                        addDirichletCondition(cp, ipatch, free, value);
-                    }
-                }
-                else if (ipc == 1)
-                {
-                    int aux = npc_dir(0) - 1;
-                    for (int ih = 0; ih < npc_dir(1); ih++)
-                    {
-                        addDirichletCondition(aux, ipatch, free, value);
-                        aux = aux + npc_dir(0);
-                    }
-                }
-                else if (ipc == 2)
-                {
-                    int aux = (npc_dir(1) - 1) * npc_dir(0);
-                    for (int ih = 0; ih < npc_dir(0); ih++)
-                    {
-                        addDirichletCondition(aux, ipatch, free, value);
-                        aux = aux + 1;
-                    }
-                }
-                else if (ipc == 3)
-                {
-                    int aux = 0;
-                    for (int ih = 0; ih < npc_dir(1); ih++)
-                    {
-                        addDirichletCondition(aux, ipatch, free, value);
-                        aux = aux + npc_dir(0);
-                    }
-                }
-                std::getline(isogeometric, line);
-            }
-        }
-
-        /////////////////////////////////FIM DE LEITURA DO PATCH//////////////////////////////////
-        /////////////////////////////////CRIANDO CÉLULAS DO PATCH/////////////////////////////////
-
-        int ngp = 0;
-        bounded_vector<int, 2> INC, span;
-        span(0) = 0;
-        span(1) = 0;
-        std::vector<ControlPoint *> pointsPatch;
-        pointsPatch = patches_[ipatch]->getControlPoints();
-        ngp = 0;
-        int auxU = (degree(0) + 1);
-        int auxV = (degree(1) + 1);
-        int auxUV = auxU * auxV;
-
-        for (int i = 0; i < npc_dir(0); i++)
-        {
-            if ((uknot(i)) != (uknot(i + 1)))
-            {
-                span(0) = span(0) + 1;
-            }
-        }
-        for (int j = 0; j < npc_dir(1); j++)
-        {
-            if ((vknot(j)) != (vknot(j + 1)))
-            {
-                span(1) = span(1) + 1;
-            }
-        }
-        patches_[ipatch]->setSpanNumber(span);
-
-        for (int j = 0; j < npc_dir(1); j++)
-        {
-            for (int i = 0; i < npc_dir(0); i++)
-            {
-                INC(0) = i;
-                INC(1) = j;
-                pointsPatch[ngp]->setINC(INC);
-                ngp++;
-
-                // finding the elements
-                if ((i >= degree(0)) && (j >= degree(1)))
-                {
-                    if (((uknot(i)) != (uknot(i + 1))) && ((vknot(j)) != (vknot(j + 1))))
-                    {
-
-                        vector<double> connect(auxUV);
-                        std::vector<ControlPoint *> connection(auxUV);
-
-                        for (int jloc = 0; jloc < auxV; jloc++)
+                        if (((uknot(i)) != (uknot(i + 1))) && ((vknot(j)) != (vknot(j + 1))))
                         {
-                            for (int iloc = 0; iloc < auxU; iloc++)
+
+                            vector<double> connect(auxUV);
+                            std::vector<ControlPoint *> connection(auxUV);
+
+                            for (int jloc = 0; jloc < auxV; jloc++)
                             {
-                                // global function number
-                                int ngf = ngp - jloc * npc_dir(0) - iloc - 1; //
+                                for (int iloc = 0; iloc < auxU; iloc++)
+                                {
+                                    // global function number
+                                    int ngf = ngp - jloc * npc_dir(0) - iloc - 1; //
 
-                                // local number function
-                                int nlf = (auxUV - 1) - jloc * auxU - iloc;
+                                    // local number function
+                                    int nlf = (auxUV - 1) - jloc * auxU - iloc;
 
-                                connect(nlf) = ngf;
+                                    connect(nlf) = ngf;
+                                }
+                            }
+
+                            for (int z = 0; z < auxUV; z++)
+                            {
+                                connection[z] = pointsPatch[connect(z)];
+                            }
+
+                            Cell *cell = new Cell(cellCont++, patches_[ipatch], connection);
+                            cells_.push_back(cell);
+                        }
+                    }
+                }
+            }
+            if (rank == 0)
+            {
+                for (int i = 0; i < neummanCurve.size(); i++)
+                {
+                    bounded_vector<double, 3> neu = neummanCurve[i];
+                    value(0) = neu(1);
+                    value(1) = neu(2);
+                    int curve = static_cast<int>(neu(0));
+
+                    if (curve == 0)
+                    {
+                        int j = cellpatches;
+                        vector<double> force(2 * npc_dir(0), 0.0);
+                        for (int c = 0; c < span(0); c++)
+                        {
+                            vector<double> contribuition = cells_[j]->computeDistribuitedLoads(value, quadrature_, 0);
+                            j = j + 1;
+
+                            for (int in = 0; in < contribuition.size(); in++)
+                            {
+                                force(2 * c + in) += contribuition(in);
+                            }
+                        }
+                        for (int ih = 0; ih < npc_dir(0); ih++)
+                        {
+                            value(0) = force(2 * ih);
+                            value(1) = force(2 * ih + 1);
+                            addNeumannCondition(ih, ipatch, value);
+                        }
+                    }
+                    else if (curve == 1)
+                    {
+                        int j = cellpatches + span(0) - 1;
+                        vector<double> force(2 * npc_dir(1), 0.0);
+
+                        for (int c = 0; c < span(1); c++)
+                        {
+                            vector<double> contribuition = cells_[j]->computeDistribuitedLoads(value, quadrature_, 1);
+                            j = j + span(0);
+
+                            for (int in = 0; in < contribuition.size(); in++)
+                            {
+                                force(2 * c + in) += contribuition(in);
                             }
                         }
 
-                        for (int z = 0; z < auxUV; z++)
+                        int aux = npc_dir(0) - 1;
+                        for (int ih = 0; ih < npc_dir(1); ih++)
                         {
-                            connection[z] = pointsPatch[connect(z)];
+                            value(0) = force(2 * ih);
+                            value(1) = force(2 * ih + 1);
+                            addNeumannCondition(aux, ipatch, value);
+                            aux = aux + npc_dir(0);
                         }
+                    }
+                    else if (curve == 2)
+                    {
+                        int j = cellpatches + (span(1) - 1) * span(0);
+                        vector<double> force(2 * npc_dir(0), 0.0);
+                        for (int c = 0; c < span(0); c++)
+                        {
+                            vector<double> contribuition = cells_[j]->computeDistribuitedLoads(value, quadrature_, 2);
+                            std::vector<ControlPoint *> points = cells_[j]->getControlPointsOnSide(2);
+                            j = j + 1;
 
-                        Cell *cell = new Cell(cellCont++, patches_[ipatch], connection);
-                        cells_.push_back(cell);
+                            for (int in = 0; in < contribuition.size(); in++)
+                            {
+                                force(2 * c + in) += contribuition(in);
+                            }
+                        }
+                        int aux = (npc_dir(1) - 1) * npc_dir(0);
+                        for (int ih = 0; ih < npc_dir(0); ih++)
+                        {
+                            value(0) = force(2 * ih);
+                            value(1) = force(2 * ih + 1);
+                            addNeumannCondition(aux, ipatch, value);
+                            aux = aux + 1;
+                        }
+                    }
+                    else if (curve == 3)
+                    {
+                        int j = cellpatches;
+                        vector<double> force(2 * npc_dir(1), 0.0);
+                        for (int c = 0; c < span(1); c++)
+                        {
+                            vector<double> contribuition = cells_[j]->computeDistribuitedLoads(value, quadrature_, 3);
+                            j = j + span(0);
+
+                            for (int in = 0; in < contribuition.size(); in++)
+                            {
+                                force(2 * c + in) += contribuition(in);
+                            }
+                        }
+                        int aux = 0;
+                        for (int ih = 0; ih < npc_dir(1); ih++)
+                        {
+                            value(0) = force(2 * ih);
+                            value(1) = force(2 * ih + 1);
+                            addNeumannCondition(aux, ipatch, value);
+                            aux = aux + npc_dir(0);
+                        }
                     }
                 }
             }
+            cellpatches += span(0) * span(1);
         }
-        if (rank == 0)
-        {
-            for (int i = 0; i < neummanCurve.size(); i++)
-            {
-                bounded_vector<double, 3> neu = neummanCurve[i];
-                value(0) = neu(1);
-                value(1) = neu(2);
-                int curve = static_cast<int>(neu(0));
 
-                if (curve == 0)
-                {
-                    int j = cellpatches;
-                    vector<double> force(2 * npc_dir(0), 0.0);
-                    for (int c = 0; c < span(0); c++)
-                    {
-                        vector<double> contribuition = cells_[j]->computeDistribuitedLoads(value, quadrature_, 0);
-                        j = j + 1;
-
-                        for (int in = 0; in < contribuition.size(); in++)
-                        {
-                            force(2 * c + in) += contribuition(in);
-                        }
-                    }
-                    for (int ih = 0; ih < npc_dir(0); ih++)
-                    {
-                        value(0) = force(2 * ih);
-                        value(1) = force(2 * ih + 1);
-                        addNeumannCondition(ih, ipatch, value);
-                    }
-                }
-                else if (curve == 1)
-                {
-                    int j = cellpatches + span(0) - 1;
-                    vector<double> force(2 * npc_dir(1), 0.0);
-
-                    for (int c = 0; c < span(1); c++)
-                    {
-                        vector<double> contribuition = cells_[j]->computeDistribuitedLoads(value, quadrature_, 1);
-                        j = j + span(0);
-
-                        for (int in = 0; in < contribuition.size(); in++)
-                        {
-                            force(2 * c + in) += contribuition(in);
-                        }
-                    }
-
-                    int aux = npc_dir(0) - 1;
-                    for (int ih = 0; ih < npc_dir(1); ih++)
-                    {
-                        value(0) = force(2 * ih);
-                        value(1) = force(2 * ih + 1);
-                        addNeumannCondition(aux, ipatch, value);
-                        aux = aux + npc_dir(0);
-                    }
-                }
-                else if (curve == 2)
-                {
-                    int j = cellpatches + (span(1) - 1) * span(0);
-                    vector<double> force(2 * npc_dir(0), 0.0);
-                    for (int c = 0; c < span(0); c++)
-                    {
-                        vector<double> contribuition = cells_[j]->computeDistribuitedLoads(value, quadrature_, 2);
-                        std::vector<ControlPoint *> points = cells_[j]->getControlPointsOnSide(2);
-                        j = j + 1;
-
-                        for (int in = 0; in < contribuition.size(); in++)
-                        {
-                            force(2 * c + in) += contribuition(in);
-                        }
-                    }
-                    int aux = (npc_dir(1) - 1) * npc_dir(0);
-                    for (int ih = 0; ih < npc_dir(0); ih++)
-                    {
-                        value(0) = force(2 * ih);
-                        value(1) = force(2 * ih + 1);
-                        addNeumannCondition(aux, ipatch, value);
-                        aux = aux + 1;
-                    }
-                }
-                else if (curve == 3)
-                {
-                    int j = cellpatches;
-                    vector<double> force(2 * npc_dir(1), 0.0);
-                    for (int c = 0; c < span(1); c++)
-                    {
-                        vector<double> contribuition = cells_[j]->computeDistribuitedLoads(value, quadrature_, 3);
-                        j = j + span(0);
-
-                        for (int in = 0; in < contribuition.size(); in++)
-                        {
-                            force(2 * c + in) += contribuition(in);
-                        }
-                    }
-                    int aux = 0;
-                    for (int ih = 0; ih < npc_dir(1); ih++)
-                    {
-                        value(0) = force(2 * ih);
-                        value(1) = force(2 * ih + 1);
-                        addNeumannCondition(aux, ipatch, value);
-                        aux = aux + npc_dir(0);
-                    }
-                }
-            }
-        }
-        cellpatches += span(0) * span(1);
-    }
-
-    int cpindex = 0;
-    double dist = 1.0e-6;
-    if (cells_.size() > 0)
-    {
-        parameters.close();
-        properties.close();
+        //Closing the file
         isogeometric.close();
+
+        int cpindex = 0;
+        double dist = 1.0e-6;
 
         ///LOOPING PARA ORGANIZAR OS PONTOS DE CONTROLE DOS PATCHES NO GLOBAL
         for (Patch *patch : patches_)
@@ -658,35 +651,25 @@ void GlobalSolid::dataReading(const std::string &inputParameters, const std::str
             }
         }
     }
-
-    FILE *fem;
-    fem = fopen(inputMeshFE.c_str(), "r");
-    if (fem != NULL)
-    {
-        fclose(fem);
-        dataFromGmsh(inputMeshFE);
-    }
-    else
-    {
-        if (rank == 0)
-        {
-            exportMirror();
-        }
-    }
 }
 
-void GlobalSolid::dataFromGmsh(const std::string &inputGmesh)
+std::vector<std::string> split(std::string str, std::string delim)
 {
-    std::ifstream feMesh(inputGmesh);
+    std::istringstream is(str);
+    std::vector<std::string> values;
+    std::string token;
+    while (getline(is, token, ' '))
+        values.push_back(token);
+    return values;
+}
 
-    std::string line;
-    std::string elementType;
-    int nmesh, nnode, nelem, auxEl, auxBo, nLinesBlend;
-
+void GlobalSolid::dataFromGmsh(const std::string &inputGmesh, const std::string &elementType, Geometry *geometry)
+{
     int rank;
     MPI_Comm_rank(PETSC_COMM_WORLD, &rank);
 
-    feMesh >> elementType;
+    int nentities, nmesh, nnode, nelem, auxEl, auxBo;
+
     if (elementType == "T3")
     {
         auxEl = 3;
@@ -702,46 +685,57 @@ void GlobalSolid::dataFromGmsh(const std::string &inputGmesh)
         auxEl = 10;
         auxBo = 4;
     }
+
+    //opening .msh file
+    std::ifstream feMesh(inputGmesh);
+    std::string line;
     std::getline(feMesh, line);
     std::getline(feMesh, line);
     std::getline(feMesh, line);
     std::getline(feMesh, line);
+
+    //reading physical entities
+    feMesh >> nentities;
     std::getline(feMesh, line);
-    feMesh >> nmesh;
-    std::getline(feMesh, line);
-    for (int i = 0; i < nmesh; i++)
+    std::unordered_map<int, std::string> physicalEntities;
+    physicalEntities.reserve(nentities);
+    for (int i = 0; i < nentities; i++)
     {
-        int indexMaterial;
-        double thickness;
         std::getline(feMesh, line);
-        std::getline(feMesh, line);
-        std::getline(feMesh, line);
-        std::getline(feMesh, line);
-        feMesh >> indexMaterial >> thickness;
-        addMesh(i, indexMaterial, thickness, elementType);
-        std::getline(feMesh, line);
+        std::vector<std::string> tokens = split(line, " ");
+        int index;
+        std::istringstream(tokens[1]) >> index;
+        physicalEntities[index] = tokens[2].substr(1, tokens[2].size() - 2);
     }
-    std::getline(feMesh, line);
-    std::getline(feMesh, line);
-    std::getline(feMesh, line);
-    std::getline(feMesh, line);
-    feMesh >> nLinesBlend;
-    std::getline(feMesh, line);
-    std::getline(feMesh, line);
-    std::getline(feMesh, line);
-    std::getline(feMesh, line);
-    std::getline(feMesh, line);
-    vector<int> linesBlend(nLinesBlend);
-    for (int i = 0; i < nLinesBlend; i++)
+
+    std::unordered_map<std::string, PlaneSurface *> planeSurfaces = geometry->getPlaneSurfaces();
+
+    int cont = 0;
+    for (std::unordered_map<int, std::string>::const_iterator entities = physicalEntities.begin(); entities != physicalEntities.end(); entities++)
     {
-        feMesh >> linesBlend(i);
+        std::string name = entities->second;
+        if (name[0] == 's') //surface
+        {
+            Mesh *mesh = new Mesh(cont++, materials_[planeSurfaces[entities->second]->getIndexMaterial()], planeSurfaces[entities->second]->getThickness(), elementType);
+            meshes_[entities->second] = mesh;
+        }
+        else if (name[0] == 'l') //line
+        {
+            std::vector<BoundaryElement *> aux;
+            finiteElementBoundary_[name] = aux;
+        }
+        else if (name[0] == 'c') //crack
+        {
+            std::vector<BoundaryElement *> aux;
+            finiteElementBoundary_[name + "0"] = aux;
+            finiteElementBoundary_[name + "1"] = aux;
+        }
     }
+
     std::getline(feMesh, line);
     std::getline(feMesh, line);
-    std::getline(feMesh, line);
-    std::getline(feMesh, line);
-    std::getline(feMesh, line);
-    std::getline(feMesh, line);
+
+    //reading nodes
     feMesh >> nnode;
     std::getline(feMesh, line);
     int trash;
@@ -755,39 +749,19 @@ void GlobalSolid::dataFromGmsh(const std::string &inputGmesh)
     }
     std::getline(feMesh, line);
     std::getline(feMesh, line);
+
+    //reading elements
     feMesh >> nelem;
-    std::getline(feMesh, line);
-    
-    int type, num, auxconec;
+    cont = 0;
+    int auxconec, entitie, auxentitie;
     int elementCont = 0;
+    int num = 0;
+    int auxn = 0;
     for (int ielem = 0; ielem < nelem; ielem++)
     {
-        feMesh >> trash >> type >> trash >> trash >> num;
-        if (type == 1 or type == 8 or type == 26)
-        {
-            bool teste = false;
-            for (int i = 0; i < linesBlend.size(); i++)
-            {
-                if (num == linesBlend(i))
-                {
-                    teste = true;
-                }
-            }
-            if (teste == true)
-            {
-                std::vector<Node *> conec;
-
-                for (int in = 0; in < auxBo; in++)
-                {
-                    feMesh >> auxconec;
-                    conec.push_back(nodes_[auxconec - 1]);
-                }
-
-                BoundaryElement *bfe = new BoundaryElement(num, conec);
-                boundaryFE_.push_back(bfe);
-            }
-        }
-        else if (type == 2 or type == 9 or type == 21)
+        feMesh >> trash >> trash >> trash >> entitie >> auxentitie;
+        std::string name = physicalEntities[entitie];
+        if (name[0] == 's') //2D elements
         {
             std::vector<Node *> conec;
 
@@ -797,173 +771,60 @@ void GlobalSolid::dataFromGmsh(const std::string &inputGmesh)
                 conec.push_back(nodes_[auxconec - 1]);
             }
 
-            Element *el = new Element(elementCont++, meshes_[num - 1], conec);
+            Element *el = new Element(elementCont++, meshes_[name], conec);
             elements_.push_back(el);
+        }
+        else if (name[0] == 'l')
+        {
+            std::vector<Node *> conec;
+
+            for (int in = 0; in < auxBo; in++)
+            {
+                feMesh >> auxconec;
+                conec.push_back(nodes_[auxconec - 1]);
+            }
+
+            BoundaryElement *bfe = new BoundaryElement(num++, conec);
+            std::vector<BoundaryElement *> aux = finiteElementBoundary_[name];
+            aux.push_back(bfe);
+            finiteElementBoundary_[name] = aux;
+        }
+        else if (name[0] == 'c')
+        {
+            std::vector<Node *> conec;
+
+            for (int in = 0; in < auxBo; in++)
+            {
+                feMesh >> auxconec;
+                conec.push_back(nodes_[auxconec - 1]);
+            }
+
+            BoundaryElement *bfe = new BoundaryElement(num++, conec);
+
+            if (finiteElementBoundary_[name + "0"].size() == 0 or auxn == auxentitie)
+            {
+                std::vector<BoundaryElement *> aux = finiteElementBoundary_[name + "0"];
+                aux.push_back(bfe);
+                finiteElementBoundary_[name + "0"] = aux;
+                auxn = auxentitie;
+            }
+            else
+            {
+                std::vector<BoundaryElement *> aux = finiteElementBoundary_[name + "1"];
+                aux.push_back(bfe);
+                finiteElementBoundary_[name + "1"] = aux;
+            }
+        }
+        else
+        {
+            feMesh >> auxconec;
+            geometry->getPoint(name)->addNodeToPoint(nodes_[auxconec - 1]);
         }
         std::getline(feMesh, line);
     }
-    std::getline(feMesh, line);
-    std::getline(feMesh, line);
-    std::getline(feMesh, line);
-    std::getline(feMesh, line);
 
-    int nneuman, ndirichlet, inode;
-    bounded_vector<double, 2> value;
-    bounded_vector<int, 2> free;
-    std::string typecond;
-
-    feMesh >> nneuman;
-    std::getline(feMesh, line);
-    std::getline(feMesh, line);
-    std::getline(feMesh, line);
-    std::getline(feMesh, line);
-    std::getline(feMesh, line);
-
-    for (int in = 0; in < nneuman; in++)
-    {
-        feMesh >> typecond;
-        if (typecond == "NODE")
-        {
-            feMesh >> inode >> value(0) >> value(1);
-            if (fabs(value(0)) >= 1.0e-10)
-            {
-                NeumannConditionFE *neu0 = new NeumannConditionFE(nodes_[inode - 1], 0, value(0));
-                neumannConditionsFE_.push_back(neu0);
-            }
-            if (fabs(value(1)) >= 1.0e-10)
-            {
-                NeumannConditionFE *neu1 = new NeumannConditionFE(nodes_[inode - 1], 1, value(1));
-                neumannConditionsFE_.push_back(neu1);
-            }
-            std::getline(feMesh, line);
-        }
-        else if (typecond == "LINE")
-        {
-            feMesh >> inode >> value(0) >> value(1);
-
-            for (BoundaryElement *bound : boundaryFE_)
-            {
-                if (inode == bound->getBoundaryIndex())
-                {
-                    vector<double> force = bound->computeDistribuitedLoads(value, quadrature_);
-                    std::vector<Node *> conec = bound->getNodes();
-                    double value0, value1;
-                    for (int i = 0; i < conec.size(); i++)
-                    {
-                        value0 = force(2 * i);
-                        value1 = force(2 * i + 1);
-                        if (fabs(value(0)) >= 1.0e-10)
-                        {
-                            NeumannConditionFE *neu0 = new NeumannConditionFE(conec[i], 0, value0);
-                            neumannConditionsFE_.push_back(neu0);
-                        }
-                        if (fabs(value(1)) >= 1.0e-10)
-                        {
-                            NeumannConditionFE *neu1 = new NeumannConditionFE(conec[i], 1, value1);
-                            neumannConditionsFE_.push_back(neu1);
-                        }
-                    }
-                }
-            }
-            std::getline(feMesh, line);
-        }
-    }
-    std::getline(feMesh, line);
-    std::getline(feMesh, line);
-    std::getline(feMesh, line);
-    std::getline(feMesh, line);
-    feMesh >> ndirichlet;
-
-    std::getline(feMesh, line);
-    std::getline(feMesh, line);
-    std::getline(feMesh, line);
-    std::getline(feMesh, line);
-    std::getline(feMesh, line);
-
-    for (int id = 0; id < ndirichlet; id++)
-    {
-        feMesh >> typecond;
-        if (typecond == "NODE")
-        {
-            feMesh >> inode >> free(0) >> free(1) >> value(0) >> value(1);
-            if (free(0) != 0)
-            {
-                DirichletConditionFE *dir = new DirichletConditionFE(nodes_[inode - 1], 0, value(0));
-                dirichletConditionsFE_.push_back(dir);
-            }
-            if (free(1) != 0)
-            {
-                DirichletConditionFE *dir = new DirichletConditionFE(nodes_[inode - 1], 1, value(1));
-                dirichletConditionsFE_.push_back(dir);
-            }
-            std::getline(feMesh, line);
-        }
-        else if (typecond == "LINE")
-        {
-            feMesh >> inode >> free(0) >> free(1) >> value(0) >> value(1);
-            std::vector<int> nodexIndex;
-            for (BoundaryElement *bound : boundaryFE_)
-            {
-                if (inode == bound->getBoundaryIndex())
-                {
-                    std::vector<Node *> conec = bound->getNodes();
-
-                    for (Node *no : conec)
-                    {
-                        int existe = 0;
-                        for (int tes = 0; tes < nodexIndex.size(); tes++)
-                        {
-                            if (no->getIndexFE() == nodexIndex[tes])
-                            {
-                                existe = -1;
-                            }
-                        }
-                        if (existe == 0)
-                        {
-                            nodexIndex.push_back(no->getIndexFE());
-                        }
-                    }
-                }
-            }
-            for (int i = 0; i < nodexIndex.size(); i++)
-            {
-                if (free(0) != 0)
-                {
-                    DirichletConditionFE *dir = new DirichletConditionFE(nodes_[nodexIndex[i]], 0, value(0));
-                    dirichletConditionsFE_.push_back(dir);
-                }
-                if (free(1) != 0)
-                {
-                    DirichletConditionFE *dir = new DirichletConditionFE(nodes_[nodexIndex[i]], 1, value(1));
-                    dirichletConditionsFE_.push_back(dir);
-                }
-            }
-            std::getline(feMesh, line);
-        }
-    }
-
-    if (rank == 0)
-    {
-        exportMirror();
-    }
-
-    domainDecompositionMETIS(elementType);
-
-    for (int i = 0; i < elements_.size(); i++)
-    {
-        if (rank == elementPartition_[i])
-        {
-            elements_part.push_back(elements_[i]);
-        }
-        // else if (rank != 0)
-        // {
-        //     delete elements_[i];
-        // }
-    }
-    // if (rank != 0)
-    // {
-    //     elements_.erase(elements_.begin(), elements_.begin() + elements_.size());
-    // }
+    //Closing the .msh file
+    feMesh.close();
 }
 
 void GlobalSolid::exportMirror()
@@ -1048,16 +909,16 @@ void GlobalSolid::exportMirror()
 
     //FEM
     mirror << "NUMBER OF SURFACE: " << patches_.size() << std::endl;
-    for (Mesh *pat : meshes_)
+    for (auto me : meshes_)
     {
         double young, poisson, densisity;
-        pat->getMaterial()->setProperties(young, poisson, densisity);
-        mirror << "SURFACE: " << pat->getIndex() << std::endl;
-        mirror << "THICKNESS: " << pat->getThickness() << std::endl;
+        me.second->getMaterial()->setProperties(young, poisson, densisity);
+        mirror << "SURFACE: " << me.second->getIndex() << std::endl;
+        mirror << "THICKNESS: " << me.second->getThickness() << std::endl;
         mirror << "YOUNG: " << young << std::endl;
         mirror << "POISSON: " << poisson << std::endl;
         mirror << "DENSITY: " << densisity << std::endl;
-        mirror << "ELEMENT TYPE: " << pat->getElementType() << std::endl;
+        mirror << "ELEMENT TYPE: " << me.second->getElementType() << std::endl;
         mirror << std::endl;
     }
 
@@ -1182,13 +1043,14 @@ int GlobalSolid::solveStaticProblem()
     //std::ofstream file1(text1.str());
 
     computeDistanceFromFEBoundary();
-    if (elements_.size() > 0)
+
+    if (blendingBoundary_.size() > 0)
     {
         incidenceLocalxGlobal();
         checkInactivesCPandNode();
         shareDataBetweenRanks();
+        exportToParaviewHammerPoints();
     }
-    exportToParaviewHammerPoints();
 
     if (rank == 0 and cells_.size() > 0)
     {
@@ -1470,8 +1332,6 @@ int GlobalSolid::solveStaticProblem()
                 node->incrementCurrentCoordinate(1, val);
             }
 
-            // if (rank == 0)
-            // {
             for (InactiveNode *no : inactiveNode_)
             {
                 no->interpolateGlobalCoordinate();
@@ -1480,7 +1340,6 @@ int GlobalSolid::solveStaticProblem()
             {
                 cp->interpolateGlobalCoordinate();
             }
-            // }
 
             boost::posix_time::ptime t2 =
                 boost::posix_time::microsec_clock::local_time();
@@ -3821,7 +3680,7 @@ void GlobalSolid::computeDistanceFromFEBoundary()
                 double distanceNode = 1000000.0;
                 bounded_vector<double, 2> coord = no->getCurrentCoordinate();
 
-                for (BoundaryElement *bound : boundaryFE_)
+                for (BoundaryElement *bound : blendingBoundary_)
                 {
                     double distance;
                     double xsiBoundary = 0.0; //primeira tentativa
@@ -3983,7 +3842,7 @@ void GlobalSolid::computeDistanceFromFEBoundary()
             coordIP = cell->calculateGlobalCoordinate(xsi);
             double distance;
 
-            for (BoundaryElement *bound : boundaryFE_)
+            for (BoundaryElement *bound : blendingBoundary_)
             {
                 double xsiBoundary = 0.0; //primeira tentativa
                 double deltaxsi = 100000.0;
@@ -4691,16 +4550,16 @@ void GlobalSolid::stressCalculateFEM()
     }
 
     int order, nnod;
-    std::string elementType = meshes_[0]->getElementType();
-    if (elementType == "T3")
+
+    if (finiteElementType_ == "T3")
     {
         order = 1;
     }
-    else if (elementType == "T6")
+    else if (finiteElementType_ == "T6")
     {
         order = 2;
     }
-    else if (elementType == "T10")
+    else if (finiteElementType_ == "T10")
     {
         order = 3;
     }
@@ -4730,4 +4589,279 @@ void GlobalSolid::stressCalculateFEM()
             }
         }
     }
+}
+
+void GlobalSolid::generateMesh(Geometry *geometry, const std::string &elementType, const std::string &algorithm, std::string geofile,
+                               const bool &plotMesh, const bool &showInfo)
+{
+    int rank;
+    MPI_Comm_rank(PETSC_COMM_WORLD, &rank);
+
+    finiteElementType_ = elementType;
+    //geometry_ = geometry;
+
+    std::string mshfile;
+    bool deleteFiles = false;
+
+    if (geofile.empty())
+    {
+        mshfile = "temp.msh";
+        geofile = "temp.geo";
+        deleteFiles = true;
+    }
+    else
+    {
+        mshfile = geofile + ".msh";
+        geofile = geofile + ".geo";
+    }
+
+    if (rank == 0)
+    {
+        std::string gmshCode = geometry->getGmshCode();
+
+        if (elementType == "T10")
+        {
+            gmshCode += "Mesh.ElementOrder = 3;\n//\n";
+        }
+        else if (elementType == "T6")
+        {
+            gmshCode += "Mesh.ElementOrder = 2;\n//\n";
+        }
+        else if (elementType == "T3")
+        {
+            gmshCode += "Mesh.ElementOrder = 1;\n//\n";
+        }
+        else
+        {
+            std::cout << elementType << " is not supported. Please select another type of finite element. \n ";
+            exit(EXIT_FAILURE);
+        }
+
+        if (algorithm == "AUTO")
+        {
+            gmshCode += "Mesh.Algorithm = 2;\n//\n";
+        }
+        else if (algorithm == "DELAUNAY")
+        {
+            gmshCode += "Mesh.Algorithm = 5;\n//\n";
+        }
+
+        else if (algorithm == "FRONT")
+        {
+            gmshCode += "Mesh.Algorithm = 6;\n//\n";
+        }
+        else if (algorithm == "ADAPT")
+        {
+            gmshCode += "Mesh.Algorithm = 1;\n//\n";
+        }
+        else if (algorithm == "BAMG")
+        {
+            gmshCode += "Mesh.Algorithm = 7;\n//\n";
+        }
+        else
+        {
+            std::cout << elementType << " is not supported. Please select another type of algorithm. \n ";
+            exit(EXIT_FAILURE);
+        }
+
+        gmshCode += "Mesh 2;\n//\n";
+
+        std::unordered_map<std::string, Crack *> crackes = geometry->getCrackes();
+
+        for (std::unordered_map<std::string, Crack *>::const_iterator c = crackes.begin(); c != crackes.end(); c++)
+        {
+            gmshCode += c->second->getGmshCode();
+        }
+
+        gmshCode += "Save \"" + mshfile + "\";\n";
+
+        std::ofstream file(geofile);
+        file << gmshCode;
+        file.close();
+
+        std::string cmd = current_working_dir_ + "/Solid/Mesh/gmsh ";
+        if (plotMesh)
+        {
+            cmd += geofile; // + " &";
+        }
+        else
+        {
+            cmd += geofile + " -";
+        }
+
+        if (!showInfo and !plotMesh)
+        {
+            cmd += " -v 0";
+        }
+
+        system(cmd.c_str());
+    }
+
+    MPI_Barrier(PETSC_COMM_WORLD);
+
+    dataFromGmsh(mshfile, elementType, geometry);
+
+    applyBoundaryConditions(geometry);
+
+    MPI_Barrier(PETSC_COMM_WORLD);
+
+    if (rank == 0 and deleteFiles)
+    {
+        std::string aux = "temp*";
+        system((remove + aux).c_str());
+    }
+
+    domainDecompositionMETIS(elementType);
+
+    for (int i = 0; i < elements_.size(); i++)
+    {
+        if (rank == elementPartition_[i])
+        {
+            elements_part.push_back(elements_[i]);
+        }
+        // else if (rank != 0)
+        // {
+        //     delete elements_[i];
+        // }
+    }
+}
+
+void GlobalSolid::applyBoundaryConditions(Geometry *geometry)
+{
+    std::unordered_map<std::string, bounded_vector<double, 2>> condition = geometry->getNeumannCondition();
+
+    for (std::unordered_map<std::string, bounded_vector<double, 2>>::const_iterator neumman = condition.begin(); neumman != condition.end(); neumman++)
+    {
+        std::string name = neumman->first;
+        bounded_vector<double, 2> force = neumman->second;
+        if (name[0] == 'p')
+        {
+            Node *no = geometry->getPoint(name)->getPointNode();
+            if (force[0] != 0.0)
+            {
+                NeumannConditionFE *neu0 = new NeumannConditionFE(no, 0, force(0));
+                neumannConditionsFE_.push_back(neu0);
+            }
+            if (force[1] != 0.0)
+            {
+                NeumannConditionFE *neu1 = new NeumannConditionFE(no, 1, force(1));
+                neumannConditionsFE_.push_back(neu1);
+            }
+        }
+        else
+        {
+            std::vector<BoundaryElement *> boundLine = finiteElementBoundary_[name];
+            for (BoundaryElement *bound : boundLine)
+            {
+                vector<double> forcevec = bound->computeDistribuitedLoads(force, quadrature_);
+                std::vector<Node *> conec = bound->getNodes();
+                double value0, value1;
+
+                for (int i = 0; i < conec.size(); i++)
+                {
+                    value0 = forcevec(2 * i);
+                    value1 = forcevec(2 * i + 1);
+
+                    if (fabs(value0) >= 1.0e-24)
+                    {
+                        bool exist = false;
+                        for (NeumannConditionFE *neu : neumannConditionsFE_)
+                        {
+                            if (neu->getNode() == conec[i] and neu->getDirection() == 0)
+                            {
+                                neu->incrementValue(value0);
+                                exist = true;
+                            }
+                        }
+
+                        if (exist == false)
+                        {
+                            NeumannConditionFE *neu0 = new NeumannConditionFE(conec[i], 0, value0);
+                            neumannConditionsFE_.push_back(neu0);
+                        }
+                    }
+                    if (fabs(value1) >= 1.0e-24)
+                    {
+                        bool exist = false;
+                        for (NeumannConditionFE *neu : neumannConditionsFE_)
+                        {
+                            if (neu->getNode() == conec[i] and neu->getDirection() == 1)
+                            {
+                                neu->incrementValue(value1);
+                                exist = true;
+                            }
+                        }
+                        if (exist == false)
+                        {
+                            NeumannConditionFE *neu1 = new NeumannConditionFE(conec[i], 1, value1);
+                            neumannConditionsFE_.push_back(neu1);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    condition = geometry->getDirichletCondition();
+
+    for (std::unordered_map<std::string, bounded_vector<double, 2>>::const_iterator dirichlet = condition.begin(); dirichlet != condition.end(); dirichlet++)
+    {
+        std::string name = dirichlet->first;
+        bounded_vector<double, 2> desloc = dirichlet->second;
+
+        if (name[0] == 'p')
+        {
+            Node *no = geometry->getPoint(name)->getPointNode();
+            if (desloc(0) != 1.0e-240)
+            {
+                DirichletConditionFE *dir = new DirichletConditionFE(no, 0, desloc(0));
+                dirichletConditionsFE_.push_back(dir);
+            }
+
+            if (desloc(1) != 1.0e-240)
+            {
+                DirichletConditionFE *dir = new DirichletConditionFE(no, 1, desloc(1));
+                dirichletConditionsFE_.push_back(dir);
+            }
+        }
+        else
+        {
+            std::vector<BoundaryElement *> boundLine = finiteElementBoundary_[name];
+            std::unordered_set<Node *> nodes;
+            for (BoundaryElement *bound : boundLine)
+            {
+                std::vector<Node *> conec = bound->getNodes();
+                for (Node *no : conec)
+                {
+                    nodes.insert(no);
+                }
+            }
+            for (Node *no : nodes)
+            {
+                if (desloc(0) != 1.0e-240)
+                {
+                    DirichletConditionFE *dir = new DirichletConditionFE(no, 0, desloc(0));
+                    dirichletConditionsFE_.push_back(dir);
+                }
+                if (desloc(1) != 1.0e-240)
+                {
+                    DirichletConditionFE *dir = new DirichletConditionFE(no, 1, desloc(1));
+                    dirichletConditionsFE_.push_back(dir);
+                }
+            }
+        }
+    }
+}
+
+void GlobalSolid::addBlending(std::vector<Line *> lines, const double &thickness)
+{
+    for (Line *l : lines)
+    {
+        std::vector<BoundaryElement *> boundary = finiteElementBoundary_[l->getName()];
+        for (BoundaryElement *b : boundary)
+        {
+            blendingBoundary_.push_back(b);
+        }
+    }
+    blendZoneThickness_ = thickness;
 }

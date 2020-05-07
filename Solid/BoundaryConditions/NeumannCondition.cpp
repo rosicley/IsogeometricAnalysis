@@ -28,12 +28,11 @@ double NeumannCondition::getValue()
     return value_;
 }
 
-
 NeumannConditionFE::NeumannConditionFE() {}
 
 NeumannConditionFE::NeumannConditionFE(Node *node,
-                                   const int &direction,
-                                   const double &value)
+                                       const int &direction,
+                                       const double &value)
 {
     node_ = node;
     direction_ = direction;
@@ -55,4 +54,9 @@ int NeumannConditionFE::getDirection()
 double NeumannConditionFE::getValue()
 {
     return value_;
+}
+
+void NeumannConditionFE::incrementValue(const double &value)
+{
+    value_ += value;
 }

@@ -11,20 +11,7 @@ Element::Element(const int &index,
     shapeForce_(0) = 0.0;
     shapeForce_(1) = 0.0;
     mesh_ = mesh;
-    std::string elementType = mesh->getElementType();
-    if (elementType == "T3")
-    {
-        order_ = 1;
-    }
-    else if (elementType == "T6")
-    {
-        order_ = 2;
-    }
-    else if (elementType == "T10")
-    {
-        order_ = 3;
-    }
-
+    order_ = mesh->getOrder();
     //int n = (order_ + 1) * (order_ + 2) / 2.0;
 
     //connection_.reserve(n);

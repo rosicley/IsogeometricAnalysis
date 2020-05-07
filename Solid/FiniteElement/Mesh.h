@@ -20,6 +20,8 @@ public:
 
     int getIndex();
 
+    int getOrder();
+
     Material *getMaterial();
 
     //void addNode(const int &index, const int &indexFE, const bounded_vector<double, 2> &initialCoordinate);
@@ -50,4 +52,6 @@ private:
     //std::vector<BoundaryElement *> boundaryElements_;
 
     std::string elementType_;
+
+    int order_;
 };

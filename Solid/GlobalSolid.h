@@ -3,6 +3,8 @@
 #include <iostream>
 #include <fstream>
 #include <string>
+#include <stdio.h>
+#include <unordered_set>
 #include "Isogeometric/Patch.h"
 #include "Isogeometric/Cell.h"
 #include "BoundaryConditions/DirichletCondition.h"
@@ -13,6 +15,7 @@
 #include "FiniteElement/Mesh.h"
 #include "FiniteElement/BoundaryElement.h"
 #include "FiniteElement/Inactive.h"
+#include "Mesh/Geometry.h"
 #include <boost/timer.hpp>
 #include <boost/thread.hpp>
 #include <metis.h>
@@ -20,13 +23,20 @@
 #include <petscvec.h>
 
 using namespace boost::numeric::ublas;
+#ifdef _WIN32
+#include <direct.h>
+#define getCurrentDir _getcwd
+#define remove "del "
+#else
+#include <unistd.h>
+#define getCurrentDir getcwd
+#define remove "rm "
+#endif
 
 class GlobalSolid
 {
 public:
     GlobalSolid();
-
-    GlobalSolid(const std::string &planeState);
 
     ~GlobalSolid();
 
@@ -87,10 +97,9 @@ public:
     void dataReading(const std::string &inputParameters,
                      const std::string &inputProperties,
                      const std::string &inputMeshIso,
-                     const std::string &inputMeshFE,
                      const bool &rhino);
 
-    void dataFromGmsh(const std::string &inputGmesh);
+    void dataFromGmsh(const std::string &inputGmesh, const std::string &elementType, Geometry *geometry);
 
     Material *getMaterial(const int &index);
 
@@ -128,10 +137,18 @@ public:
 
     void stressCalculateFEM();
 
+    void generateMesh(Geometry *geometry, const std::string &elementType = "T3", const std::string &algorithm = "AUTO", std::string geofile = std::string(),
+                      const bool &plotMesh = true, const bool &showInfo = false);
+
+    void applyBoundaryConditions(Geometry *geometry);
+
+    void addBlending(std::vector<Line *> lines, const double &thickness);
+
 private:
     std::vector<Patch *> patches_;
 
-    std::vector<Mesh *> meshes_;
+    //std::vector<Mesh *> meshes_;
+    std::unordered_map<std::string, Mesh *> meshes_;
 
     std::vector<DirichletCondition *> dirichletConditions_;
 
@@ -189,19 +206,29 @@ private:
 
     std::vector<Node *> nodes_;
 
-    std::vector<BoundaryElement *> boundaryFE_;
+    //std::vector<BoundaryElement *> boundaryFE_;
 
     int orderParaview_;
 
     int quadrature_;
 
-    int cpnumber_;
+    int cpnumber_ = 0;
 
-    int cpaux_;
+    int cpaux_ = 0;
 
     int hammerPoints_; //number of hammer points for elements outside the blend zone
 
     int hammerPointsBlendZone_; //number of hammer points for elements inside the blend zone
 
-    std::vector<std::vector<BoundaryElement *>> boundary_;
+    //std::vector<std::vector<BoundaryElement *>> boundary_;
+
+    std::unordered_map<std::string, std::vector<BoundaryElement *>> finiteElementBoundary_;
+
+    std::vector<BoundaryElement *> blendingBoundary_;
+
+    //Geometry *geometry_;
+
+    std::string finiteElementType_;
+
+    std::string current_working_dir_;
 };
