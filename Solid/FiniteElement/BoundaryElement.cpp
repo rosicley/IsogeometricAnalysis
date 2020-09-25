@@ -151,7 +151,7 @@ vector<double> BoundaryElement::computeDistribuitedLoads(const bounded_vector<do
     matrix<double> integrationPoints(quadraturePoints, 2);
     integrationPoints = boundaryIsoQuadrature(quadraturePoints);
     //double thickness = patch_->getThickness();
-                
+
     for (int iq = 0; iq < quadraturePoints; iq++)
     {
         double xsi = integrationPoints(iq, 0);
@@ -166,13 +166,13 @@ vector<double> BoundaryElement::computeDistribuitedLoads(const bounded_vector<do
             tangent(0) += functions(ih, 1) * connection_[ih]->getCurrentCoordinate()(0);
             tangent(1) += functions(ih, 1) * connection_[ih]->getCurrentCoordinate()(1);
         }
-        
+
         double jacobian = sqrt(pow(tangent(0), 2) + pow(tangent(1), 2));
 
-                // bounded_vector<double, 2> normal;
-                // normal(0)=tangent(1)/jacobian;
-                // normal(1)=-tangent(0)/jacobian;
- 
+        // bounded_vector<double, 2> normal;
+        // normal(0)=tangent(1)/jacobian;
+        // normal(1)=-tangent(0)/jacobian;
+
         // double aux = 0.0;
         // for (int m = 0; m < npc; m++)
         // {
@@ -181,9 +181,41 @@ vector<double> BoundaryElement::computeDistribuitedLoads(const bounded_vector<do
 
         for (int ih = 0; ih < nnode; ih++)
         {
-            distribuitedLoad(2 * ih) += value(0) * functions(ih, 0) * weight * jacobian; // * normal(0);
+            distribuitedLoad(2 * ih) += value(0) * functions(ih, 0) * weight * jacobian;     // * normal(0);
             distribuitedLoad(2 * ih + 1) += value(1) * functions(ih, 0) * weight * jacobian; // * normal(1);
         }
     }
     return distribuitedLoad;
+}
+
+bounded_vector<double, 2> BoundaryElement::getVectorTangente(const double &xsi, const std::string &type)
+{
+
+    matrix<double> functions = shapeFunctionsAndDerivates(xsi); //phi, phi', phi''
+    bounded_vector<double, 2> tangent;
+    tangent(0) = 0.0;
+    tangent(1) = 0.0;
+
+    if (type == "current")
+    {
+        for (int ih = 0; ih < connection_.size(); ih++)
+        {
+            tangent(0) += functions(ih, 1) * connection_[ih]->getCurrentCoordinate()(0);
+            tangent(1) += functions(ih, 1) * connection_[ih]->getCurrentCoordinate()(1);
+        }
+    }
+    else if (type == "initial")
+    {
+        for (int ih = 0; ih < connection_.size(); ih++)
+        {
+            tangent(0) += functions(ih, 1) * connection_[ih]->getInitialCoordinate()(0);
+            tangent(1) += functions(ih, 1) * connection_[ih]->getInitialCoordinate()(1);
+        }
+    }
+    else
+    {
+        std::cout << "Something is wrong..." << std::endl;
+    }
+
+    return (1.0 / norm_2(tangent)) * tangent;
 }

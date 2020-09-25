@@ -2,10 +2,10 @@
 
 Crack::Crack() {}
 
-Crack::Crack(const std::string &name, Line *line, PlaneSurface *surface, const std::string &openBoundary)
+Crack::Crack(const std::string &name, std::vector<Point *> points, PlaneSurface *surface, const std::string &openBoundary)
 {
     name_ = name;
-    line_ = line;
+    points_ = points;
     surface_ = surface;
     openBoundary_ = openBoundary;
 }
@@ -17,9 +17,9 @@ std::string Crack::getName()
     return name_;
 }
 
-Line *Crack::getLine()
+std::vector<Point *> Crack::getPoints()
 {
-    return line_;
+    return points_;
 }
 
 PlaneSurface *Crack::getPlaneSurface()
@@ -27,20 +27,39 @@ PlaneSurface *Crack::getPlaneSurface()
     return surface_;
 }
 
-std::string Crack::getGmshCode()
+Point *Crack::getLastPoint()
+{
+    return points_[points_.size() - 1];
+}
+
+Point *Crack::getFirstPoint()
+{
+    return points_[0];
+}
+
+std::string Crack::getGmshCodeCrackPlugin()
 {
     std::stringstream text;
     text << "Plugin(Crack).Dimension = 1;\n";
-    text << "Plugin(Crack).PhysicalGroup = " << line_->getName() << ";\n";
+    text << "Plugin(Crack).PhysicalGroup = " << name_ << ";\n";
     if (openBoundary_ == "first")
     {
-        text << "Plugin(Crack).OpenBoundaryPhysicalGroup = " << line_->getInitialPoint()->getName() << ";\n";
+        text << "Plugin(Crack).OpenBoundaryPhysicalGroup = " << points_[0]->getName() << ";\n";
     }
     else if (openBoundary_ == "second")
     {
-        text << "Plugin(Crack).OpenBoundaryPhysicalGroup = " << line_->getEndPoint()->getName() << ";\n";
+        text << "Plugin(Crack).OpenBoundaryPhysicalGroup = " << points_[points_.size() - 1]->getName() << ";\n";
     }
     text << "Plugin(Crack).Run; \n//\n";
 
     return text.str();
+}
+
+std::string Crack::getGmshCode()
+{
+}
+
+std::string Crack::getGmshCodeEmbedded()
+{
+    return embeddedCode_;
 }

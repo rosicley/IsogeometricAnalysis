@@ -65,7 +65,7 @@ void LineLoop::verification()
             }
             text << " do not form a closed loop." << std::endl;
             std::cout << text.str();
-            break;
+            //break;
         }
     }
 }

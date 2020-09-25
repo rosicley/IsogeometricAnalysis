@@ -45,6 +45,8 @@ public:
 
 	bounded_vector<double, 2> getValuesOfBlendingFunction();
 
+	bool getPoint();
+
 	void setPastCoordinate(const bounded_vector<double, 2> &pastCoordinate);
 
 	void setPastVelocity(const bounded_vector<double, 2> &pastVelocity);
@@ -61,6 +63,8 @@ public:
 
 	void setZeroStressState();
 
+	void setInitialCoordinate(const bounded_vector<double, 2> &initialCoordinate);
+
 	void incrementCurrentCoordinate(const int &direction, const double &value);
 
 	void setIndex(const int &index);
@@ -74,6 +78,8 @@ public:
 	void setXsisGlobal(const bounded_vector<double, 2> &xsis);
 
 	void setValuesOfBlendingFunction(const bounded_vector<double, 2> &bvalues);
+
+	void setPoint();
 
 private:
 	int index_;
@@ -98,10 +104,11 @@ private:
 
 	double distanceToBoundary_;
 
-	int cellIndex_; 
+	int cellIndex_;
 
 	bounded_vector<double, 2> xsisglobal_;
 
 	bounded_vector<double, 2> blendingFunction_;
-	
+
+	bool point_ = false;
 };

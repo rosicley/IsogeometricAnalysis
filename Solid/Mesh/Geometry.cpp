@@ -2,6 +2,11 @@
 
 Geometry::Geometry() {}
 
+Geometry::Geometry(const std::string &domain)
+{
+    domain_ = domain;
+}
+
 Geometry::~Geometry() {}
 
 // int Geometry::getNumberOfBoundaryConditions(const std::string &type)
@@ -49,14 +54,19 @@ std::unordered_map<std::string, bounded_vector<double, 2>> Geometry::getNeumannC
     return neumannConditions_;
 }
 
-// std::vector<GeometricBoundaryCondition *> Geometry::getBoundaryConditions(const std::string &type)
-// {
-//     return boundaryConditions_[type];
-// }
-
 std::string Geometry::getGmshCode()
 {
     return gmshCode_;
+}
+
+Crack *Geometry::getCrack(const std::string &name)
+{
+    return crackes_[name];
+}
+
+double Geometry::getRadiusJintegral()
+{
+    return Jradius_;
 }
 
 Point *Geometry::addPoint(std::vector<double> coordinates, const double &lcar, const bool &discretization)
@@ -66,51 +76,61 @@ Point *Geometry::addPoint(std::vector<double> coordinates, const double &lcar, c
     name << "p" << index;
     Point *p = new Point(name.str(), coordinates, lcar, discretization);
     points_[name.str()] = p;
-    gmshCode_ += p->getGmshCode();
     return p;
 }
 
-Line *Geometry::addLine(std::vector<Point *> points)
+Line *Geometry::addLine(std::vector<Point *> points, const bool &discretization)
 {
     int index = lines_.size();
     std::stringstream name;
     name << "l" << index;
-    Line *l = new Line(name.str(), points);
+    Line *l = new Line(name.str(), points, "line", discretization);
     lines_[name.str()] = l;
-    gmshCode_ += l->getGmshCodeLine();
     return l;
 }
 
-Line *Geometry::addCircle(std::vector<Point *> points)
+Line *Geometry::addCircle(std::vector<Point *> points, const bool &discretization)
 {
     int index = lines_.size();
     std::stringstream name;
     name << "l" << index;
-    Line *l = new Line(name.str(), points);
+    Line *l = new Line(name.str(), points, "circle", discretization);
     lines_[name.str()] = l;
-    gmshCode_ += l->getGmshCodeCircle();
     return l;
 }
 
-Line *Geometry::addCrackLine(std::vector<Point *> points)
+Line *Geometry::addSpline(std::vector<Point *> points, const bool &discretization)
 {
+    int index = lines_.size();
     std::stringstream name;
-    name << "c" << crack_++;
-    Line *l = new Line(name.str(), points);
+    name << "l" << index;
+    Line *l = new Line(name.str(), points, "spline", discretization);
     lines_[name.str()] = l;
-    gmshCode_ += l->getGmshCodeLine();
     return l;
 }
 
-LineLoop *Geometry::addLineLoop(std::vector<Line *> lines)
+Line *Geometry::addBSpline(std::vector<Point *> points, const bool &discretization)
+{
+    int index = lines_.size();
+    std::stringstream name;
+    name << "l" << index;
+    Line *l = new Line(name.str(), points, "bspline", discretization);
+    lines_[name.str()] = l;
+    return l;
+}
+
+LineLoop *Geometry::addLineLoop(std::vector<Line *> lines, const bool &verify)
 {
     int index = lineLoops_.size();
     std::stringstream name;
     name << "ll" << index;
     LineLoop *ll = new LineLoop(name.str(), lines);
-    ll->verification();
+    if (verify)
+    {
+        ll->verification();
+    }
+
     lineLoops_[name.str()] = ll;
-    gmshCode_ += ll->getGmshCode();
     return ll;
 }
 
@@ -121,22 +141,7 @@ PlaneSurface *Geometry::addPlaneSurface(std::vector<LineLoop *> lineLoop, const 
     name << "s" << index;
     PlaneSurface *s = new PlaneSurface(name.str(), lineLoop, indexMaterial, thickness);
     planeSurfaces_[name.str()] = s;
-    gmshCode_ += s->getGmshCode();
     return s;
-}
-
-Crack *Geometry::addCrack(Line *line, PlaneSurface *surface, const std::string &openBoundary)
-{
-    int index = crackes_.size();
-    std::stringstream name;
-    name << "c" << index;
-
-    Crack *c = new Crack(name.str(), line, surface, openBoundary);
-    crackes_[name.str()] = c;
-
-    std::stringstream text;
-    text << "Line{" << name.str() << "} In Surface{" << surface->getName() << "};\n//\n";
-    gmshCode_ += text.str();
 }
 
 // PlaneSurface *Geometry::addPlaneSurface(std::vector<Line *> lines, double thickness)
@@ -152,6 +157,21 @@ Crack *Geometry::addCrack(Line *line, PlaneSurface *surface, const std::string &
 //     gmshCode_ += s->getGmshCode();
 //     return s;
 // }
+
+Crack *Geometry::addCrack(std::vector<Point *> points, PlaneSurface *surface, const std::string &openBoundary, const double &jradius, const double &lcarJ, const double &lengthMesh)
+{
+    int index = crackes_.size();
+    std::stringstream name;
+    name << "c" << index;
+
+    Crack *c = new Crack(name.str(), points, surface, openBoundary);
+    crackes_[name.str()] = c;
+
+    Jradius_ = jradius;
+    lengthMesh_ = lengthMesh;
+    lcarJ_ = lcarJ;
+    return c;
+}
 
 void Geometry::appendGmshCode(std::string text)
 {
@@ -295,4 +315,134 @@ void Geometry::addDirichletCondition(Point *point, const std::vector<double> &di
     }
 
     diricheletConditions_[point->getName()] = desloc;
+}
+
+std::string Geometry::createGmshCode()
+{
+    std::string gmshCode;
+    for (int in = 0; in < points_.size(); in++)
+    {
+        std::string name = "p" + std::to_string(in);
+        gmshCode += points_[name]->getGmshCode();
+    }
+
+    for (int il = 0; il < lines_.size(); il++)
+    {
+        std::string name = "l" + std::to_string(il);
+        gmshCode += lines_[name]->getGmshCode();
+    }
+
+    int auxC = 0;
+    int npoints = points_.size();
+
+    for (int ic = 0; ic < crackes_.size(); ic++)
+    {
+        std::string nameOfCrack = "c" + std::to_string(ic);
+
+        std::vector<Point *> pointsCrack = crackes_[nameOfCrack]->getPoints();
+
+        bounded_vector<double, 2> coordLastPoint = pointsCrack[pointsCrack.size() - 1]->getCoordinates();
+
+        bounded_vector<double, 2> auxvec = coordLastPoint - pointsCrack[pointsCrack.size() - 2]->getCoordinates();
+        bounded_vector<double, 2> versor = (1.0 / norm_2(auxvec)) * auxvec;
+        bounded_vector<double, 2> versorNormal;
+        versorNormal(0) = -versor(1);
+        versorNormal(1) = versor(0);
+
+        bounded_vector<double, 2> coordaux = coordLastPoint - versor * Jradius_;
+        Point *p1aux = new Point("p" + std::to_string(npoints++), {coordaux(0), coordaux(1)}, lcarJ_, true);
+        gmshCode += p1aux->getGmshCode();
+
+        coordaux = coordLastPoint - versorNormal * Jradius_;
+        Point *p2aux = new Point("p" + std::to_string(npoints++), {coordaux(0), coordaux(1)}, lcarJ_, true);
+        gmshCode += p2aux->getGmshCode();
+
+        coordaux = coordLastPoint + versor * Jradius_;
+        Point *p3aux = new Point("p" + std::to_string(npoints++), {coordaux(0), coordaux(1)}, lcarJ_, true);
+        gmshCode += p3aux->getGmshCode();
+
+        coordaux = coordLastPoint + versorNormal * Jradius_;
+        Point *p4aux = new Point("p" + std::to_string(npoints++), {coordaux(0), coordaux(1)}, lcarJ_, true);
+        gmshCode += p4aux->getGmshCode();
+
+        gmshCode += nameOfCrack + " = newl;\n //\n";
+
+        if (pointsCrack.size() > 2)
+        {
+            for (int i = 0; i < pointsCrack.size() - 1; i++)
+            {
+                Line *l = new Line(nameOfCrack + std::to_string(auxC++), {pointsCrack[i], pointsCrack[i + 1]}, "line", false);
+                gmshCode += l->getGmshCode();
+                delete l;
+            }
+        }
+
+        Line *c00 = new Line(nameOfCrack + std::to_string(auxC++), {pointsCrack[pointsCrack.size() - 2], p1aux}, "line", false);
+        gmshCode += c00->getGmshCode();
+        delete c00;
+
+        Line *c01 = new Line(nameOfCrack + std::to_string(auxC++), {p1aux, pointsCrack[pointsCrack.size() - 1]}, "line", false);
+        gmshCode += c00->getGmshCode();
+        delete c01;
+
+        gmshCode += "Physical Line('" + nameOfCrack + "') = {";
+        for (int i = 0; i < auxC; i++)
+        {
+            gmshCode += nameOfCrack + std::to_string(i);
+            if (i != auxC - 1)
+            {
+                gmshCode += ", ";
+            }
+        }
+        gmshCode += "}; \n//\n";
+
+        Line *j1 = new Line("j" + std::to_string(ic) + "0", {p1aux, pointsCrack[pointsCrack.size() - 1], p2aux}, "circle", false);
+        gmshCode += j1->getGmshCode();
+
+        Line *j2 = new Line("j" + std::to_string(ic) + "1", {p2aux, pointsCrack[pointsCrack.size() - 1], p3aux}, "circle", false);
+        gmshCode += j2->getGmshCode();
+
+        Line *j3 = new Line("j" + std::to_string(ic) + "2", {p3aux, pointsCrack[pointsCrack.size() - 1], p4aux}, "circle", false);
+        gmshCode += j3->getGmshCode();
+
+        Line *j4 = new Line("j" + std::to_string(ic) + "3", {p4aux, pointsCrack[pointsCrack.size() - 1], p1aux}, "circle", false);
+        gmshCode += j4->getGmshCode();
+
+        gmshCode += "Physical Line('j" + std::to_string(ic) + "') = {j" + std::to_string(ic) + "0, j" + std::to_string(ic) + "1, j" + std::to_string(ic) + "2, j" + std::to_string(ic) + "3};\n//\n";
+    }
+    for (int ill = 0; ill < lineLoops_.size(); ill++)
+    {
+        std::string name = "ll" + std::to_string(ill);
+        gmshCode += lineLoops_[name]->getGmshCode();
+    }
+    for (int is = 0; is < planeSurfaces_.size(); is++)
+    {
+        std::string name = "s" + std::to_string(is);
+        gmshCode += planeSurfaces_[name]->getGmshCode();
+    }
+    std::stringstream text;
+    for (int ic = 0; ic < crackes_.size(); ic++)
+    {
+        std::string nameOfCrack = "c" + std::to_string(ic);
+        for (int i = 0; i < auxC; i++)
+        {
+            gmshCode += "Line{" + nameOfCrack + std::to_string(i) + "} In Surface{" + crackes_[nameOfCrack]->getPlaneSurface()->getName() + "};\n//\n";
+        }
+        for (int i = 0; i < 4; i++)
+        {
+            gmshCode += "Line{j" + std::to_string(ic) + std::to_string(i) + "} In Surface{" + crackes_[nameOfCrack]->getPlaneSurface()->getName() + "};\n//\n";
+        }
+    }
+
+    return gmshCode;
+}
+
+int Geometry::getNumberOfPoints()
+{
+    return points_.size();
+}
+
+int Geometry::getNumberOfCrackes()
+{
+    return crackes_.size();
 }

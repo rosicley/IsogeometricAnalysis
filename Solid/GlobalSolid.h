@@ -18,6 +18,9 @@
 #include "Mesh/Geometry.h"
 #include <boost/timer.hpp>
 #include <boost/thread.hpp>
+#include <boost/numeric/bindings/lapack/driver/gesv.hpp>
+#include <boost/numeric/bindings/ublas/matrix.hpp>
+#include <boost/numeric/bindings/ublas/vector.hpp>
 #include <metis.h>
 #include <petscksp.h>
 #include <petscvec.h>
@@ -140,9 +143,13 @@ public:
     void generateMesh(Geometry *geometry, const std::string &elementType = "T3", const std::string &algorithm = "AUTO", std::string geofile = std::string(),
                       const bool &plotMesh = true, const bool &showInfo = false);
 
+    void remesh(const bounded_vector<double, 2> &newCrack);
+
     void applyBoundaryConditions(Geometry *geometry);
 
     void addBlending(std::vector<Line *> lines, const double &thickness);
+
+    bounded_vector<double, 2> getSIFs();
 
 private:
     std::vector<Patch *> patches_;
@@ -226,9 +233,19 @@ private:
 
     std::vector<BoundaryElement *> blendingBoundary_;
 
-    //Geometry *geometry_;
+    Geometry *initialGeometry_;
 
     std::string finiteElementType_;
 
     std::string current_working_dir_;
+
+    std::vector<bounded_vector<double, 2>> coordCrackes_;
+
+    int nlines_;
+
+    int ncrackes_;
+
+    std::vector<Element *> JintegralElements_;
+
+    std::vector<int> elementsSideJintegral_;
 };

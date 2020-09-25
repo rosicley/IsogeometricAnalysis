@@ -140,6 +140,47 @@ matrix<double> Element::domainDerivativeShapeFunction(const double &xsi1, const 
     return dphi_dxsi;
 }
 
+matrix<double> Element::domainSecondDerivativeShapeFunction(const double &xsi1, const double &xsi2)
+{
+    int n = (order_ + 1) * (order_ + 2) / 2.0; //number of nodes per element
+    matrix<double> d2phi_dxsi2(3, n, 0.0);
+
+    if (order_ == 1)
+    {
+    }
+    else if (order_ == 2)
+    {
+        // d2Phi/dsi1 dxsi1
+        d2phi_dxsi2(0, 0) = 4.0;
+        d2phi_dxsi2(0, 1) = 0.0;
+        d2phi_dxsi2(0, 2) = 4.0;
+        d2phi_dxsi2(0, 3) = 0.0;
+        d2phi_dxsi2(0, 4) = 0.0;
+        d2phi_dxsi2(0, 5) = -8.0;
+
+        // d2Phi/dsi1 dxsi2
+        d2phi_dxsi2(1, 0) = 0.0;
+        d2phi_dxsi2(1, 1) = 0.0;
+        d2phi_dxsi2(1, 2) = 4.0;
+        d2phi_dxsi2(1, 3) = 4.0;
+        d2phi_dxsi2(1, 4) = -4.0;
+        d2phi_dxsi2(1, 5) = -4.0;
+
+        // d2Phi/dsi2 dxsi2
+        d2phi_dxsi2(2, 0) = 0.0;
+        d2phi_dxsi2(2, 1) = 4.0;
+        d2phi_dxsi2(2, 2) = 4.0;
+        d2phi_dxsi2(2, 3) = 0.0;
+        d2phi_dxsi2(2, 4) = -8.0;
+        d2phi_dxsi2(2, 5) = 0.0;
+    }
+    else if (order_ == 3)
+    {
+    }
+
+    return d2phi_dxsi2;
+}
+
 matrix<double> Element::hammerQuadrature(const int &nH)
 {
     matrix<double> pointCoord(nH, 3);
@@ -1591,10 +1632,20 @@ std::pair<vector<double>, matrix<double>> Element::elementContributions(const st
                                 bounded_matrix<double, 2, 2> dE_dy3 = 0.5 * (prod(mat1, mat4) + prod(mat3, mat2));    //second derivative of E regarding i,j,k,l
 
                                 bounded_matrix<double, 2, 2> dS_dy;
-                                dS_dy(0, 0) = (young / ((1.0 + poisson) * (1.0 - 2.0 * poisson)) * ((1.0 - poisson) * dE_dy(0, 0) + poisson * dE_dy(1, 1)));
-                                dS_dy(1, 1) = (young / ((1.0 + poisson) * (1.0 - 2.0 * poisson)) * ((1.0 - poisson) * dE_dy(1, 1) + poisson * dE_dy(0, 0)));
-                                dS_dy(1, 0) = (young / (1.0 + poisson)) * dE_dy(1, 0);
-                                dS_dy(0, 1) = (young / (1.0 + poisson)) * dE_dy(0, 1);
+                                if (ep == "EPD")
+                                {
+                                    dS_dy(0, 0) = (young / ((1.0 + poisson) * (1.0 - 2.0 * poisson)) * ((1.0 - poisson) * dE_dy(0, 0) + poisson * dE_dy(1, 1)));
+                                    dS_dy(1, 1) = (young / ((1.0 + poisson) * (1.0 - 2.0 * poisson)) * ((1.0 - poisson) * dE_dy(1, 1) + poisson * dE_dy(0, 0)));
+                                    dS_dy(1, 0) = (young / (1.0 + poisson)) * dE_dy(1, 0);
+                                    dS_dy(0, 1) = (young / (1.0 + poisson)) * dE_dy(0, 1);
+                                }
+                                else
+                                {
+                                    dS_dy(0, 0) = (young / (1.0 - poisson * poisson)) * (dE_dy(0, 0) + poisson * dE_dy(1, 1));
+                                    dS_dy(1, 1) = (young / (1.0 - poisson * poisson)) * (dE_dy(1, 1) + poisson * dE_dy(0, 0));
+                                    dS_dy(1, 0) = (young / (1.0 + poisson)) * dE_dy(1, 0);
+                                    dS_dy(0, 1) = (young / (1.0 + poisson)) * dE_dy(0, 1);
+                                }
 
                                 double v = dE_dy3(0, 0) * S(0, 0) + dE_dy3(1, 1) * S(1, 1) + dE_dy3(0, 1) * S(0, 1) + dE_dy3(1, 0) * S(1, 0) +                //second part of equation 5.88
                                            dE_dy2(0, 0) * dS_dy(0, 0) + dE_dy2(1, 1) * dS_dy(1, 1) + dE_dy2(0, 1) * dS_dy(0, 1) + dE_dy2(1, 0) * dS_dy(1, 0); //viscosity and pressure contribution
@@ -1787,10 +1838,20 @@ std::pair<vector<double>, matrix<double>> Element::elementContributions(const st
                                 bounded_matrix<double, 2, 2> dE_dy3 = 0.5 * (prod(mat1, mat4) + prod(mat3, mat2));    //second derivative of E regarding i,j,k,l
 
                                 bounded_matrix<double, 2, 2> dS_dy;
-                                dS_dy(0, 0) = (young / ((1.0 + poisson) * (1.0 - 2.0 * poisson)) * ((1.0 - poisson) * dE_dy(0, 0) + poisson * dE_dy(1, 1)));
-                                dS_dy(1, 1) = (young / ((1.0 + poisson) * (1.0 - 2.0 * poisson)) * ((1.0 - poisson) * dE_dy(1, 1) + poisson * dE_dy(0, 0)));
-                                dS_dy(1, 0) = (young / (1.0 + poisson)) * dE_dy(1, 0);
-                                dS_dy(0, 1) = (young / (1.0 + poisson)) * dE_dy(0, 1);
+                                if (ep == "EPD")
+                                {
+                                    dS_dy(0, 0) = (young / ((1.0 + poisson) * (1.0 - 2.0 * poisson)) * ((1.0 - poisson) * dE_dy(0, 0) + poisson * dE_dy(1, 1)));
+                                    dS_dy(1, 1) = (young / ((1.0 + poisson) * (1.0 - 2.0 * poisson)) * ((1.0 - poisson) * dE_dy(1, 1) + poisson * dE_dy(0, 0)));
+                                    dS_dy(1, 0) = (young / (1.0 + poisson)) * dE_dy(1, 0);
+                                    dS_dy(0, 1) = (young / (1.0 + poisson)) * dE_dy(0, 1);
+                                }
+                                else
+                                {
+                                    dS_dy(0, 0) = (young / (1.0 - poisson * poisson)) * (dE_dy(0, 0) + poisson * dE_dy(1, 1));
+                                    dS_dy(1, 1) = (young / (1.0 - poisson * poisson)) * (dE_dy(1, 1) + poisson * dE_dy(0, 0));
+                                    dS_dy(1, 0) = (young / (1.0 + poisson)) * dE_dy(1, 0);
+                                    dS_dy(0, 1) = (young / (1.0 + poisson)) * dE_dy(0, 1);
+                                }
 
                                 double v = dE_dy3(0, 0) * S(0, 0) + dE_dy3(1, 1) * S(1, 1) + dE_dy3(0, 1) * S(0, 1) + dE_dy3(1, 0) * S(1, 0) +                //second part of equation 5.88
                                            dE_dy2(0, 0) * dS_dy(0, 0) + dE_dy2(1, 1) * dS_dy(1, 1) + dE_dy2(0, 1) * dS_dy(0, 1) + dE_dy2(1, 0) * dS_dy(1, 0); //viscosity and pressure contribution
@@ -1951,10 +2012,20 @@ std::pair<vector<double>, matrix<double>> Element::elementContributions(const st
                             bounded_matrix<double, 2, 2> dE_dy3 = 0.5 * (prod(mat1, mat4) + prod(mat3, mat2));    //second derivative of E regarding i,j,k,l
 
                             bounded_matrix<double, 2, 2> dS_dy;
-                            dS_dy(0, 0) = (young / ((1.0 + poisson) * (1.0 - 2.0 * poisson)) * ((1.0 - poisson) * dE_dy(0, 0) + poisson * dE_dy(1, 1)));
-                            dS_dy(1, 1) = (young / ((1.0 + poisson) * (1.0 - 2.0 * poisson)) * ((1.0 - poisson) * dE_dy(1, 1) + poisson * dE_dy(0, 0)));
-                            dS_dy(1, 0) = (young / (1.0 + poisson)) * dE_dy(1, 0);
-                            dS_dy(0, 1) = (young / (1.0 + poisson)) * dE_dy(0, 1);
+                            if (ep == "EPD")
+                            {
+                                dS_dy(0, 0) = (young / ((1.0 + poisson) * (1.0 - 2.0 * poisson)) * ((1.0 - poisson) * dE_dy(0, 0) + poisson * dE_dy(1, 1)));
+                                dS_dy(1, 1) = (young / ((1.0 + poisson) * (1.0 - 2.0 * poisson)) * ((1.0 - poisson) * dE_dy(1, 1) + poisson * dE_dy(0, 0)));
+                                dS_dy(1, 0) = (young / (1.0 + poisson)) * dE_dy(1, 0);
+                                dS_dy(0, 1) = (young / (1.0 + poisson)) * dE_dy(0, 1);
+                            }
+                            else
+                            {
+                                dS_dy(0, 0) = (young / (1.0 - poisson * poisson)) * (dE_dy(0, 0) + poisson * dE_dy(1, 1));
+                                dS_dy(1, 1) = (young / (1.0 - poisson * poisson)) * (dE_dy(1, 1) + poisson * dE_dy(0, 0));
+                                dS_dy(1, 0) = (young / (1.0 + poisson)) * dE_dy(1, 0);
+                                dS_dy(0, 1) = (young / (1.0 + poisson)) * dE_dy(0, 1);
+                            }
 
                             double v = dE_dy3(0, 0) * S(0, 0) + dE_dy3(1, 1) * S(1, 1) + dE_dy3(0, 1) * S(0, 1) + dE_dy3(1, 0) * S(1, 0) +                //second part of equation 5.88
                                        dE_dy2(0, 0) * dS_dy(0, 0) + dE_dy2(1, 1) * dS_dy(1, 1) + dE_dy2(0, 1) * dS_dy(0, 1) + dE_dy2(1, 0) * dS_dy(1, 0); //viscosity and pressure contribution
@@ -2627,4 +2698,576 @@ bounded_vector<double, 4> Element::getCauchyStressBlendZone(const bounded_vector
     }
 
     return cauchStress;
+}
+
+std::vector<Node *> Element::getSideNodes(const int &side)
+{
+    std::vector<Node *> nodes;
+    if (side == 0)
+    {
+        nodes.push_back(connection_[0]);
+        nodes.push_back(connection_[1]);
+        if (order_ == 2)
+        {
+            nodes.push_back(connection_[3]);
+        }
+        else if (order_ == 3)
+        {
+            nodes.push_back(connection_[3]);
+            nodes.push_back(connection_[4]);
+        }
+    }
+    else if (side == 1)
+    {
+        nodes.push_back(connection_[1]);
+        nodes.push_back(connection_[2]);
+        if (order_ == 2)
+        {
+            nodes.push_back(connection_[4]);
+        }
+        else if (order_ == 3)
+        {
+            nodes.push_back(connection_[5]);
+            nodes.push_back(connection_[6]);
+        }
+    }
+    else if (side == 2)
+    {
+        nodes.push_back(connection_[2]);
+        nodes.push_back(connection_[0]);
+        if (order_ == 2)
+        {
+            nodes.push_back(connection_[5]);
+        }
+        else if (order_ == 3)
+        {
+            nodes.push_back(connection_[7]);
+            nodes.push_back(connection_[8]);
+        }
+    }
+
+    return nodes;
+}
+
+bounded_vector<double, 2> Element::contributionJ_Integral4(const int &gaussPoints, const int &side, const std::string &ep, const double &rotation, Node *tipNode, const bool &crack)
+{
+    bounded_vector<double, 2> jIntegral;
+    jIntegral(0) = 0.0;
+    jIntegral(1) = 0.0;
+
+    int nnos = connection_.size();
+    double young, poisson, density;
+    mesh_->getMaterial()->setProperties(young, poisson, density);
+
+    double mi = young / (2.0 * (1.0 + poisson));
+    double youngLine;
+
+    double k;
+
+    if (ep == "EPD")
+    {
+        k = 3.0 - 4.0 * poisson;
+        youngLine = young / (1.0 - poisson * poisson);
+    }
+    else
+    {
+        k = (3.0 - poisson) / (1.0 + poisson);
+        youngLine = young;
+    }
+
+    std::vector<Node *> conecOfBoundary = getSideNodes(side);
+    BoundaryElement *bound = new BoundaryElement(0, conecOfBoundary);
+
+    matrix<double> gaussIntegrationPoints(gaussPoints, 2);
+    gaussIntegrationPoints = bound->boundaryIsoQuadrature(gaussPoints);
+
+    bounded_matrix<double, 2, 2> matrixRotation;
+    matrixRotation(0, 0) = cos(rotation);
+    matrixRotation(0, 1) = sin(rotation);
+    matrixRotation(1, 0) = -sin(rotation);
+    matrixRotation(1, 1) = cos(rotation);
+
+    bounded_vector<double, 2> tipCurrentCoordinate = tipNode->getCurrentCoordinate();
+    bounded_vector<double, 2> tipInitialCoordinate = tipNode->getInitialCoordinate();
+
+    for (int iq = 0; iq < gaussPoints; iq++)
+    {
+        double xsi = gaussIntegrationPoints(iq, 0);
+        double weight = gaussIntegrationPoints(iq, 1);
+
+        matrix<double> functions = bound->shapeFunctionsAndDerivates(xsi); //phi, phi', phi''
+        bounded_vector<double, 2> tangent, coordP;                         //, test;
+        tangent(0) = 0.0;
+        tangent(1) = 0.0;
+        coordP(0) = 0.0;
+        coordP(1) = 0.0;
+        //test(0) = 0.0;
+        //test(1) = 0.0;
+
+        for (int ih = 0; ih < conecOfBoundary.size(); ih++)
+        {
+            tangent += functions(ih, 1) * conecOfBoundary[ih]->getCurrentCoordinate();
+            coordP += functions(ih, 0) * conecOfBoundary[ih]->getCurrentCoordinate();
+            //test += functions(ih, 0) * conecOfBoundary[ih]->getInitialCoordinate();
+        }
+
+        double jacobian = norm_2(tangent);
+
+        bounded_vector<double, 2> normalaux;
+        normalaux(0) = tangent(1) / jacobian;
+        normalaux(1) = -tangent(0) / jacobian;
+
+        bounded_vector<double, 2> normal = prod(matrixRotation, normalaux);
+
+        bounded_vector<double, 2> tipToPointAux = coordP - tipCurrentCoordinate;
+        //bounded_vector<double, 2> tipToPointAux = test - tipInitialCoordinate;
+
+        double radius = norm_2(tipToPointAux);
+
+        bounded_vector<double, 2> tipToPoint = prod(matrixRotation, tipToPointAux);
+
+        double teta = atan2(tipToPoint(1), tipToPoint(0));
+
+        //std::cout<<norm_2(normal)<< std::endl;
+
+        double xsi1;
+        double xsi2;
+
+        if (side == 0)
+        {
+            xsi1 = (-1.0 * xsi + 1.0) / (2.0);
+            xsi2 = (xsi + 1.0) / (2.0);
+        }
+        else if (side == 1)
+        {
+            xsi1 = 0.0;
+            xsi2 = (-1.0 * xsi + 1.0) / (2.0);
+        }
+        else if (side == 2)
+        {
+            xsi1 = (xsi + 1.0) / (2.0);
+            xsi2 = 0.0;
+        }
+
+        vector<double> phi = domainShapeFunction(xsi1, xsi2);
+        matrix<double> dphi_dxsi = domainDerivativeShapeFunction(xsi1, xsi2); //row = direction, column = node
+
+        bounded_matrix<double, 2, 2> A0 = referenceJacobianMatrix(xsi1, xsi2); //initial configuration map
+        bounded_matrix<double, 2, 2> A0I = inverseMatrix(A0);                  //inverse initial configuration maP
+        bounded_matrix<double, 2, 2> A1 = currentJacobianMatrix(xsi1, xsi2);   //current configuration map
+        bounded_matrix<double, 2, 2> Ac = prod(A1, A0I);                       //current deformation gradient
+        identity_matrix<double> I(2);                                          //identity matrix
+        bounded_matrix<double, 2, 2> Ec = 0.5 * (prod(trans(Ac), Ac) - I);     //current green strain tensor
+
+        bounded_matrix<double, 2, 2> S; //second piola kirchhoff stress tensor
+
+        if (ep == "EPD")
+        {
+            S(0, 0) = (young / ((1.0 + poisson) * (1.0 - 2.0 * poisson))) * ((1.0 - poisson) * Ec(0, 0) + poisson * Ec(1, 1));
+            S(1, 1) = (young / ((1.0 + poisson) * (1.0 - 2.0 * poisson))) * ((1.0 - poisson) * Ec(1, 1) + poisson * Ec(0, 0));
+            S(1, 0) = (young / (1.0 + poisson)) * Ec(1, 0);
+            S(0, 1) = (young / (1.0 + poisson)) * Ec(0, 1);
+        }
+        else
+        {
+            S(0, 0) = (young / (1.0 - poisson * poisson)) * (Ec(0, 0) + poisson * Ec(1, 1));
+            S(1, 1) = (young / (1.0 - poisson * poisson)) * (Ec(1, 1) + poisson * Ec(0, 0));
+            S(1, 0) = (young / (1.0 + poisson)) * Ec(1, 0);
+            S(0, 1) = (young / (1.0 + poisson)) * Ec(0, 1);
+        }
+
+        bounded_matrix<double, 2, 2> sigmaaux;
+        double jac = jacobianDeterminant(Ac);
+        bounded_matrix<double, 2, 2> mat1;
+        mat1 = prod(Ac, S);
+        sigmaaux = (1.0 / jac) * prod(mat1, trans(Ac));
+
+        bounded_matrix<double, 2, 2> sigma;
+        mat1 = prod(matrixRotation, sigmaaux);
+        sigma = prod(mat1, trans(matrixRotation));
+
+        double sigma33;
+
+        if (ep == "EPD")
+        {
+            sigma33 = poisson * (sigmaaux(0, 0) + sigmaaux(1, 1));
+        }
+        else
+        {
+            sigma33 = 0.0;
+        }
+        bounded_matrix<double, 2, 2> epsolon, epsolonaux;
+
+        epsolonaux(0, 0) = (1.0 / young) * (sigmaaux(0, 0) - poisson * (sigmaaux(1, 1) + sigma33));
+        epsolonaux(1, 1) = (1.0 / young) * (sigmaaux(1, 1) - poisson * (sigmaaux(0, 0) + sigma33));
+        epsolonaux(0, 1) = ((1.0 + poisson) / young) * sigmaaux(0, 1);
+        epsolonaux(1, 0) = ((1.0 + poisson) / young) * sigmaaux(1, 0);
+
+        mat1 = prod(matrixRotation, epsolonaux);
+        epsolon = prod(mat1, trans(matrixRotation));
+
+        bounded_vector<double, 2> force = prod(sigma, normal);
+
+        double du1_dxsi1, du1_dxsi2, du2_dxsi1, du2_dxsi2;
+        du1_dxsi1 = 0.0;
+        du1_dxsi2 = 0.0;
+
+        du2_dxsi1 = 0.0;
+        du2_dxsi2 = 0.0;
+
+        for (int in = 0; in < nnos; in++)
+        {
+            bounded_vector<double, 2> deslocaux = connection_[in]->getCurrentCoordinate() - connection_[in]->getInitialCoordinate();
+            bounded_vector<double, 2> desloc = prod(matrixRotation, deslocaux);
+
+            du1_dxsi1 += dphi_dxsi(0, in) * (desloc(0));
+            du1_dxsi2 += dphi_dxsi(1, in) * (desloc(0));
+
+            du2_dxsi1 += dphi_dxsi(0, in) * (desloc(1));
+            du2_dxsi2 += dphi_dxsi(1, in) * (desloc(1));
+        }
+
+        double du1_dy1, du2_dy1, du1_dy2, du2_dy2;
+
+        bounded_matrix<double, 2, 2> A1I = inverseMatrix(A1);
+
+        du1_dy1 = du1_dxsi1 * A1I(0, 0) + du1_dxsi2 * A1I(1, 0);
+        du2_dy1 = du2_dxsi1 * A1I(0, 0) + du2_dxsi2 * A1I(1, 0);
+
+        du1_dy2 = du1_dxsi1 * A1I(0, 1) + du1_dxsi2 * A1I(1, 1);
+        du2_dy2 = du2_dxsi1 * A1I(0, 1) + du2_dxsi2 * A1I(1, 1);
+
+        double du1_dy1Chapeu, du2_dy1Chapeu; //, du1_dy2Chapeu, du2_dy2Chapeu;
+
+        du1_dy1Chapeu = du1_dy1 * cos(rotation) + du1_dy2 * sin(rotation);
+
+        du2_dy1Chapeu = du2_dy1 * cos(rotation) + du2_dy2 * sin(rotation);
+
+        //AUXILIARY STATES K1 = 1 E K2 = 0;
+        const double pi = 3.14159265359;
+        sigmaaux(0, 0) = (1.0 / (sqrt(2.0 * pi * radius))) * (cos(0.5 * teta) * (1.0 - sin(0.5 * teta) * sin(1.5 * teta)));
+        sigmaaux(1, 1) = (1.0 / (sqrt(2.0 * pi * radius))) * (cos(0.5 * teta) * (1.0 + sin(0.5 * teta) * sin(1.5 * teta)));
+        sigmaaux(0, 1) = (1.0 / (sqrt(2.0 * pi * radius))) * sin(0.5 * teta) * cos(0.5 * teta) * cos(1.5 * teta);
+        sigmaaux(1, 0) = sigmaaux(0, 1);
+        if (ep == "EPD")
+        {
+            sigma33 = poisson * (sigmaaux(0, 0) + sigmaaux(1, 1));
+        }
+        else
+        {
+            sigma33 = 0.0;
+        }
+
+        epsolonaux(0, 0) = (1.0 / young) * (sigmaaux(0, 0) - poisson * (sigmaaux(1, 1) + sigma33));
+        epsolonaux(1, 1) = (1.0 / young) * (sigmaaux(1, 1) - poisson * (sigmaaux(0, 0) + sigma33));
+        epsolonaux(0, 1) = ((1.0 + poisson) / young) * sigmaaux(0, 1);
+        epsolonaux(1, 0) = ((1.0 + poisson) / young) * sigmaaux(1, 0);
+
+        double du1aux_dr, du2aux_dr, du1aux_dteta, du2aux_dteta;
+
+        du1aux_dr = (sqrt(2.0 * pi * radius) / (8.0 * mi * pi * radius)) * (cos(0.5 * teta) * (k - cos(teta)));
+
+        du2aux_dr = (sqrt(2.0 * pi * radius) / (8.0 * mi * pi * radius)) * (sin(0.5 * teta) * (k - cos(teta)));
+
+        du1aux_dteta = (sqrt(radius / (2.0 * pi)) / (2.0 * mi)) * (-0.5 * sin(0.5 * teta) * (k - cos(teta)) + sin(teta) * cos(0.5 * teta));
+
+        du2aux_dteta = (sqrt(radius / (2.0 * pi)) / (2.0 * mi)) * (0.5 * cos(0.5 * teta) * (k - cos(teta)) + sin(teta) * sin(0.5 * teta));
+
+        double du1aux_dy1chapeu, du2aux_dy1chapeu;
+
+        du1aux_dy1chapeu = cos(teta) * du1aux_dr - (sin(teta) / radius) * du1aux_dteta;
+
+        du2aux_dy1chapeu = cos(teta) * du2aux_dr - (sin(teta) / radius) * du2aux_dteta;
+
+        double we = (sigma(0, 0) * epsolonaux(0, 0) + sigma(0, 1) * epsolonaux(0, 1) + sigma(1, 0) * epsolonaux(1, 0) + sigma(1, 1) * epsolonaux(1, 1));
+
+        double we1 = (sigmaaux(0, 0) * epsolon(0, 0) + sigmaaux(0, 1) * epsolon(0, 1) + sigmaaux(1, 0) * epsolon(1, 0) + sigmaaux(1, 1) * epsolon(1, 1));
+
+        bounded_vector<double, 2> forceAux = prod(sigmaaux, normal);
+
+        if (crack == true)
+        {
+            forceAux(0) = 0.0;
+            forceAux(1) = 0.0;
+            force(0) = 0.0;
+            force(1) = 0.0;
+        }
+
+        jIntegral(0) += (0.5 * youngLine * (0.5 * (we + we1) * normal(0) - force(0) * du1aux_dy1chapeu - force(1) * du2aux_dy1chapeu - forceAux(0) * du1_dy1Chapeu - forceAux(1) * du2_dy1Chapeu)) * weight * jacobian;
+
+        //AUXILIARY STATE K1 = 0 E K2 = 1
+        sigmaaux(0, 0) = (1.0 / (sqrt(2.0 * pi * radius))) * (-sin(0.5 * teta) * (2.0 + cos(0.5 * teta) * cos(1.5 * teta)));
+        sigmaaux(1, 1) = (1.0 / (sqrt(2.0 * pi * radius))) * (sin(0.5 * teta) * cos(0.5 * teta) * cos(1.5 * teta));
+        sigmaaux(0, 1) = (1.0 / (sqrt(2.0 * pi * radius))) * (cos(0.5 * teta) * (1.0 - sin(0.5 * teta) * sin(1.5 * teta)));
+        sigmaaux(1, 0) = sigmaaux(0, 1);
+        if (ep == "EPD")
+        {
+            sigma33 = poisson * (sigmaaux(0, 0) + sigmaaux(1, 1));
+        }
+        else
+        {
+            sigma33 = 0.0;
+        }
+
+        epsolonaux(0, 0) = (1.0 / young) * (sigmaaux(0, 0) - poisson * (sigmaaux(1, 1) + sigma33));
+        epsolonaux(1, 1) = (1.0 / young) * (sigmaaux(1, 1) - poisson * (sigmaaux(0, 0) + sigma33));
+        epsolonaux(0, 1) = ((1.0 + poisson) / young) * sigmaaux(0, 1);
+        epsolonaux(1, 0) = ((1.0 + poisson) / young) * sigmaaux(1, 0);
+
+        du1aux_dr = (sqrt(2.0 * pi * radius) / (8.0 * mi * pi * radius)) * (sin(0.5 * teta) * (k + 2.0 + cos(teta)));
+
+        du2aux_dr = (sqrt(2.0 * pi * radius) / (8.0 * mi * pi * radius)) * (-cos(0.5 * teta) * (k - 2.0 + cos(teta)));
+        ///falta daqui para baixo
+        du1aux_dteta = (sqrt(radius / (2.0 * pi)) / (2.0 * mi)) * (0.5 * cos(0.5 * teta) * (k + 2.0 + cos(teta)) - sin(teta) * sin(0.5 * teta));
+
+        du2aux_dteta = (sqrt(radius / (2.0 * pi)) / (2.0 * mi)) * (0.5 * sin(0.5 * teta) * (k - 2.0 + cos(teta)) + sin(teta) * cos(0.5 * teta));
+
+        du1aux_dy1chapeu = cos(teta) * du1aux_dr - (sin(teta) / radius) * du1aux_dteta;
+
+        du2aux_dy1chapeu = cos(teta) * du2aux_dr - (sin(teta) / radius) * du2aux_dteta;
+
+        we = (sigma(0, 0) * epsolonaux(0, 0) + sigma(0, 1) * epsolonaux(0, 1) + sigma(1, 0) * epsolonaux(1, 0) + sigma(1, 1) * epsolonaux(1, 1));
+
+        we1 = (sigmaaux(0, 0) * epsolon(0, 0) + sigmaaux(0, 1) * epsolon(0, 1) + sigmaaux(1, 0) * epsolon(1, 0) + sigmaaux(1, 1) * epsolon(1, 1));
+
+        forceAux = prod(sigmaaux, normal);
+
+        if (crack == true)
+        {
+            forceAux(0) = 0.0;
+            forceAux(1) = 0.0;
+            force(0) = 0.0;
+            force(1) = 0.0;
+        }
+
+        jIntegral(1) += (0.5 * youngLine * (0.5 * (we + we1) * normal(0) - force(0) * du1aux_dy1chapeu - force(1) * du2aux_dy1chapeu - forceAux(0) * du1_dy1Chapeu - forceAux(1) * du2_dy1Chapeu)) * weight * jacobian;
+    }
+    delete bound;
+    return jIntegral;
+}
+
+bounded_vector<double, 2> Element::contributionJ_IntegralInitial(const int &gaussPoints, const int &side, const std::string &ep, const double &rotation, const bounded_vector<double, 2> &tipCoordinates)
+{
+    bounded_vector<double, 2> jIntegral;
+    jIntegral(0) = 0.0;
+    jIntegral(1) = 0.0;
+
+    int nnos = connection_.size();
+    double young, poisson, density;
+    mesh_->getMaterial()->setProperties(young, poisson, density);
+
+    double mi = young / (2.0 * (1.0 + poisson));
+    double youngLine;
+
+    double k;
+
+    if (ep == "EPD")
+    {
+        k = 3.0 - 4.0 * poisson;
+        youngLine = young / (1.0 - poisson * poisson);
+    }
+    else
+    {
+        k = (3.0 - poisson) / (1.0 + poisson);
+        youngLine = young;
+    }
+
+    std::vector<Node *> conecOfBoundary = getSideNodes(side);
+    BoundaryElement *bound = new BoundaryElement(0, conecOfBoundary);
+
+    matrix<double> gaussIntegrationPoints(gaussPoints, 2);
+    gaussIntegrationPoints = bound->boundaryIsoQuadrature(gaussPoints);
+
+    bounded_matrix<double, 2, 2> matrixRotation;
+    matrixRotation(0, 0) = cos(rotation);
+    matrixRotation(0, 1) = sin(rotation);
+    matrixRotation(1, 0) = -sin(rotation);
+    matrixRotation(1, 1) = cos(rotation);
+
+    for (int iq = 0; iq < gaussPoints; iq++)
+    {
+        const double xsi = gaussIntegrationPoints(iq, 0);
+        const double weight = gaussIntegrationPoints(iq, 1);
+
+        matrix<double> functions = bound->shapeFunctionsAndDerivates(xsi); //phi, phi', phi''
+        bounded_vector<double, 2> tangent, coordP;
+        tangent(0) = 0.0;
+        tangent(1) = 0.0;
+        coordP(0) = 0.0;
+        coordP(1) = 0.0;
+
+        for (int ih = 0; ih < conecOfBoundary.size(); ih++)
+        {
+            tangent += functions(ih, 1) * conecOfBoundary[ih]->getInitialCoordinate();
+            coordP += functions(ih, 0) * conecOfBoundary[ih]->getInitialCoordinate();
+        }
+
+        const double jacobian = norm_2(tangent);
+
+        bounded_vector<double, 2> normalaux;
+        normalaux(0) = tangent(1) / jacobian;
+        normalaux(1) = -tangent(0) / jacobian;
+
+        bounded_vector<double, 2> normal = prod(matrixRotation, normalaux);
+
+        bounded_vector<double, 2> tipToPointAux = coordP - tipCoordinates;
+        const double radius = norm_2(tipToPointAux);
+
+        bounded_vector<double, 2> tipToPoint = prod(matrixRotation, tipToPointAux);
+
+        const double teta = atan2(tipToPoint(1), tipToPoint(0));
+
+        double xsi1;
+        double xsi2;
+
+        if (side == 0)
+        {
+            xsi1 = (-1.0 * xsi + 1.0) / (2.0);
+            xsi2 = (xsi + 1.0) / (2.0);
+        }
+        else if (side == 1)
+        {
+            xsi1 = 0.0;
+            xsi2 = (-1.0 * xsi + 1.0) / (2.0);
+        }
+        else if (side == 2)
+        {
+            xsi1 = (xsi + 1.0) / (2.0);
+            xsi2 = 0.0;
+        }
+
+        vector<double> phi = domainShapeFunction(xsi1, xsi2);
+        matrix<double> dphi_dxsi = domainDerivativeShapeFunction(xsi1, xsi2);
+
+        bounded_matrix<double, 2, 2> A0 = referenceJacobianMatrix(xsi1, xsi2);
+        bounded_matrix<double, 2, 2> A0I = inverseMatrix(A0);
+        bounded_matrix<double, 2, 2> A1 = currentJacobianMatrix(xsi1, xsi2);
+        bounded_matrix<double, 2, 2> Ac_aux = prod(A1, A0I); //dyi / dxj
+
+        bounded_matrix<double, 2, 2> Ac, mataux;
+
+        mataux = prod(matrixRotation, Ac_aux);
+        Ac = prod(mataux, trans(matrixRotation)); //gradiente nos eixos da ponta da fissura
+
+        identity_matrix<double> I(2);
+        bounded_matrix<double, 2, 2> Ec = 0.5 * (prod(trans(Ac), Ac) - I);
+        bounded_matrix<double, 2, 2> S;
+
+        if (ep == "EPD")
+        {
+            S(0, 0) = (young / ((1.0 + poisson) * (1.0 - 2.0 * poisson))) * ((1.0 - poisson) * Ec(0, 0) + poisson * Ec(1, 1));
+            S(1, 1) = (young / ((1.0 + poisson) * (1.0 - 2.0 * poisson))) * ((1.0 - poisson) * Ec(1, 1) + poisson * Ec(0, 0));
+            S(1, 0) = (young / (1.0 + poisson)) * Ec(1, 0);
+            S(0, 1) = (young / (1.0 + poisson)) * Ec(0, 1);
+        }
+        else
+        {
+            S(0, 0) = (young / (1.0 - poisson * poisson)) * (Ec(0, 0) + poisson * Ec(1, 1));
+            S(1, 1) = (young / (1.0 - poisson * poisson)) * (Ec(1, 1) + poisson * Ec(0, 0));
+            S(1, 0) = (young / (1.0 + poisson)) * Ec(1, 0);
+            S(0, 1) = (young / (1.0 + poisson)) * Ec(0, 1);
+        }
+
+        bounded_matrix<double, 2, 2> Pt;
+        Pt = prod(Ac, S);
+        bounded_vector<double, 2> force = prod(Pt, normal);
+
+        const double pi = 3.14159265359;
+
+        //AUXILIARY STATES K1 = 1 E K2 = 0;
+        double du1aux_dr, du2aux_dr, du1aux_dteta, du2aux_dteta;
+
+        du1aux_dr = (sqrt(2.0 * pi * radius) / (8.0 * mi * pi * radius)) * (cos(0.5 * teta) * (k - cos(teta)));
+        du2aux_dr = (sqrt(2.0 * pi * radius) / (8.0 * mi * pi * radius)) * (sin(0.5 * teta) * (k - cos(teta)));
+
+        du1aux_dteta = (sqrt(radius / (2.0 * pi)) / (2.0 * mi)) * (-0.5 * sin(0.5 * teta) * (k - cos(teta)) + sin(teta) * cos(0.5 * teta));
+        du2aux_dteta = (sqrt(radius / (2.0 * pi)) / (2.0 * mi)) * (0.5 * cos(0.5 * teta) * (k - cos(teta)) + sin(teta) * sin(0.5 * teta));
+
+        double du1aux_dx1c, du2aux_dx1c, du1aux_dx2c, du2aux_dx2c;
+
+        du1aux_dx1c = cos(teta) * du1aux_dr - (sin(teta) / radius) * du1aux_dteta;
+        du2aux_dx1c = cos(teta) * du2aux_dr - (sin(teta) / radius) * du2aux_dteta;
+
+        du1aux_dx2c = sin(teta) * du1aux_dr + (cos(teta) / radius) * du1aux_dteta;
+        du2aux_dx2c = sin(teta) * du2aux_dr + (cos(teta) / radius) * du2aux_dteta;
+
+        bounded_matrix<double, 2, 2> Acaux, Ecaux, Saux, Ptaux;
+
+        Acaux(0, 0) = du1aux_dx1c + 1.0;
+        Acaux(0, 1) = du1aux_dx2c;
+        Acaux(1, 0) = du2aux_dx1c;
+        Acaux(1, 1) = du2aux_dx2c + 1.0;
+
+        Ecaux = 0.5 * (prod(trans(Acaux), Acaux) - I);
+
+        if (ep == "EPD")
+        {
+            Saux(0, 0) = (young / ((1.0 + poisson) * (1.0 - 2.0 * poisson))) * ((1.0 - poisson) * Ecaux(0, 0) + poisson * Ecaux(1, 1));
+            Saux(1, 1) = (young / ((1.0 + poisson) * (1.0 - 2.0 * poisson))) * ((1.0 - poisson) * Ecaux(1, 1) + poisson * Ecaux(0, 0));
+            Saux(1, 0) = (young / (1.0 + poisson)) * Ecaux(1, 0);
+            Saux(0, 1) = (young / (1.0 + poisson)) * Ecaux(0, 1);
+        }
+        else
+        {
+            Saux(0, 0) = (young / (1.0 - poisson * poisson)) * (Ecaux(0, 0) + poisson * Ecaux(1, 1));
+            Saux(1, 1) = (young / (1.0 - poisson * poisson)) * (Ecaux(1, 1) + poisson * Ecaux(0, 0));
+            Saux(1, 0) = (young / (1.0 + poisson)) * Ecaux(1, 0);
+            Saux(0, 1) = (young / (1.0 + poisson)) * Ecaux(0, 1);
+        }
+
+        Ptaux = prod(Acaux, Saux);
+
+        bounded_vector<double, 2> forceAux = prod(Ptaux, normal);
+
+        double we = (S(0, 0) * Ecaux(0, 0) + S(0, 1) * Ecaux(0, 1) + S(1, 0) * Ecaux(1, 0) + S(1, 1) * Ecaux(1, 1));
+        double we1 = (Saux(0, 0) * Ec(0, 0) + Saux(0, 1) * Ec(0, 1) + Saux(1, 0) * Ec(1, 0) + Saux(1, 1) * Ec(1, 1));
+
+        jIntegral(0) += (0.5 * youngLine * (0.5 * (we + we1) * normal(0) - force(0) * (Acaux(0, 0) - 1.0) - force(1) * Acaux(1, 0) - forceAux(0) * (Ac(0, 0) - 1.0) - forceAux(1) * Ac(1, 0))) * weight * jacobian;
+
+        //AUXILIARY STATE K1 = 0 E K2 = 1
+        du1aux_dr = (sqrt(2.0 * pi * radius) / (8.0 * mi * pi * radius)) * (sin(0.5 * teta) * (k + 2.0 + cos(teta)));
+        du2aux_dr = (sqrt(2.0 * pi * radius) / (8.0 * mi * pi * radius)) * (-cos(0.5 * teta) * (k - 2.0 + cos(teta)));
+
+        du1aux_dteta = (sqrt(radius / (2.0 * pi)) / (2.0 * mi)) * (0.5 * cos(0.5 * teta) * (k + 2.0 + cos(teta)) - sin(teta) * sin(0.5 * teta));
+        du2aux_dteta = (sqrt(radius / (2.0 * pi)) / (2.0 * mi)) * (0.5 * sin(0.5 * teta) * (k - 2.0 + cos(teta)) + sin(teta) * cos(0.5 * teta));
+
+        du1aux_dx1c = cos(teta) * du1aux_dr - (sin(teta) / radius) * du1aux_dteta;
+        du2aux_dx1c = cos(teta) * du2aux_dr - (sin(teta) / radius) * du2aux_dteta;
+
+        du1aux_dx2c = sin(teta) * du1aux_dr + (cos(teta) / radius) * du1aux_dteta;
+        du2aux_dx2c = sin(teta) * du2aux_dr + (cos(teta) / radius) * du2aux_dteta;
+
+        Acaux(0, 0) = du1aux_dx1c + 1.0;
+        Acaux(0, 1) = du1aux_dx2c;
+        Acaux(1, 0) = du2aux_dx1c;
+        Acaux(1, 1) = du2aux_dx2c + 1.0;
+
+        Ecaux = 0.5 * (prod(trans(Acaux), Acaux) - I);
+
+        if (ep == "EPD")
+        {
+            Saux(0, 0) = (young / ((1.0 + poisson) * (1.0 - 2.0 * poisson))) * ((1.0 - poisson) * Ecaux(0, 0) + poisson * Ecaux(1, 1));
+            Saux(1, 1) = (young / ((1.0 + poisson) * (1.0 - 2.0 * poisson))) * ((1.0 - poisson) * Ecaux(1, 1) + poisson * Ecaux(0, 0));
+            Saux(1, 0) = (young / (1.0 + poisson)) * Ecaux(1, 0);
+            Saux(0, 1) = (young / (1.0 + poisson)) * Ecaux(0, 1);
+        }
+        else
+        {
+            Saux(0, 0) = (young / (1.0 - poisson * poisson)) * (Ecaux(0, 0) + poisson * Ecaux(1, 1));
+            Saux(1, 1) = (young / (1.0 - poisson * poisson)) * (Ecaux(1, 1) + poisson * Ecaux(0, 0));
+            Saux(1, 0) = (young / (1.0 + poisson)) * Ecaux(1, 0);
+            Saux(0, 1) = (young / (1.0 + poisson)) * Ecaux(0, 1);
+        }
+
+        Ptaux = prod(Acaux, Saux);
+
+        forceAux = prod(Ptaux, normal);
+
+        we = (S(0, 0) * Ecaux(0, 0) + S(0, 1) * Ecaux(0, 1) + S(1, 0) * Ecaux(1, 0) + S(1, 1) * Ecaux(1, 1));
+        we1 = (Saux(0, 0) * Ec(0, 0) + Saux(0, 1) * Ec(0, 1) + Saux(1, 0) * Ec(1, 0) + Saux(1, 1) * Ec(1, 1));
+
+        jIntegral(1) += (0.5 * youngLine * (0.5 * (we + we1) * normal(0) - force(0) * (Acaux(0, 0) - 1.0) - force(1) * Acaux(1, 0) - forceAux(0) * (Ac(0, 0) - 1.0) - forceAux(1) * Ac(1, 0))) * weight * jacobian;
+    }
+    delete bound;
+    return jIntegral;
 }

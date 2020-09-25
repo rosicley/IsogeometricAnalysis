@@ -858,10 +858,20 @@ std::pair<vector<double>, matrix<double>> Cell::cellContributions(const std::str
                             bounded_matrix<double, 2, 2> dE_dy3 = 0.5 * (prod(mat1, mat4) + prod(mat3, mat2));    //second derivative of E regarding i,j,k,l
 
                             bounded_matrix<double, 2, 2> dS_dy;
-                            dS_dy(0, 0) = (young / ((1.0 + poisson) * (1.0 - 2.0 * poisson)) * ((1.0 - poisson) * dE_dy(0, 0) + poisson * dE_dy(1, 1)));
-                            dS_dy(1, 1) = (young / ((1.0 + poisson) * (1.0 - 2.0 * poisson)) * ((1.0 - poisson) * dE_dy(1, 1) + poisson * dE_dy(0, 0)));
-                            dS_dy(1, 0) = (young / (1.0 + poisson)) * dE_dy(1, 0);
-                            dS_dy(0, 1) = (young / (1.0 + poisson)) * dE_dy(0, 1);
+                            if (ep == "EPD")
+                            {
+                                dS_dy(0, 0) = (young / ((1.0 + poisson) * (1.0 - 2.0 * poisson)) * ((1.0 - poisson) * dE_dy(0, 0) + poisson * dE_dy(1, 1)));
+                                dS_dy(1, 1) = (young / ((1.0 + poisson) * (1.0 - 2.0 * poisson)) * ((1.0 - poisson) * dE_dy(1, 1) + poisson * dE_dy(0, 0)));
+                                dS_dy(1, 0) = (young / (1.0 + poisson)) * dE_dy(1, 0);
+                                dS_dy(0, 1) = (young / (1.0 + poisson)) * dE_dy(0, 1);
+                            }
+                            else
+                            {
+                                dS_dy(0, 0) = (young / (1.0 - poisson * poisson)) * (dE_dy(0, 0) + poisson * dE_dy(1, 1));
+                                dS_dy(1, 1) = (young / (1.0 - poisson * poisson)) * (dE_dy(1, 1) + poisson * dE_dy(0, 0));
+                                dS_dy(1, 0) = (young / (1.0 + poisson)) * dE_dy(1, 0);
+                                dS_dy(0, 1) = (young / (1.0 + poisson)) * dE_dy(0, 1);
+                            }
 
                             double v = dE_dy3(0, 0) * S(0, 0) + dE_dy3(1, 1) * S(1, 1) + dE_dy3(0, 1) * S(0, 1) + dE_dy3(1, 0) * S(1, 0) + //second part of equation 5.88
                                        dE_dy2(0, 0) * dS_dy(0, 0) + dE_dy2(1, 1) * dS_dy(1, 1) + dE_dy2(0, 1) * dS_dy(0, 1) + dE_dy2(1, 0) * dS_dy(1, 0);

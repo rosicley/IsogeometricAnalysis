@@ -28,6 +28,8 @@ public:
 
     matrix<double> boundaryIsoQuadrature(const int &points);
 
+    bounded_vector<double, 2> getVectorTangente(const double &xsi, const std::string &type);
+
     //matrix<double> derivatesShapeFunctions(const double &xsi);
 
 private:

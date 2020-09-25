@@ -11,7 +11,7 @@ include ${PETSC_DIR}/lib/petsc/conf/rules
 include ${PETSC_DIR}/lib/petsc/conf/test
 
 s:$(GCH_FILES:.h=.gch) $(CSOURCES:.cpp=.o)
-	@-${CLINKER} -o $@ $^ ${PETSC_KSP_LIB} -lboost_system -std=c++0x
+	@-${CLINKER} -o $@ $^ ${PETSC_KSP_LIB} -lboost_system -std=c++0x 
 
 debug: $(CSOURCES:.cpp=.o)
 	@-${CLINKER} -o $@ $^ ${PETSC_KSP_LIB} -g

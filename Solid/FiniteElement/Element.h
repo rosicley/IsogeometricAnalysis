@@ -32,11 +32,15 @@ public:
 
     Mesh *getMesh();
 
+    std::vector<Node *> getSideNodes(const int &side);
+
     //Material *getMaterial();
 
     vector<double> domainShapeFunction(const double &xsi1, const double &xsi2);
 
     matrix<double> domainDerivativeShapeFunction(const double &xsi1, const double &xsi2);
+
+    matrix<double> domainSecondDerivativeShapeFunction(const double &xsi1, const double &xsi2);
 
     matrix<double> hammerQuadrature(const int &nH);
 
@@ -93,6 +97,10 @@ public:
     bounded_vector<double, 4> getCauchyStressBlendZone(const bounded_vector<double, 2> &qxsiLocal, const std::string &ep, Cell *cell, const bounded_vector<double, 2> &xsiGlobal, const bounded_vector<double, 2> &blendFunctions);
 
     vector<double> diagonalMass(const int &nHammer, const int &nHammerBlendZone);
+
+    bounded_vector<double, 2> contributionJ_Integral4(const int &quadraturePoints, const int &side, const std::string &ep, const double &rotation, Node *tipNode, const bool &crack);
+
+    bounded_vector<double, 2> contributionJ_IntegralInitial(const int &quadraturePoints, const int &side, const std::string &ep, const double &rotation, const bounded_vector<double, 2> &tipCoordinates);
 
 private:
     int index_;

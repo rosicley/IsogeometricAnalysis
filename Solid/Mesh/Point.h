@@ -22,6 +22,10 @@ public:
 
     void addNodeToPoint(Node *node);
 
+    bounded_vector<double, 2> getCoordinates();
+
+    double getlcar();
+
     Node *getPointNode();
 
 private:

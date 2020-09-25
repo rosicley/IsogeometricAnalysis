@@ -711,6 +711,8 @@ void GlobalSolid::dataFromGmsh(const std::string &inputGmesh, const std::string 
     std::unordered_map<std::string, PlaneSurface *> planeSurfaces = geometry->getPlaneSurfaces();
 
     int cont = 0;
+    nlines_ = 0;
+    ncrackes_ = 0;
     for (std::unordered_map<int, std::string>::const_iterator entities = physicalEntities.begin(); entities != physicalEntities.end(); entities++)
     {
         std::string name = entities->second;
@@ -719,16 +721,18 @@ void GlobalSolid::dataFromGmsh(const std::string &inputGmesh, const std::string 
             Mesh *mesh = new Mesh(cont++, materials_[planeSurfaces[entities->second]->getIndexMaterial()], planeSurfaces[entities->second]->getThickness(), elementType);
             meshes_[entities->second] = mesh;
         }
-        else if (name[0] == 'l') //line
+        else if (name[0] == 'l' or name[0] == 'j') //line
         {
             std::vector<BoundaryElement *> aux;
-            finiteElementBoundary_[name] = aux;
+            finiteElementBoundary_.insert(std::unordered_map<std::string, std::vector<BoundaryElement *>>::value_type(name, aux));
+            nlines_++;
         }
         else if (name[0] == 'c') //crack
         {
             std::vector<BoundaryElement *> aux;
-            finiteElementBoundary_[name + "0"] = aux;
-            finiteElementBoundary_[name + "1"] = aux;
+            finiteElementBoundary_.insert(std::unordered_map<std::string, std::vector<BoundaryElement *>>::value_type(name + "0", aux));
+            finiteElementBoundary_.insert(std::unordered_map<std::string, std::vector<BoundaryElement *>>::value_type(name + "1", aux));
+            ncrackes_++;
         }
     }
 
@@ -774,7 +778,7 @@ void GlobalSolid::dataFromGmsh(const std::string &inputGmesh, const std::string 
             Element *el = new Element(elementCont++, meshes_[name], conec);
             elements_.push_back(el);
         }
-        else if (name[0] == 'l')
+        else if (name[0] == 'l' or name[0] == 'j')
         {
             std::vector<Node *> conec;
 
@@ -784,10 +788,13 @@ void GlobalSolid::dataFromGmsh(const std::string &inputGmesh, const std::string 
                 conec.push_back(nodes_[auxconec - 1]);
             }
 
+            if (name[0] == 'j')
+            {
+                auxn = 1;
+            }
+
             BoundaryElement *bfe = new BoundaryElement(num++, conec);
-            std::vector<BoundaryElement *> aux = finiteElementBoundary_[name];
-            aux.push_back(bfe);
-            finiteElementBoundary_[name] = aux;
+            finiteElementBoundary_[name].push_back(bfe);
         }
         else if (name[0] == 'c')
         {
@@ -801,27 +808,84 @@ void GlobalSolid::dataFromGmsh(const std::string &inputGmesh, const std::string 
 
             BoundaryElement *bfe = new BoundaryElement(num++, conec);
 
-            if (finiteElementBoundary_[name + "0"].size() == 0 or auxn == auxentitie)
+            if (finiteElementBoundary_[name + "0"].size() == 0 or auxn == 0)
             {
-                std::vector<BoundaryElement *> aux = finiteElementBoundary_[name + "0"];
-                aux.push_back(bfe);
-                finiteElementBoundary_[name + "0"] = aux;
-                auxn = auxentitie;
+                finiteElementBoundary_[name + "0"].push_back(bfe);
             }
             else
             {
-                std::vector<BoundaryElement *> aux = finiteElementBoundary_[name + "1"];
-                aux.push_back(bfe);
-                finiteElementBoundary_[name + "1"] = aux;
+                finiteElementBoundary_[name + "1"].push_back(bfe);
             }
         }
-        else
+        else if (name[0] == 'p' and ielem < geometry->getNumberOfPoints())
         {
             feMesh >> auxconec;
             geometry->getPoint(name)->addNodeToPoint(nodes_[auxconec - 1]);
         }
         std::getline(feMesh, line);
     }
+
+    for (int i = 0; i < geometry->getNumberOfCrackes(); i++)
+    {
+        std::vector<BoundaryElement *> integralj = finiteElementBoundary_["j" + std::to_string(i)];
+
+        for (Element *el : elements_)
+        {
+            int teste = -1;
+            for (BoundaryElement *bound : integralj)
+            {
+                std::vector<Node *> conecbound = bound->getNodes();
+                for (int i = 0; i < 3; i++)
+                {
+                    if (conecbound == el->getSideNodes(i))
+                    {
+                        teste = i;
+                        JintegralElements_.push_back(el);
+                        break;
+                    }
+                }
+            }
+            elementsSideJintegral_.push_back(teste);
+        }
+    }
+
+    // Node *lastnode = initialGeometry_->getCrackes()["c0"]->getLastPoint()->getPointNode();
+    // Node *initialnode = initialGeometry_->getCrackes()["c0"]->getFirstPoint()->getPointNode();
+
+    // for (Element *el : elements_)
+    // {
+    //     std::vector<Node *> conection = el->getConnection();
+    //     bounded_vector<double, 2> coord0, coord1, coord2;
+    //     coord0 = conection[0]->getInitialCoordinate();
+    //     coord1 = conection[1]->getInitialCoordinate();
+    //     coord2 = conection[2]->getInitialCoordinate();
+
+    //     if (conection[0] == lastnode or conection[0] == initialnode)
+    //     {
+    //         bounded_vector<double, 2> coord3, coord5;
+    //         coord3 = 0.25 * (3.0 * coord0 + coord1);
+    //         coord5 = 0.25 * (3.0 * coord0 + coord2);
+    //         conection[3]->setInitialCoordinate(coord3);
+    //         conection[5]->setInitialCoordinate(coord5);
+    //     }
+    //     else if (conection[1] == lastnode or conection[1] == initialnode)
+    //     {
+
+    //         bounded_vector<double, 2> coord3, coord4;
+    //         coord3 = 0.25 * (coord0 + 3.0 * coord1);
+    //         coord4 = 0.25 * (3.0 * coord1 + coord2);
+    //         conection[3]->setInitialCoordinate(coord3);
+    //         conection[4]->setInitialCoordinate(coord4);
+    //     }
+    //     else if (conection[2] == lastnode or conection[1] == initialnode)
+    //     {
+    //         bounded_vector<double, 2> coord5, coord4;
+    //         coord5 = 0.25 * (coord0 + 3.0 * coord2);
+    //         coord4 = 0.25 * (coord1 + 3.0 * coord2);
+    //         conection[5]->setInitialCoordinate(coord5);
+    //         conection[4]->setInitialCoordinate(coord4);
+    //     }
+    // }
 
     //Closing the .msh file
     feMesh.close();
@@ -1380,6 +1444,14 @@ int GlobalSolid::solveStaticProblem()
             exportToParaviewFEM(loadStep);
         }
     }
+    MPI_Barrier(PETSC_COMM_WORLD);
+    // remesh(teste);
+
+    // if (rank == 1 and elements_.size() > 0)
+    // {
+    //     exportToParaviewFEM(10000);
+    // }
+
     PetscFree(dof);
     return 0;
 }
@@ -1808,6 +1880,24 @@ void GlobalSolid::exportToParaviewFEM(const int &num)
     for (Element *el : elements_)
     {
         file << elementPartition_[el->getIndex()] << "\n";
+    }
+    file << "      </DataArray> "
+         << "\n";
+    file << "      <DataArray type=\"Float64\" NumberOfComponents=\"1\" "
+         << "Name=\"J-Integral\" format=\"ascii\">" << std::endl;
+    if (elementsSideJintegral_.size() >= 1)
+    {
+        for (Element *el : elements_)
+        {
+            file << elementsSideJintegral_[el->getIndex()] << "\n";
+        }
+    }
+    else
+    {
+        for (Element *el : elements_)
+        {
+            file << -1 << "\n";
+        }
     }
     file << "      </DataArray> "
          << "\n";
@@ -4567,26 +4657,94 @@ void GlobalSolid::stressCalculateFEM()
 
     matrix<double> xsiLocal = coordinatesFEM(order);
 
+    // for (Element *el : elements_)
+    // {
+    //     std::vector<Node *> conec = el->getConnection();
+    //     for (int i = 0; i < nnod; i++)
+    //     {
+    //         bounded_vector<double, 2> qxsi;
+    //         qxsi(0) = xsiLocal(i, 0);
+    //         qxsi(1) = xsiLocal(i, 1);
+
+    //         int cellIndex = conec[i]->getCellIndex();
+
+    //         if (cellIndex == -1)
+    //         {
+    //             conec[i]->setStressState(el->getCauchyStress(qxsi, planeState_));
+    //         }
+    //         else
+    //         {
+    //             Cell *cell = cells_[cellIndex];
+    //             conec[i]->setStressState(el->getCauchyStressBlendZone(qxsi, planeState_, cell, conec[i]->getXsisGlobal(), conec[i]->getValuesOfBlendingFunction()));
+    //         }
+    //     }
+    // }
     for (Element *el : elements_)
     {
+
         std::vector<Node *> conec = el->getConnection();
+        int nh;
+        if (conec.size() == 6)
+        {
+            nh = 7;
+        }
+        else if (conec.size() == 10)
+        {
+            nh = 12;
+        }
+        matrix<double> pointCoord(nh, 3);
+
+        pointCoord = el->hammerQuadrature(nh);
+
+        matrix<double, column_major> phiMatrix(nnod, nnod, 0.0);
+        matrix<double, column_major> cauchyStress(nnod, 4, 0.0);
+        //matrix<double> cauchyStressNode(nnod, 4, 0.0);
+
         for (int i = 0; i < nnod; i++)
         {
+            bounded_vector<double, 4> stress;
+
             bounded_vector<double, 2> qxsi;
-            qxsi(0) = xsiLocal(i, 0);
-            qxsi(1) = xsiLocal(i, 1);
+            qxsi(0) = pointCoord(i, 0);
+            qxsi(1) = pointCoord(i, 1);
+
+            vector<double> phi = el->domainShapeFunction(qxsi(0), qxsi(1));
+
+            for (int j = 0; j < nnod; j++)
+            {
+                phiMatrix(i, j) = phi(j);
+            }
 
             int cellIndex = conec[i]->getCellIndex();
 
             if (cellIndex == -1)
             {
-                conec[i]->setStressState(el->getCauchyStress(qxsi, planeState_));
+                stress = el->getCauchyStress(qxsi, planeState_);
             }
             else
             {
                 Cell *cell = cells_[cellIndex];
-                conec[i]->setStressState(el->getCauchyStressBlendZone(qxsi, planeState_, cell, conec[i]->getXsisGlobal(), conec[i]->getValuesOfBlendingFunction()));
+                stress = el->getCauchyStressBlendZone(qxsi, planeState_, cell, conec[i]->getXsisGlobal(), conec[i]->getValuesOfBlendingFunction());
             }
+
+            cauchyStress(i, 0) = stress(0);
+            cauchyStress(i, 1) = stress(1);
+            cauchyStress(i, 2) = stress(2);
+            cauchyStress(i, 3) = stress(3);
+        }
+
+        vector<int> c(nnod, 0);
+
+        boost::numeric::bindings::lapack::gesv(phiMatrix, c, cauchyStress);
+
+        for (int i = 0; i < nnod; i++)
+        {
+            bounded_vector<double, 4> stress;
+            stress(0) = cauchyStress(i, 0);
+            stress(1) = cauchyStress(i, 1);
+            stress(2) = cauchyStress(i, 2);
+            stress(3) = cauchyStress(i, 3);
+            conec[i]->setStressState(stress);
         }
     }
 }
@@ -4598,7 +4756,7 @@ void GlobalSolid::generateMesh(Geometry *geometry, const std::string &elementTyp
     MPI_Comm_rank(PETSC_COMM_WORLD, &rank);
 
     finiteElementType_ = elementType;
-    //geometry_ = geometry;
+    initialGeometry_ = geometry;
 
     std::string mshfile;
     bool deleteFiles = false;
@@ -4617,7 +4775,7 @@ void GlobalSolid::generateMesh(Geometry *geometry, const std::string &elementTyp
 
     if (rank == 0)
     {
-        std::string gmshCode = geometry->getGmshCode();
+        std::string gmshCode = geometry->createGmshCode();
 
         if (elementType == "T10")
         {
@@ -4670,9 +4828,10 @@ void GlobalSolid::generateMesh(Geometry *geometry, const std::string &elementTyp
 
         for (std::unordered_map<std::string, Crack *>::const_iterator c = crackes.begin(); c != crackes.end(); c++)
         {
-            gmshCode += c->second->getGmshCode();
+            gmshCode += c->second->getGmshCodeCrackPlugin();
         }
 
+        gmshCode += "Mesh.MshFileVersion = 2.2;\n";
         gmshCode += "Save \"" + mshfile + "\";\n";
 
         std::ofstream file(geofile);
@@ -4696,7 +4855,6 @@ void GlobalSolid::generateMesh(Geometry *geometry, const std::string &elementTyp
 
         system(cmd.c_str());
     }
-
     MPI_Barrier(PETSC_COMM_WORLD);
 
     dataFromGmsh(mshfile, elementType, geometry);
@@ -4719,10 +4877,6 @@ void GlobalSolid::generateMesh(Geometry *geometry, const std::string &elementTyp
         {
             elements_part.push_back(elements_[i]);
         }
-        // else if (rank != 0)
-        // {
-        //     delete elements_[i];
-        // }
     }
 }
 
@@ -4864,4 +5018,254 @@ void GlobalSolid::addBlending(std::vector<Line *> lines, const double &thickness
         }
     }
     blendZoneThickness_ = thickness;
+}
+
+void GlobalSolid::remesh(const bounded_vector<double, 2> &newCrack)
+{
+    // int rank, size;
+
+    // MPI_Comm_rank(PETSC_COMM_WORLD, &rank);
+    // MPI_Comm_size(PETSC_COMM_WORLD, &size);
+
+    Geometry *geo = new Geometry;
+
+    std::vector<Line *> lines;
+
+    for (int nline = 0; nline < nlines_; nline++)
+    {
+        std::string name = "l" + std::to_string(nline);
+
+        std::vector<BoundaryElement *> bound = finiteElementBoundary_[name];
+
+        std::vector<Point *> points;
+
+        for (int i = 0; i < bound.size(); i++)
+        {
+            std::vector<Node *> conec = bound[i]->getNodes();
+            if (i == 0)
+            {
+                bounded_vector<double, 2> coordAux = conec[0]->getCurrentCoordinate();
+                std::vector<double> coord;
+                coord.push_back(coordAux(0));
+                coord.push_back(coordAux(1));
+
+                Point *p = geo->addPoint(coord, 1.0, conec[0]->getPoint());
+                points.push_back(p);
+            }
+
+            if (conec.size() > 2)
+            {
+                for (int j = 2; j < conec.size(); j++)
+                {
+                    bounded_vector<double, 2> coordAux = conec[j]->getCurrentCoordinate();
+                    std::vector<double> coord;
+                    coord.push_back(coordAux(0));
+                    coord.push_back(coordAux(1));
+
+                    Point *p = geo->addPoint(coord, 1.0, conec[j]->getPoint());
+                    points.push_back(p);
+                }
+            }
+
+            bounded_vector<double, 2> coordAux = conec[1]->getCurrentCoordinate();
+            std::vector<double> coord;
+            coord.push_back(coordAux(0));
+            coord.push_back(coordAux(1));
+
+            Point *p = geo->addPoint(coord, 1.0, conec[1]->getPoint());
+            points.push_back(p);
+
+            delete bound[i];
+        }
+        Line *l = geo->addSpline(points);
+        lines.push_back(l);
+    }
+
+    for (int ncrack = 0; ncrack < ncrackes_; ncrack++)
+    {
+        std::string name = "c" + std::to_string(ncrack);
+        std::vector<BoundaryElement *> bound = finiteElementBoundary_[name + "1"];
+        std::vector<Point *> points;
+        double lcar = 0.05;
+
+        for (int i = 0; i < bound.size(); i++)
+        {
+            std::vector<Node *> conec = bound[i]->getNodes();
+            if (i >= bound.size() / 2)
+            {
+                lcar = 0.0001;
+            }
+            else
+            {
+                lcar = 0.0001;
+            }
+
+            if (i == 0)
+            {
+                bounded_vector<double, 2> coordAux = conec[0]->getCurrentCoordinate();
+                std::vector<double> coord;
+                coord.push_back(coordAux(0));
+                coord.push_back(coordAux(1));
+
+                Point *p = geo->addPoint(coord, lcar, conec[0]->getPoint());
+                points.push_back(p);
+            }
+
+            if (conec.size() > 2)
+            {
+                for (int j = 2; j < conec.size(); j++)
+                {
+                    bounded_vector<double, 2> coordAux = conec[j]->getCurrentCoordinate();
+                    std::vector<double> coord;
+                    coord.push_back(coordAux(0));
+                    coord.push_back(coordAux(1));
+
+                    Point *p = geo->addPoint(coord, lcar, conec[j]->getPoint());
+                    points.push_back(p);
+                }
+            }
+
+            bounded_vector<double, 2> coordAux = conec[1]->getCurrentCoordinate();
+            std::vector<double> coord;
+            coord.push_back(coordAux(0));
+            coord.push_back(coordAux(1));
+
+            Point *p = geo->addPoint(coord, lcar, conec[1]->getPoint());
+            points.push_back(p);
+
+            delete bound[i];
+        }
+
+        Line *l = geo->addSpline(points);
+        lines.push_back(l);
+
+        bound = finiteElementBoundary_[name + "0"];
+        points.clear();
+
+        for (int i = (bound.size() - 1); i >= 0; i--)
+        {
+            std::vector<Node *> conec = bound[i]->getNodes();
+
+            if (i >= bound.size() / 2)
+            {
+                lcar = 0.0001;
+            }
+            else
+            {
+                lcar = 0.0001;
+            }
+
+            if (i == bound.size() - 1)
+            {
+                bounded_vector<double, 2> coordAux = conec[1]->getCurrentCoordinate();
+                std::vector<double> coord;
+                coord.push_back(coordAux(0));
+                coord.push_back(coordAux(1));
+
+                Point *p = geo->addPoint(coord, lcar, conec[1]->getPoint());
+                points.push_back(p);
+            }
+
+            if (conec.size() > 2)
+            {
+                for (int j = conec.size() - 1; j >= 2; j--)
+                {
+                    bounded_vector<double, 2> coordAux = conec[j]->getCurrentCoordinate();
+                    std::vector<double> coord;
+                    coord.push_back(coordAux(0));
+                    coord.push_back(coordAux(1));
+
+                    Point *p = geo->addPoint(coord, lcar, conec[j]->getPoint());
+                    points.push_back(p);
+                }
+            }
+
+            bounded_vector<double, 2> coordAux = conec[0]->getCurrentCoordinate();
+            std::vector<double> coord;
+            coord.push_back(coordAux(0));
+            coord.push_back(coordAux(1));
+
+            Point *p = geo->addPoint(coord, lcar, conec[0]->getPoint());
+            points.push_back(p);
+
+            delete bound[i];
+        }
+
+        Line *l1 = geo->addSpline(points);
+        lines.push_back(l1);
+    }
+
+    geo->appendGmshCode("Coherence; \n // \n");
+
+    LineLoop *ll = geo->addLineLoop(lines, false);
+
+    PlaneSurface *s = geo->addPlaneSurface({ll});
+
+    for (int i = 0; i < elements_.size(); i++)
+    {
+        delete elements_[i];
+    }
+    for (int i = 0; i < dirichletConditionsFE_.size(); i++)
+    {
+        delete dirichletConditionsFE_[i];
+    }
+    for (int i = 0; i < neumannConditionsFE_.size(); i++)
+    {
+        delete neumannConditionsFE_[i];
+    }
+    for (int i = 0; i < nodes_.size(); i++)
+    {
+        delete nodes_[i];
+    }
+
+    elements_.clear();
+    elements_part.clear();
+    nodes_.clear();
+    finiteElementBoundary_.clear();
+    meshes_.clear();
+    dirichletConditionsFE_.clear();
+    neumannConditionsFE_.clear();
+
+    cpnumber_ = cpaux_;
+
+    generateMesh(geo, "T6", "ADAPT", "newMesh", true, false);
+}
+
+bounded_vector<double, 2> GlobalSolid::getSIFs()
+{
+    bounded_vector<double, 2> sif;
+    sif(0) = 0.0;
+    sif(1) = 0.0;
+
+    std::vector<BoundaryElement *> c00 = finiteElementBoundary_["c00"];
+    std::vector<BoundaryElement *> c01 = finiteElementBoundary_["c01"];
+
+    Node *node = initialGeometry_->getCrackes()["c0"]->getLastPoint()->getPointNode();
+
+    bounded_vector<double, 2> vec00 = c00[c00.size() - 2]->getVectorTangente(1.0, "initial");
+    bounded_vector<double, 2> vec01 = c01[c01.size() - 2]->getVectorTangente(1.0, "initial");
+
+    double angle = 0.5 * (atan2(vec00(1), vec00(0)) + atan2(vec01(1), vec01(0)));
+
+    for (Element *el : JintegralElements_)
+    {
+        sif += el->contributionJ_IntegralInitial(quadrature_, elementsSideJintegral_[el->getIndex()], planeState_, 0.5235987756, node->getInitialCoordinate());
+    }
+
+    return sif;
+
+    // for (int j = 0; j < gaussPoints.size1(); j++)
+    // {
+    //     bounded_vector<double, 2> vectortangente = c00[c00.size() - 1]->getVectorTangente(gaussPoints(j, 0));
+    //     angle += atan2(vectortangente(1), vectortangente(0));
+
+    //     vectortangente = c01[c01.size() - 1]->getVectorTangente(gaussPoints(j, 0));
+    //     angle += atan2(vectortangente(1), vectortangente(0));
+    //     aux += 2.0;
+    // }
+    // for (Element *el : JintegralElements_)
+    // {
+    //     jIntegral += el->contributionJ_Integral4(quadrature_, elementsSideJintegral_[el->getIndex()], planeState_, angle, node, false);
+    // }
+    //std::cout << "J INTEGRAL: " << jIntegral(0) << " " << jIntegral(1) << std::endl;
 }

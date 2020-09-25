@@ -87,6 +87,11 @@ double Node::getDistanceToBoundary()
     return distanceToBoundary_;
 }
 
+bool Node::getPoint()
+{
+    return point_;
+}
+
 int Node::getCellIndex()
 {
     return cellIndex_;
@@ -130,6 +135,12 @@ void Node::setCurrentVelocity(const bounded_vector<double, 2> &currentVelocity)
 void Node::setCurrentAcceleration(const bounded_vector<double, 2> &currentAcceleration)
 {
     currentAcceleration_ = currentAcceleration;
+}
+
+void Node::setInitialCoordinate(const bounded_vector<double, 2> &initialCoordinate)
+{
+    initialCoordinate_ = initialCoordinate;
+    currentCoordinate_ = initialCoordinate;
 }
 
 void Node::setStressState(const bounded_vector<double, 4> &stressState)
@@ -185,4 +196,9 @@ void Node::setXsisGlobal(const bounded_vector<double, 2> &xsis)
 void Node::setValuesOfBlendingFunction(const bounded_vector<double, 2> &bvalues)
 {
     blendingFunction_ = bvalues;
+}
+
+void Node::setPoint()
+{
+    point_ = true;
 }
