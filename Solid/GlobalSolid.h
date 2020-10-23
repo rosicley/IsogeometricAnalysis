@@ -75,12 +75,6 @@ public:
     void addNode(const int &index, const int &indexFE,
                  const bounded_vector<double, 2> &initialCoordinate);
 
-    // void addElement(const int &index,
-    // const std::vector<int> &nodesIndex,
-    // const int &materialIndex,
-    // const double &thickness,
-    // const std::string &elementType);
-
     void addBoundaryFiniteElement(const int &lineNumber, const std::vector<int> &nodesIndex);
 
     int solveStaticProblem();
@@ -89,9 +83,11 @@ public:
 
     int firstAccelerationCalculation();
 
-    void exportToParaviewISO(const int &loadstep);
+    void exportToParaviewISO(const std::string &name);
 
-    void exportToParaviewFEM(const int &number);
+    void exportToParaviewFEM(const std::string &name);
+
+    void exportToParaviewAuxiliarMesh(const std::string &name);
 
     //void exportToParaviewFEM_Blended(const int &number);
 
@@ -143,36 +139,69 @@ public:
     void generateMesh(Geometry *geometry, const std::string &elementType = "T3", const std::string &algorithm = "AUTO", std::string geofile = std::string(),
                       const bool &plotMesh = true, const bool &showInfo = false);
 
-    void remesh(const bounded_vector<double, 2> &newCrack);
-
     void applyBoundaryConditions(Geometry *geometry);
 
-    void addBlending(std::vector<Line *> lines, const double &thickness);
+    void addBlendingZone(std::vector<Line *> lines, const double &thickness, const bool &plotHammerPoints);
+
+    void addBlendingZoneInLocalMesh(const double &thickness, const bool &plotHammerPoints);
+
+    void setBlendingZoneLines();
+
+    void verifyCrackPropagation(bool &testPropagation);
+
+    void setParametersOfCrackPropagation(const double &length, const double &fractureThougness, const bool &plotSIFs, const bool &viewNewMesh, const bool &exportUndeformedMesh);
 
     bounded_vector<double, 2> getSIFs();
 
+    void quarterPointElements();
+
+    void useQuarterPointElements();
+
 private:
+    //Isogeometric - Global
     std::vector<Patch *> patches_;
 
-    //std::vector<Mesh *> meshes_;
-    std::unordered_map<std::string, Mesh *> meshes_;
+    std::vector<Cell *> cells_;
+
+    std::vector<ControlPoint *> controlPoints_;
 
     std::vector<DirichletCondition *> dirichletConditions_;
 
-    std::vector<DirichletConditionFE *> dirichletConditionsFE_;
-
-    std::vector<int> inactiveCPandNode_;
-
     std::vector<NeumannCondition *> neumannConditions_;
 
+    std::vector<Cell *> cells_part;
+
+    //Finite element - Local
+    std::unordered_map<std::string, Mesh *> meshes_;
+
+    std::vector<Element *> elements_;
+
+    std::vector<Node *> nodes_;
+
+    std::vector<DirichletConditionFE *> dirichletConditionsFE_;
+
     std::vector<NeumannConditionFE *> neumannConditionsFE_;
+
+    std::unordered_map<std::string, std::vector<BoundaryElement *>> finiteElementBoundary_;
+
+    std::vector<Element *> elements_part;
+
+    //Overlapping
+    std::vector<int> inactiveCPandNode_;
 
     std::vector<InactiveCP *> inactiveCP_;
 
     std::vector<InactiveNode *> inactiveNode_;
 
-    std::vector<Material *> materials_;
+    std::vector<BoundaryElement *> blendingBoundary_;
 
+    double blendingZoneThickness_;
+
+    bool overlappingAnalysis_; ////REVER
+
+    bool plotHammerPointsInBlendingZone_; ////REVER
+
+    //Analysis parameters
     std::string planeState_;
 
     std::string problemType_;
@@ -183,10 +212,30 @@ private:
 
     double beta_;
 
-    double blendZoneThickness_;
+    int numberOfSteps_;
+
+    int maximumOfIteration_;
+
+    double tolerance_;
+
+    int hammerPoints_; //number of hammer points for elements outside the blend zone
+
+    int hammerPointsBlendZone_; //number of hammer points for elements inside the blend zone
+
+    int quadrature_;
+
+    //General
+    std::vector<Material *> materials_;
 
     bounded_vector<double, 2> shapeForces_;
 
+    int orderParaview_;
+
+    int cpnumber_ = 0;
+
+    int cpaux_ = 0;
+
+    //Metis
     idx_t *cellPartition_;
 
     idx_t *pointsPartition_;
@@ -195,57 +244,33 @@ private:
 
     idx_t *nodePartition_;
 
-    int numberOfSteps_;
-
-    int maximumOfIteration_;
-
-    double tolerance_;
-
-    std::vector<Cell *> cells_;
-
-    std::vector<Element *> elements_;
-
-    std::vector<Cell *> cells_part;
-
-    std::vector<Element *> elements_part;
-
-    std::vector<ControlPoint *> controlPoints_;
-
-    std::vector<Node *> nodes_;
-
-    //std::vector<BoundaryElement *> boundaryFE_;
-
-    int orderParaview_;
-
-    int quadrature_;
-
-    int cpnumber_ = 0;
-
-    int cpaux_ = 0;
-
-    int hammerPoints_; //number of hammer points for elements outside the blend zone
-
-    int hammerPointsBlendZone_; //number of hammer points for elements inside the blend zone
-
-    //std::vector<std::vector<BoundaryElement *>> boundary_;
-
-    std::unordered_map<std::string, std::vector<BoundaryElement *>> finiteElementBoundary_;
-
-    std::vector<BoundaryElement *> blendingBoundary_;
-
-    Geometry *initialGeometry_;
+    //GMSH
+    Geometry *geometry_;
 
     std::string finiteElementType_;
 
+    std::string typeAlgorithm_;
+
     std::string current_working_dir_;
 
-    std::vector<bounded_vector<double, 2>> coordCrackes_;
-
-    int nlines_;
-
-    int ncrackes_;
-
+    //Crack analysis
     std::vector<Element *> JintegralElements_;
 
     std::vector<int> elementsSideJintegral_;
+
+    double crackLengthPropagation_;
+
+    double fractureThougness_;
+
+    bool analysisOfCrackPropagation_; ////REVER
+
+    bool plotSIFs_; ////REVER
+
+    bool viewNewMesh_; ////REVER
+
+    bool exportUndeformedMesh_; ////REVER
+
+    bool localOverlapping_;
+
+    bool quarterPointElement_;
 };

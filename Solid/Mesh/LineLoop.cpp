@@ -19,10 +19,10 @@ std::string LineLoop::getName()
     return name_;
 }
 
-// Line *LineLoop::getLine(const int &index)
-// {
-//     return lines_[index];
-// }
+Line *LineLoop::getLine(const int &index)
+{
+    return lines_[index];
+}
 
 std::vector<Line *> LineLoop::getLines()
 {

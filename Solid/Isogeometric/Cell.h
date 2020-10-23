@@ -77,7 +77,7 @@ public:
 
     std::vector<ControlPoint *> getControlPointsOnSide(const int &side);
 
-    void computeDistanceFromFEBoundary(const int &pointsQuadrature, std::vector<BoundaryElement *> boundaryFE);
+    //void computeDistanceFromFEBoundary(const int &pointsQuadrature, std::vector<BoundaryElement *> boundaryFE);
 
     void setDistanceFromFEBoundary(const std::vector<double> &distance);
 

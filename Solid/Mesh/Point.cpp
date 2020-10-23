@@ -3,17 +3,15 @@
 Point::Point() {}
 
 Point::Point(const std::string &name,
-			 const std::vector<double> &coordinates,
+			 const bounded_vector<double, 2> &coordinates,
 			 const double &lcar,
 			 const bool &discretization)
 {
 	name_ = name;
-	coordinates_.reserve(2);
 	coordinates_ = coordinates;
 	lcar_ = lcar;
 	discretization_ = discretization;
 }
-
 Point::~Point() {}
 
 std::string Point::getName()
@@ -50,13 +48,30 @@ Node *Point::getPointNode()
 
 bounded_vector<double, 2> Point::getCoordinates()
 {
-	bounded_vector<double, 2> coord;
-	coord(0) = coordinates_[0];
-	coord(1) = coordinates_[1];
-	return coord;
+	return coordinates_;
 }
 
 double Point::getlcar()
 {
 	return lcar_;
+}
+
+void Point::setlcar(const double &newlcar)
+{
+	lcar_ = newlcar;
+}
+
+// void Point::setCrackPoint()
+// {
+// 	crackPoint_ = true;
+// }
+
+// bool Point::getCrackPoint()
+// {
+// 	return crackPoint_;
+// }
+
+void Point::setCoordinates(const bounded_vector<double, 2> &newCoordinates)
+{
+	coordinates_ = newCoordinates;
 }

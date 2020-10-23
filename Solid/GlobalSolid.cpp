@@ -6,6 +6,14 @@ GlobalSolid::GlobalSolid()
     getCurrentDir(buff, FILENAME_MAX);
     std::string current_working_dir(buff);
     current_working_dir_ = current_working_dir;
+    overlappingAnalysis_ = false;
+    plotHammerPointsInBlendingZone_ = false;
+    analysisOfCrackPropagation_ = false;
+    plotSIFs_ = false;
+    viewNewMesh_ = false;
+    exportUndeformedMesh_ = false;
+    localOverlapping_ = false;
+    quarterPointElement_ = false;
 }
 
 GlobalSolid::~GlobalSolid() {}
@@ -711,8 +719,6 @@ void GlobalSolid::dataFromGmsh(const std::string &inputGmesh, const std::string 
     std::unordered_map<std::string, PlaneSurface *> planeSurfaces = geometry->getPlaneSurfaces();
 
     int cont = 0;
-    nlines_ = 0;
-    ncrackes_ = 0;
     for (std::unordered_map<int, std::string>::const_iterator entities = physicalEntities.begin(); entities != physicalEntities.end(); entities++)
     {
         std::string name = entities->second;
@@ -725,14 +731,12 @@ void GlobalSolid::dataFromGmsh(const std::string &inputGmesh, const std::string 
         {
             std::vector<BoundaryElement *> aux;
             finiteElementBoundary_.insert(std::unordered_map<std::string, std::vector<BoundaryElement *>>::value_type(name, aux));
-            nlines_++;
         }
         else if (name[0] == 'c') //crack
         {
             std::vector<BoundaryElement *> aux;
             finiteElementBoundary_.insert(std::unordered_map<std::string, std::vector<BoundaryElement *>>::value_type(name + "0", aux));
             finiteElementBoundary_.insert(std::unordered_map<std::string, std::vector<BoundaryElement *>>::value_type(name + "1", aux));
-            ncrackes_++;
         }
     }
 
@@ -811,13 +815,14 @@ void GlobalSolid::dataFromGmsh(const std::string &inputGmesh, const std::string 
             if (finiteElementBoundary_[name + "0"].size() == 0 or auxn == 0)
             {
                 finiteElementBoundary_[name + "0"].push_back(bfe);
+                auxn == 0;
             }
             else
             {
                 finiteElementBoundary_[name + "1"].push_back(bfe);
             }
         }
-        else if (name[0] == 'p' and ielem < geometry->getNumberOfPoints())
+        else if (name[0] == 'p' and geometry->getPoints().count(name) >= 1)
         {
             feMesh >> auxconec;
             geometry->getPoint(name)->addNodeToPoint(nodes_[auxconec - 1]);
@@ -848,44 +853,6 @@ void GlobalSolid::dataFromGmsh(const std::string &inputGmesh, const std::string 
             elementsSideJintegral_.push_back(teste);
         }
     }
-
-    // Node *lastnode = initialGeometry_->getCrackes()["c0"]->getLastPoint()->getPointNode();
-    // Node *initialnode = initialGeometry_->getCrackes()["c0"]->getFirstPoint()->getPointNode();
-
-    // for (Element *el : elements_)
-    // {
-    //     std::vector<Node *> conection = el->getConnection();
-    //     bounded_vector<double, 2> coord0, coord1, coord2;
-    //     coord0 = conection[0]->getInitialCoordinate();
-    //     coord1 = conection[1]->getInitialCoordinate();
-    //     coord2 = conection[2]->getInitialCoordinate();
-
-    //     if (conection[0] == lastnode or conection[0] == initialnode)
-    //     {
-    //         bounded_vector<double, 2> coord3, coord5;
-    //         coord3 = 0.25 * (3.0 * coord0 + coord1);
-    //         coord5 = 0.25 * (3.0 * coord0 + coord2);
-    //         conection[3]->setInitialCoordinate(coord3);
-    //         conection[5]->setInitialCoordinate(coord5);
-    //     }
-    //     else if (conection[1] == lastnode or conection[1] == initialnode)
-    //     {
-
-    //         bounded_vector<double, 2> coord3, coord4;
-    //         coord3 = 0.25 * (coord0 + 3.0 * coord1);
-    //         coord4 = 0.25 * (3.0 * coord1 + coord2);
-    //         conection[3]->setInitialCoordinate(coord3);
-    //         conection[4]->setInitialCoordinate(coord4);
-    //     }
-    //     else if (conection[2] == lastnode or conection[1] == initialnode)
-    //     {
-    //         bounded_vector<double, 2> coord5, coord4;
-    //         coord5 = 0.25 * (coord0 + 3.0 * coord2);
-    //         coord4 = 0.25 * (coord1 + 3.0 * coord2);
-    //         conection[5]->setInitialCoordinate(coord5);
-    //         conection[4]->setInitialCoordinate(coord4);
-    //     }
-    // }
 
     //Closing the .msh file
     feMesh.close();
@@ -1101,347 +1068,449 @@ int GlobalSolid::solveStaticProblem()
     MPI_Comm_rank(PETSC_COMM_WORLD, &rank);
     MPI_Comm_size(PETSC_COMM_WORLD, &size);
 
-    //std::stringstream text1;
-    //double force;
-    //text1 << "forceInternal" << rank << ".txt";
-    //std::ofstream file1(text1.str());
-
-    computeDistanceFromFEBoundary();
-
-    if (blendingBoundary_.size() > 0)
+    std::stringstream fileName;
+    if (rank == 0 and plotSIFs_ == true)
     {
-        incidenceLocalxGlobal();
-        checkInactivesCPandNode();
-        shareDataBetweenRanks();
-        exportToParaviewHammerPoints();
+        fileName << "SIFs"
+                 << ".txt";
     }
+    std::ofstream sifFile(fileName.str());
 
     if (rank == 0 and cells_.size() > 0)
     {
-        exportToParaviewISO(0);
+        if (analysisOfCrackPropagation_ == true)
+        {
+            exportToParaviewISO(std::to_string(0) + "_" + std::to_string(0));
+        }
+        else
+        {
+            exportToParaviewISO(std::to_string(0));
+        }
     }
     else if (rank == 1 and elements_.size() > 0)
     {
-        exportToParaviewFEM(0);
+        if (analysisOfCrackPropagation_ == true)
+        {
+            exportToParaviewFEM(std::to_string(0) + "_" + std::to_string(0));
+        }
+        else
+        {
+            exportToParaviewFEM(std::to_string(0));
+        }
     }
 
-    double initialNorm = 0.0;
-    for (ControlPoint *node : controlPoints_)
+    if (overlappingAnalysis_ == true)
     {
-        double x1 = node->getInitialCoordinate()(0);
-        double x2 = node->getInitialCoordinate()(1);
-        initialNorm += x1 * x1 + x2 * x2;
-    }
-    for (Node *node : nodes_)
-    {
-        double x1 = node->getInitialCoordinate()(0);
-        double x2 = node->getInitialCoordinate()(1);
-        initialNorm += x1 * x1 + x2 * x2;
+        if (localOverlapping_ == true)
+        {
+            setBlendingZoneLines();
+        }
+        computeDistanceFromFEBoundary();
+        incidenceLocalxGlobal();
+        checkInactivesCPandNode();
+        shareDataBetweenRanks();
+
+        if (plotHammerPointsInBlendingZone_ == true)
+        {
+            exportToParaviewHammerPoints();
+        }
     }
 
-    int ndir = dirichletConditions_.size() + dirichletConditionsFE_.size() + 2 * inactiveCPandNode_.size();
-    PetscMalloc1(ndir, &dof);
-    int idir = 0;
-    for (DirichletCondition *dir : dirichletConditions_)
-    {
-        int indexNode = dir->getControlPoint()->getIndex();
-        int direction = dir->getDirection();
-        dof[idir++] = (2 * indexNode + direction);
-    }
-    for (DirichletConditionFE *dir : dirichletConditionsFE_)
-    {
-        int indexNode = dir->getNode()->getIndex();
-        int direction = dir->getDirection();
-        dof[idir++] = (2 * indexNode + direction);
-    }
-    for (int index : inactiveCPandNode_)
-    {
-        dof[idir++] = 2 * index;
-        dof[idir++] = 2 * index + 1;
-    }
+    double length = 0.0;
+    int auxprop = 0;
 
     for (int loadStep = 1; loadStep <= numberOfSteps_; loadStep++)
     {
         boost::posix_time::ptime t1 =
             boost::posix_time::microsec_clock::local_time();
 
-        if (rank == 0)
+        if (rank == 0 and analysisOfCrackPropagation_ == false)
         {
             std::cout << "------------------------- LOAD STEP = "
                       << loadStep << " -------------------------\n";
         }
-        //double norm = 100.0;
-        for (int iteration = 0; iteration < maximumOfIteration_; iteration++) //definir o máximo de interações por passo de carga
+        int propagation = 0;
+        bool testPropagation = true;
+
+        while (testPropagation == true)
         {
-            //Create PETSc sparse parallel matrix
-            ierr = MatCreateAIJ(PETSC_COMM_WORLD, PETSC_DECIDE, PETSC_DECIDE,
-                                2 * cpnumber_, 2 * cpnumber_,
-                                100000, NULL, 300000, NULL, &A);
-            CHKERRQ(ierr);
-
-            ierr = MatGetOwnershipRange(A, &Istart, &Iend);
-            CHKERRQ(ierr);
-
-            //Create PETSc vectors
-            ierr = VecCreate(PETSC_COMM_WORLD, &b);
-            CHKERRQ(ierr);
-            ierr = VecSetSizes(b, PETSC_DECIDE, 2 * cpnumber_);
-            CHKERRQ(ierr);
-            ierr = VecSetFromOptions(b);
-            CHKERRQ(ierr);
-            ierr = VecDuplicate(b, &x);
-            CHKERRQ(ierr);
-            ierr = VecDuplicate(b, &All);
-            CHKERRQ(ierr);
-
-            if (rank == 0)
+            if (rank == 0 and analysisOfCrackPropagation_ == true)
             {
-                for (NeumannCondition *con : neumannConditions_)
-                {
-                    int ind = con->getControlPoint()->getIndex();
-                    int dir = con->getDirection();
-                    double val1 = con->getValue() * (1.0 * loadStep / (1.0 * numberOfSteps_));
-                    int dof = 2 * ind + dir;
-                    ierr = VecSetValues(b, 1, &dof, &val1, ADD_VALUES);
-                }
-                for (NeumannConditionFE *con : neumannConditionsFE_)
-                {
-                    int ind = con->getNode()->getIndex();
-                    int dir = con->getDirection();
-                    double val1 = con->getValue() * (1.0 * loadStep / (1.0 * numberOfSteps_));
-                    int dof = 2 * ind + dir;
-                    ierr = VecSetValues(b, 1, &dof, &val1, ADD_VALUES);
-                }
+                std::cout << "------------ LOAD STEP = "
+                          << loadStep << " ------ PROPAGATION = " << propagation << " ------------\n";
             }
+            //checkInactivesCPandNode();
 
-            if (iteration == 0)
+            double initialNorm = 0.0;
+            for (ControlPoint *node : controlPoints_)
             {
-                for (DirichletCondition *con : dirichletConditions_)
-                {
-                    ControlPoint *cp = con->getControlPoint();
-                    int dir = con->getDirection();
-                    double val1 = (con->getValue()) / (1.0 * numberOfSteps_);
-
-                    cp->incrementCurrentCoordinate(dir, val1);
-                }
-                for (DirichletConditionFE *con : dirichletConditionsFE_)
-                {
-                    Node *no = con->getNode();
-                    int dir = con->getDirection();
-                    double val1 = (con->getValue()) / (1.0 * numberOfSteps_);
-
-                    no->incrementCurrentCoordinate(dir, val1);
-                }
-            }
-
-            for (Cell *el : cells_part)
-            {
-                std::pair<vector<double>, matrix<double>> elementMatrices;
-                elementMatrices = el->cellContributions(planeState_, "STATIC", loadStep, numberOfSteps_, 1.0, 0.25, 0.5, quadrature_);
-                int num = el->getControlPoints().size();
-
-                for (size_t i = 0; i < num; i++)
-                {
-                    int dof = 2 * el->getControlPoint(i)->getIndex();
-                    ierr = VecSetValues(b, 1, &dof, &elementMatrices.first(2 * i), ADD_VALUES);
-
-                    dof = 2 * el->getControlPoint(i)->getIndex() + 1;
-                    ierr = VecSetValues(b, 1, &dof, &elementMatrices.first(2 * i + 1), ADD_VALUES);
-
-                    for (size_t j = 0; j < num; j++)
-                    {
-                        int dof1 = 2 * el->getControlPoint(i)->getIndex();
-                        int dof2 = 2 * el->getControlPoint(j)->getIndex();
-                        ierr = MatSetValues(A, 1, &dof1, 1, &dof2, &elementMatrices.second(2 * i, 2 * j), ADD_VALUES);
-
-                        dof1 = 2 * el->getControlPoint(i)->getIndex() + 1;
-                        dof2 = 2 * el->getControlPoint(j)->getIndex();
-                        ierr = MatSetValues(A, 1, &dof1, 1, &dof2, &elementMatrices.second(2 * i + 1, 2 * j), ADD_VALUES);
-
-                        dof1 = 2 * el->getControlPoint(i)->getIndex();
-                        dof2 = 2 * el->getControlPoint(j)->getIndex() + 1;
-                        ierr = MatSetValues(A, 1, &dof1, 1, &dof2, &elementMatrices.second(2 * i, 2 * j + 1), ADD_VALUES);
-
-                        dof1 = 2 * el->getControlPoint(i)->getIndex() + 1;
-                        dof2 = 2 * el->getControlPoint(j)->getIndex() + 1;
-                        ierr = MatSetValues(A, 1, &dof1, 1, &dof2, &elementMatrices.second(2 * i + 1, 2 * j + 1), ADD_VALUES);
-                    }
-                }
-            }
-
-            for (Element *el : elements_part)
-            {
-                std::pair<vector<double>, matrix<double>> elementMatrices;
-                elementMatrices = el->elementContributions(planeState_, "STATIC", loadStep, numberOfSteps_, 1.0, 0.25, 0.5, hammerPoints_, hammerPointsBlendZone_);
-                std::vector<int> freedom = el->getFreedomDegree();
-                int num = freedom.size();
-
-                for (size_t i = 0; i < num; i++)
-                {
-                    int dof = 2 * freedom[i];
-                    ierr = VecSetValues(b, 1, &dof, &elementMatrices.first(2 * i), ADD_VALUES);
-
-                    dof = 2 * freedom[i] + 1;
-                    ierr = VecSetValues(b, 1, &dof, &elementMatrices.first(2 * i + 1), ADD_VALUES);
-
-                    for (size_t j = 0; j < num; j++)
-                    {
-                        int dof1 = 2 * freedom[i];
-                        int dof2 = 2 * freedom[j];
-                        ierr = MatSetValues(A, 1, &dof1, 1, &dof2, &elementMatrices.second(2 * i, 2 * j), ADD_VALUES);
-
-                        dof1 = 2 * freedom[i] + 1;
-                        dof2 = 2 * freedom[j];
-                        ierr = MatSetValues(A, 1, &dof1, 1, &dof2, &elementMatrices.second(2 * i + 1, 2 * j), ADD_VALUES);
-
-                        dof1 = 2 * freedom[i];
-                        dof2 = 2 * freedom[j] + 1;
-                        ierr = MatSetValues(A, 1, &dof1, 1, &dof2, &elementMatrices.second(2 * i, 2 * j + 1), ADD_VALUES);
-
-                        dof1 = 2 * freedom[i] + 1;
-                        dof2 = 2 * freedom[j] + 1;
-                        ierr = MatSetValues(A, 1, &dof1, 1, &dof2, &elementMatrices.second(2 * i + 1, 2 * j + 1), ADD_VALUES);
-                    }
-                }
-            }
-
-            //MPI_Barrier(PETSC_COMM_WORLD);
-
-            //Assemble matrices and vectors
-            ierr = MatAssemblyBegin(A, MAT_FINAL_ASSEMBLY);
-            CHKERRQ(ierr);
-            ierr = MatAssemblyEnd(A, MAT_FINAL_ASSEMBLY);
-            CHKERRQ(ierr);
-            ierr = VecAssemblyBegin(b);
-            CHKERRQ(ierr);
-            ierr = VecAssemblyEnd(b);
-            CHKERRQ(ierr);
-
-            // MatView(A, PETSC_VIEWER_STDOUT_WORLD);
-            // CHKERRQ(ierr);
-
-            // VecView(b, PETSC_VIEWER_STDOUT_WORLD);
-            // CHKERRQ(ierr);
-
-            //Zerando linhas e colunas
-
-            MatZeroRowsColumns(A, ndir, dof, 1.0, x, b);
-
-            //MatView(A, PETSC_VIEWER_STDOUT_WORLD);
-            // CHKERRQ(ierr);
-
-            //Create KSP context to solve the linear system
-            ierr = KSPCreate(PETSC_COMM_WORLD, &ksp);
-            CHKERRQ(ierr);
-            ierr = KSPSetOperators(ksp, A, A);
-            CHKERRQ(ierr);
-
-            //Solve using MUMPS
-#if defined(PETSC_HAVE_MUMPS)
-            ierr = KSPSetType(ksp, KSPPREONLY);
-            ierr = KSPGetPC(ksp, &pc);
-            ierr = PCSetType(pc, PCLU);
-#endif
-            ierr = KSPSetFromOptions(ksp);
-            CHKERRQ(ierr);
-            ierr = KSPSetUp(ksp);
-
-            //Solve linear system
-            ierr = KSPSolve(ksp, b, x);
-            CHKERRQ(ierr);
-            ierr = KSPGetTotalIterations(ksp, &iterations);
-
-            //Gathers the solution vector to the master process
-            ierr = VecScatterCreateToAll(x, &ctx, &All);
-            CHKERRQ(ierr);
-            ierr = VecScatterBegin(ctx, x, All, INSERT_VALUES, SCATTER_FORWARD);
-            CHKERRQ(ierr);
-            ierr = VecScatterEnd(ctx, x, All, INSERT_VALUES, SCATTER_FORWARD);
-            CHKERRQ(ierr);
-            ierr = VecScatterDestroy(&ctx);
-            CHKERRQ(ierr);
-
-            //Updates nodal variables
-            double norm = 0.0;
-            Ione = 1;
-
-            for (ControlPoint *cp : controlPoints_)
-            {
-                int newIndex = cp->getIndex();
-                Idof = 2 * newIndex;
-                ierr = VecGetValues(All, Ione, &Idof, &val);
-                CHKERRQ(ierr);
-                norm += val * val;
-                cp->incrementCurrentCoordinate(0, val);
-
-                Idof = 2 * newIndex + 1;
-                ierr = VecGetValues(All, Ione, &Idof, &val);
-                CHKERRQ(ierr);
-                norm += val * val;
-                cp->incrementCurrentCoordinate(1, val);
+                double x1 = node->getInitialCoordinate()(0);
+                double x2 = node->getInitialCoordinate()(1);
+                initialNorm += x1 * x1 + x2 * x2;
             }
             for (Node *node : nodes_)
             {
-                int newIndex = node->getIndex();
-                Idof = 2 * newIndex;
-                ierr = VecGetValues(All, Ione, &Idof, &val);
+                double x1 = node->getInitialCoordinate()(0);
+                double x2 = node->getInitialCoordinate()(1);
+                initialNorm += x1 * x1 + x2 * x2;
+            }
+
+            int ndir = dirichletConditions_.size() + dirichletConditionsFE_.size() + 2 * inactiveCPandNode_.size();
+            PetscMalloc1(ndir, &dof);
+            int idir = 0;
+            for (DirichletCondition *dir : dirichletConditions_)
+            {
+                int indexNode = dir->getControlPoint()->getIndex();
+                int direction = dir->getDirection();
+                dof[idir++] = (2 * indexNode + direction);
+            }
+            for (DirichletConditionFE *dir : dirichletConditionsFE_)
+            {
+                int indexNode = dir->getNode()->getIndex();
+                int direction = dir->getDirection();
+                dof[idir++] = (2 * indexNode + direction);
+                // std::cout<<"INDEX NODE "<<indexNode<<"; DIRECTION: "<<direction<<std::endl;
+            }
+            for (int index : inactiveCPandNode_)
+            {
+                dof[idir++] = 2 * index;
+                dof[idir++] = 2 * index + 1;
+            }
+
+            for (int iteration = 0; iteration < maximumOfIteration_; iteration++) //definir o máximo de interações por passo de carga
+            {
+                MPI_Barrier(PETSC_COMM_WORLD);
+
+                //Create PETSc sparse parallel matrix
+                ierr = MatCreateAIJ(PETSC_COMM_WORLD, PETSC_DECIDE, PETSC_DECIDE,
+                                    2 * cpnumber_, 2 * cpnumber_,
+                                    100000, NULL, 300000, NULL, &A);
                 CHKERRQ(ierr);
-                norm += val * val;
-                node->incrementCurrentCoordinate(0, val);
 
-                Idof = 2 * newIndex + 1;
-                ierr = VecGetValues(All, Ione, &Idof, &val);
+                ierr = MatGetOwnershipRange(A, &Istart, &Iend);
                 CHKERRQ(ierr);
-                norm += val * val;
-                node->incrementCurrentCoordinate(1, val);
+
+                //Create PETSc vectors
+                ierr = VecCreate(PETSC_COMM_WORLD, &b);
+                CHKERRQ(ierr);
+                ierr = VecSetSizes(b, PETSC_DECIDE, 2 * cpnumber_);
+                CHKERRQ(ierr);
+                ierr = VecSetFromOptions(b);
+                CHKERRQ(ierr);
+                ierr = VecDuplicate(b, &x);
+                CHKERRQ(ierr);
+                ierr = VecDuplicate(b, &All);
+                CHKERRQ(ierr);
+
+                if (rank == 0)
+                {
+                    for (NeumannCondition *con : neumannConditions_)
+                    {
+                        int ind = con->getControlPoint()->getIndex();
+                        int dir = con->getDirection();
+                        double val1 = con->getValue() * (1.0 * loadStep / (1.0 * numberOfSteps_));
+                        int dof = 2 * ind + dir;
+                        ierr = VecSetValues(b, 1, &dof, &val1, ADD_VALUES);
+                    }
+                    for (NeumannConditionFE *con : neumannConditionsFE_)
+                    {
+                        int ind = con->getNode()->getIndex();
+                        int dir = con->getDirection();
+                        double val1 = con->getValue() * (1.0 * loadStep / (1.0 * numberOfSteps_));
+                        int dof = 2 * ind + dir;
+                        ierr = VecSetValues(b, 1, &dof, &val1, ADD_VALUES);
+                    }
+                }
+
+                if (iteration == 0)
+                {
+                    for (DirichletCondition *con : dirichletConditions_)
+                    {
+                        ControlPoint *cp = con->getControlPoint();
+                        int dir = con->getDirection();
+                        double val1 = (con->getValue()) / (1.0 * numberOfSteps_);
+
+                        cp->incrementCurrentCoordinate(dir, val1);
+                    }
+                    for (DirichletConditionFE *con : dirichletConditionsFE_)
+                    {
+                        Node *no = con->getNode();
+                        int dir = con->getDirection();
+                        double val1 = (con->getValue()) / (1.0 * numberOfSteps_);
+
+                        no->incrementCurrentCoordinate(dir, val1);
+                    }
+                }
+
+                for (Cell *el : cells_part)
+                {
+                    std::pair<vector<double>, matrix<double>> elementMatrices;
+                    elementMatrices = el->cellContributions(planeState_, "STATIC", loadStep, numberOfSteps_, 1.0, 0.25, 0.5, quadrature_);
+
+                    int num = el->getControlPoints().size();
+
+                    for (size_t i = 0; i < num; i++)
+                    {
+                        int dof = 2 * el->getControlPoint(i)->getIndex();
+                        ierr = VecSetValues(b, 1, &dof, &elementMatrices.first(2 * i), ADD_VALUES);
+
+                        dof = 2 * el->getControlPoint(i)->getIndex() + 1;
+                        ierr = VecSetValues(b, 1, &dof, &elementMatrices.first(2 * i + 1), ADD_VALUES);
+
+                        for (size_t j = 0; j < num; j++)
+                        {
+                            int dof1 = 2 * el->getControlPoint(i)->getIndex();
+                            int dof2 = 2 * el->getControlPoint(j)->getIndex();
+                            ierr = MatSetValues(A, 1, &dof1, 1, &dof2, &elementMatrices.second(2 * i, 2 * j), ADD_VALUES);
+
+                            dof1 = 2 * el->getControlPoint(i)->getIndex() + 1;
+                            dof2 = 2 * el->getControlPoint(j)->getIndex();
+                            ierr = MatSetValues(A, 1, &dof1, 1, &dof2, &elementMatrices.second(2 * i + 1, 2 * j), ADD_VALUES);
+
+                            dof1 = 2 * el->getControlPoint(i)->getIndex();
+                            dof2 = 2 * el->getControlPoint(j)->getIndex() + 1;
+                            ierr = MatSetValues(A, 1, &dof1, 1, &dof2, &elementMatrices.second(2 * i, 2 * j + 1), ADD_VALUES);
+
+                            dof1 = 2 * el->getControlPoint(i)->getIndex() + 1;
+                            dof2 = 2 * el->getControlPoint(j)->getIndex() + 1;
+                            ierr = MatSetValues(A, 1, &dof1, 1, &dof2, &elementMatrices.second(2 * i + 1, 2 * j + 1), ADD_VALUES);
+                        }
+                    }
+                }
+
+                for (Element *el : elements_part)
+                {
+                    std::pair<vector<double>, matrix<double>> elementMatrices;
+                    elementMatrices = el->elementContributions(planeState_, "STATIC", loadStep, numberOfSteps_, 1.0, 0.25, 0.5, hammerPoints_, hammerPointsBlendZone_);
+                    std::vector<int> freedom = el->getFreedomDegree();
+                    int num = freedom.size();
+
+                    for (size_t i = 0; i < num; i++)
+                    {
+                        int dof = 2 * freedom[i];
+                        ierr = VecSetValues(b, 1, &dof, &elementMatrices.first(2 * i), ADD_VALUES);
+
+                        dof = 2 * freedom[i] + 1;
+                        ierr = VecSetValues(b, 1, &dof, &elementMatrices.first(2 * i + 1), ADD_VALUES);
+
+                        for (size_t j = 0; j < num; j++)
+                        {
+                            int dof1 = 2 * freedom[i];
+                            int dof2 = 2 * freedom[j];
+                            ierr = MatSetValues(A, 1, &dof1, 1, &dof2, &elementMatrices.second(2 * i, 2 * j), ADD_VALUES);
+
+                            dof1 = 2 * freedom[i] + 1;
+                            dof2 = 2 * freedom[j];
+                            ierr = MatSetValues(A, 1, &dof1, 1, &dof2, &elementMatrices.second(2 * i + 1, 2 * j), ADD_VALUES);
+
+                            dof1 = 2 * freedom[i];
+                            dof2 = 2 * freedom[j] + 1;
+                            ierr = MatSetValues(A, 1, &dof1, 1, &dof2, &elementMatrices.second(2 * i, 2 * j + 1), ADD_VALUES);
+
+                            dof1 = 2 * freedom[i] + 1;
+                            dof2 = 2 * freedom[j] + 1;
+                            ierr = MatSetValues(A, 1, &dof1, 1, &dof2, &elementMatrices.second(2 * i + 1, 2 * j + 1), ADD_VALUES);
+                        }
+                    }
+                }
+
+                //MPI_Barrier(PETSC_COMM_WORLD);
+
+                //Assemble matrices and vectors
+                ierr = MatAssemblyBegin(A, MAT_FINAL_ASSEMBLY);
+                CHKERRQ(ierr);
+                ierr = MatAssemblyEnd(A, MAT_FINAL_ASSEMBLY);
+                CHKERRQ(ierr);
+                ierr = VecAssemblyBegin(b);
+                CHKERRQ(ierr);
+                ierr = VecAssemblyEnd(b);
+                CHKERRQ(ierr);
+
+                // MatView(A, PETSC_VIEWER_STDOUT_WORLD);
+                // CHKERRQ(ierr);
+
+                // VecView(b, PETSC_VIEWER_STDOUT_WORLD);
+                // CHKERRQ(ierr);
+
+                //Zerando linhas e colunas
+
+                MatZeroRowsColumns(A, ndir, dof, 1.0, x, b);
+
+                //MatView(A, PETSC_VIEWER_STDOUT_WORLD);
+                // CHKERRQ(ierr);
+
+                //Create KSP context to solve the linear system
+                ierr = KSPCreate(PETSC_COMM_WORLD, &ksp);
+                CHKERRQ(ierr);
+                ierr = KSPSetOperators(ksp, A, A);
+                CHKERRQ(ierr);
+
+                //Solve using MUMPS
+#if defined(PETSC_HAVE_MUMPS)
+                ierr = KSPSetType(ksp, KSPPREONLY);
+                ierr = KSPGetPC(ksp, &pc);
+                ierr = PCSetType(pc, PCLU);
+#endif
+                ierr = KSPSetFromOptions(ksp);
+                CHKERRQ(ierr);
+                ierr = KSPSetUp(ksp);
+
+                //Solve linear system
+                ierr = KSPSolve(ksp, b, x);
+                CHKERRQ(ierr);
+                ierr = KSPGetTotalIterations(ksp, &iterations);
+
+                //Gathers the solution vector to the master process
+                ierr = VecScatterCreateToAll(x, &ctx, &All);
+                CHKERRQ(ierr);
+                ierr = VecScatterBegin(ctx, x, All, INSERT_VALUES, SCATTER_FORWARD);
+                CHKERRQ(ierr);
+                ierr = VecScatterEnd(ctx, x, All, INSERT_VALUES, SCATTER_FORWARD);
+                CHKERRQ(ierr);
+                ierr = VecScatterDestroy(&ctx);
+                CHKERRQ(ierr);
+
+                //Updates nodal variables
+                double norm = 0.0;
+                Ione = 1;
+
+                for (ControlPoint *cp : controlPoints_)
+                {
+                    int newIndex = cp->getIndex();
+                    Idof = 2 * newIndex;
+                    ierr = VecGetValues(All, Ione, &Idof, &val);
+                    CHKERRQ(ierr);
+                    norm += val * val;
+                    cp->incrementCurrentCoordinate(0, val);
+
+                    Idof = 2 * newIndex + 1;
+                    ierr = VecGetValues(All, Ione, &Idof, &val);
+                    CHKERRQ(ierr);
+                    norm += val * val;
+                    cp->incrementCurrentCoordinate(1, val);
+                }
+                for (Node *node : nodes_)
+                {
+                    int newIndex = node->getIndex();
+                    Idof = 2 * newIndex;
+                    ierr = VecGetValues(All, Ione, &Idof, &val);
+                    CHKERRQ(ierr);
+                    norm += val * val;
+                    node->incrementCurrentCoordinate(0, val);
+
+                    Idof = 2 * newIndex + 1;
+                    ierr = VecGetValues(All, Ione, &Idof, &val);
+                    CHKERRQ(ierr);
+                    norm += val * val;
+                    node->incrementCurrentCoordinate(1, val);
+                }
+
+                for (InactiveNode *no : inactiveNode_)
+                {
+                    no->interpolateGlobalCoordinate();
+                }
+                for (InactiveCP *cp : inactiveCP_)
+                {
+                    cp->interpolateGlobalCoordinate();
+                }
+
+                boost::posix_time::ptime t2 =
+                    boost::posix_time::microsec_clock::local_time();
+
+                if (rank == 0)
+                {
+                    boost::posix_time::time_duration diff = t2 - t1;
+                    std::cout << "Iteration = " << iteration
+                              << " (" << loadStep << ")"
+                              << "   x Norm = " << std::scientific << sqrt(norm / initialNorm)
+                              << "  Time (s) = " << std::fixed
+                              << diff.total_milliseconds() / 1000. << std::endl;
+                }
+
+                ierr = KSPDestroy(&ksp);
+                CHKERRQ(ierr);
+                ierr = VecDestroy(&b);
+                CHKERRQ(ierr);
+                ierr = VecDestroy(&x);
+                CHKERRQ(ierr);
+                ierr = VecDestroy(&All);
+                CHKERRQ(ierr);
+                ierr = MatDestroy(&A);
+                CHKERRQ(ierr);
+
+                if (sqrt(norm / initialNorm) <= tolerance_)
+                {
+                    break;
+                }
             }
 
-            for (InactiveNode *no : inactiveNode_)
+            if (analysisOfCrackPropagation_ == true)
             {
-                no->interpolateGlobalCoordinate();
+                if (rank == 0 and cells_.size() > 0)
+                {
+                    exportToParaviewISO(std::to_string(loadStep) + "_" + std::to_string(propagation));
+                   // exportToParaviewAuxiliarMesh(std::to_string(loadStep) + "_" + std::to_string(propagation));
+                }
+                else if (rank == 1 and elements_.size() > 0)
+                {
+                    stressCalculateFEM();
+                    exportToParaviewFEM(std::to_string(loadStep) + "_" + std::to_string(propagation));
+                }
+
+                if (rank == 0 and plotSIFs_ == true)
+                {
+                    bounded_vector<double, 2> sifs = getSIFs();
+                    sifFile << length << " " << sifs(0) << " " << sifs(1) << std::endl;
+                    length += crackLengthPropagation_;
+                }
+
+                verifyCrackPropagation(testPropagation);
+
+                if (testPropagation == true)
+                {
+                    if (rank == 1 and exportUndeformedMesh_ == true)
+                    {
+                        exportToParaviewFEM(std::to_string(0) + "_" + std::to_string(++auxprop));
+                    }
+
+                    for (ControlPoint *cp : controlPoints_)
+                    {
+                        cp->setCurrentCoordinate(cp->getInitialCoordinate());
+                    }
+
+                    if (overlappingAnalysis_ == true)
+                    {
+                        if (localOverlapping_ == true)
+                        {
+                            setBlendingZoneLines();
+                        }
+                        computeDistanceFromFEBoundary();
+                        incidenceLocalxGlobal();
+                        checkInactivesCPandNode();
+                        shareDataBetweenRanks();
+
+                        if (plotHammerPointsInBlendingZone_ == true)
+                        {
+                            exportToParaviewHammerPoints();
+                        }
+                    }
+                }
+
+                propagation += 1;
             }
-            for (InactiveCP *cp : inactiveCP_)
+            else
             {
-                cp->interpolateGlobalCoordinate();
+                if (rank == 0 and cells_.size() > 0)
+                {
+                    exportToParaviewISO(std::to_string(loadStep));
+                }
+                else if (rank == 1 and elements_.size() > 0)
+                {
+                    stressCalculateFEM();
+                    exportToParaviewFEM(std::to_string(loadStep));
+                }
+                testPropagation = false;
             }
-
-            boost::posix_time::ptime t2 =
-                boost::posix_time::microsec_clock::local_time();
-
-            if (rank == 0)
-            {
-                boost::posix_time::time_duration diff = t2 - t1;
-                std::cout << "Iteration = " << iteration
-                          << " (" << loadStep << ")"
-                          << "   x Norm = " << std::scientific << sqrt(norm / initialNorm)
-                          << "  Time (s) = " << std::fixed
-                          << diff.total_milliseconds() / 1000. << std::endl;
-            }
-
-            ierr = KSPDestroy(&ksp);
-            CHKERRQ(ierr);
-            ierr = VecDestroy(&b);
-            CHKERRQ(ierr);
-            ierr = VecDestroy(&x);
-            CHKERRQ(ierr);
-            ierr = VecDestroy(&All);
-            CHKERRQ(ierr);
-            ierr = MatDestroy(&A);
-            CHKERRQ(ierr);
-
-            if (sqrt(norm / initialNorm) <= tolerance_)
-            {
-                break;
-            }
-        }
-        if (rank == 0 and cells_.size() > 0)
-        {
-            exportToParaviewISO(loadStep);
-        }
-        else if (rank == 1 and elements_.size() > 0)
-        {
-            stressCalculateFEM();
-            exportToParaviewFEM(loadStep);
         }
     }
     MPI_Barrier(PETSC_COMM_WORLD);
@@ -1456,14 +1525,14 @@ int GlobalSolid::solveStaticProblem()
     return 0;
 }
 
-void GlobalSolid::exportToParaviewISO(const int &loadstep)
+void GlobalSolid::exportToParaviewISO(const std::string &nameF)
 {
     matrix<double> qxsi2 = coordinatesForInterpolation(orderParaview_);
 
     int auxxx = (orderParaview_ + 1) * (orderParaview_ + 1);
     int nIsoPoints = auxxx * cells_.size();
     std::stringstream text;
-    text << "outputISO" << loadstep << ".vtu";
+    text << "outputISO" << nameF << ".vtu";
     std::ofstream file(text.str());
 
     //header
@@ -1670,10 +1739,10 @@ void GlobalSolid::exportToParaviewISO(const int &loadstep)
          << "\n";
 }
 
-void GlobalSolid::exportToParaviewFEM(const int &num)
+void GlobalSolid::exportToParaviewFEM(const std::string &nameF)
 {
     std::stringstream name;
-    name << "outputFEM" << num << ".vtu";
+    name << "outputFEM" << nameF << ".vtu";
     std::ofstream file(name.str());
 
     //header
@@ -1911,6 +1980,89 @@ void GlobalSolid::exportToParaviewFEM(const int &num)
          << "\n"
          << "</VTKFile>"
          << "\n";
+}
+
+void GlobalSolid::exportToParaviewAuxiliarMesh(const std::string &name)
+{
+    std::vector<std::string> lines;
+    lines.push_back("l0");
+    lines.push_back("l1");
+    lines.push_back("l2");
+
+    std::string gmshCode;
+
+    int point = 0;
+    int numberbound = 0;
+    for (std::string line : lines)
+    {
+        std::vector<BoundaryElement *> boundL = finiteElementBoundary_[line];
+        int aux = 0;
+        for (int i = 0; i < boundL.size(); i++)
+        {
+            if (aux == 0)
+            {
+                bounded_vector<double, 2> coord = boundL[i]->getNode(0)->getCurrentCoordinate();
+                point++;
+                gmshCode += "Point(" + std::to_string(point) + ") = {" + std::to_string(coord(0)) + ", " + std::to_string(coord(1)) + ", 0.05, 1.0};\n//\n";
+
+                point++;
+                gmshCode += "Point(" + std::to_string(point) + ") = {" + std::to_string(coord(0)) + ", " + std::to_string(coord(1)) + ", 0.05, 1.0};\n//\n";
+
+                coord = boundL[i]->getNode(1)->getCurrentCoordinate();
+                point++;
+                gmshCode += "Point(" + std::to_string(point) + ") = {" + std::to_string(coord(0)) + ", " + std::to_string(coord(1)) + ", 0.05, 1.0};\n//\n";
+
+                aux++;
+            }
+            else
+            {
+                bounded_vector<double, 2> coord = boundL[i]->getNode(1)->getCurrentCoordinate();
+                point++;
+                gmshCode += "Point(" + std::to_string(point) + ") = {" + std::to_string(coord(0)) + ", " + std::to_string(coord(1)) + ", 0.05, 1.0};\n//\n";
+
+                if (i == boundL.size() - 1)
+                {
+                    point++;
+                    gmshCode += "Point(" + std::to_string(point) + ") = {" + std::to_string(coord(0)) + ", " + std::to_string(coord(1)) + ", 0.05, 1.0};\n//\n";
+                }
+            }
+            numberbound++;
+        }
+    }
+
+    gmshCode += "BSpline(1) = {";
+    for (int i = 1; i <= point; i++)
+    {
+        gmshCode += std::to_string(i);
+        if (i != point)
+        {
+            gmshCode += ", ";
+        }
+        else
+        {
+            gmshCode += ", 1};\n//\n";
+        }
+    }
+
+    gmshCode += "Line Loop(1) = {1}; \n//\n";
+    gmshCode += "Plane Surface(1) = {1};\n//\n";
+    gmshCode += "Transfinite Line {1} = " + std::to_string(numberbound) + " Using Progression 1;\n//\n";
+    gmshCode += "Mesh.ElementOrder = 1; \n//\n";
+    gmshCode += "Mesh 2; \n//\n";
+    gmshCode += "Save \"outputAUX" + name + ".vtk\";\n//\n";
+
+    std::ofstream file("temp.geo");
+    file << gmshCode;
+    file.close();
+
+    std::string cmd = current_working_dir_ + "/Solid/Mesh/gmsh ";
+    cmd += "temp.geo -";
+    cmd += " -v 0";
+
+    system(cmd.c_str());
+
+    std::string aux = "temp*";
+    system((remove + aux).c_str());
 }
 
 matrix<double> GlobalSolid::coordinatesForInterpolation(const int &orderElemement)
@@ -2960,18 +3112,18 @@ int GlobalSolid::solveDynamicProblem()
 
     std::stringstream text1;
 
-    if (rank == 0)
-    {
-        if (cells_.size() > 0)
-        {
-            exportToParaviewISO(0);
-        }
-        text1 << "DeslocamentoxTempo.txt";
-    }
-    else if (rank == 1 and elements_.size() > 0)
-    {
-        exportToParaviewFEM(0);
-    }
+    // if (rank == 0)
+    // {
+    //     if (cells_.size() > 0)
+    //     {
+    //         exportToParaviewISO(0);
+    //     }
+    //     text1 << "DeslocamentoxTempo.txt";
+    // }
+    // else if (rank == 1 and elements_.size() > 0)
+    // {
+    //     exportToParaviewFEM(0);
+    // }
     exportToParaviewHammerPoints();
     std::ofstream file1(text1.str());
 
@@ -3294,16 +3446,16 @@ int GlobalSolid::solveDynamicProblem()
             }
         }
 
-        if (rank == 0 and cells_.size() > 0)
-        {
-            exportToParaviewISO(timeStep);
-            //file1 << timeStep * deltat_ << " " << controlPoints_[64]->getCurrentCoordinate()[1] - controlPoints_[64]->getInitialCoordinate()[1] << std::endl;
-        }
-        else if (rank == 1 and elements_.size() > 0)
-        {
-            stressCalculateFEM();
-            exportToParaviewFEM(timeStep);
-        }
+        // if (rank == 0 and cells_.size() > 0)
+        // {
+        //     exportToParaviewISO(timeStep);
+        //     //file1 << timeStep * deltat_ << " " << controlPoints_[64]->getCurrentCoordinate()[1] - controlPoints_[64]->getInitialCoordinate()[1] << std::endl;
+        // }
+        // else if (rank == 1 and elements_.size() > 0)
+        // {
+        //     stressCalculateFEM();
+        //     exportToParaviewFEM(timeStep);
+        // }
 
         if (rank == 0)
         {
@@ -3653,7 +3805,7 @@ void GlobalSolid::incidenceLocalxGlobal()
                 coordFE += phi(i) * conec[i]->getCurrentCoordinate();
             }
 
-            if (DAhammer <= blendZoneThickness_) //inside of blend zone
+            if (DAhammer <= blendingZoneThickness_) //inside of blend zone
             {
                 insideBlendZone.push_back(false);
 
@@ -3855,7 +4007,7 @@ void GlobalSolid::computeDistanceFromFEBoundary()
                 no->setDistanceToBoundary(distanceNode);
 
                 bounded_vector<double, 2> coordFE = no->getCurrentCoordinate();
-                if (distanceNode <= blendZoneThickness_)
+                if (distanceNode <= blendingZoneThickness_)
                 {
                     for (Cell *cell : cells_)
                     {
@@ -4299,9 +4451,9 @@ void GlobalSolid::exportToParaviewHammerPoints()
 bounded_vector<double, 2> GlobalSolid::blendFunction(const double &DA)
 {
     bounded_vector<double, 2> blend; //(b, db_dDA)
-    double aux = DA / blendZoneThickness_;
+    double aux = DA / blendingZoneThickness_;
     blend(0) = 2.0 * aux * aux * aux - 3.0 * aux * aux + 1.0;
-    blend(1) = (6.0 / blendZoneThickness_) * aux * aux - (6.0 / blendZoneThickness_) * aux;
+    blend(1) = (6.0 / blendingZoneThickness_) * aux * aux - (6.0 / blendingZoneThickness_) * aux;
 
     return blend;
 }
@@ -4363,10 +4515,6 @@ void GlobalSolid::checkInactivesCPandNode()
         {
             inactiveCP.push_back(cp);
             inactiveCPandNode_.push_back(Idof);
-            // if (rank == 0)
-            // {
-            //     std::cout << "O PONTO DE CONTROLE " << cp->getIndex() << " FOI DESATIVADO." << std::endl;
-            // }
         }
     }
     for (Node *node : nodes_)
@@ -4378,10 +4526,7 @@ void GlobalSolid::checkInactivesCPandNode()
         {
             inactiveNode.push_back(node);
             inactiveCPandNode_.push_back(Idof);
-            // if (rank == 0)
-            // {
-            //     std::cout << "O NÓ " << node->getIndexFE() << " FOI DESATIVADO." << std::endl;
-            // }
+            std::cout << "The node " << node->getIndex() << " was desactived." << std::endl;
         }
     }
 
@@ -4639,112 +4784,103 @@ void GlobalSolid::stressCalculateFEM()
         n->setZeroStressState();
     }
 
-    int order, nnod;
-
-    if (finiteElementType_ == "T3")
-    {
-        order = 1;
-    }
-    else if (finiteElementType_ == "T6")
-    {
-        order = 2;
-    }
-    else if (finiteElementType_ == "T10")
-    {
-        order = 3;
-    }
-    nnod = (order + 1) * (order + 2) / 2.0;
-
-    matrix<double> xsiLocal = coordinatesFEM(order);
-
-    // for (Element *el : elements_)
-    // {
-    //     std::vector<Node *> conec = el->getConnection();
-    //     for (int i = 0; i < nnod; i++)
-    //     {
-    //         bounded_vector<double, 2> qxsi;
-    //         qxsi(0) = xsiLocal(i, 0);
-    //         qxsi(1) = xsiLocal(i, 1);
-
-    //         int cellIndex = conec[i]->getCellIndex();
-
-    //         if (cellIndex == -1)
-    //         {
-    //             conec[i]->setStressState(el->getCauchyStress(qxsi, planeState_));
-    //         }
-    //         else
-    //         {
-    //             Cell *cell = cells_[cellIndex];
-    //             conec[i]->setStressState(el->getCauchyStressBlendZone(qxsi, planeState_, cell, conec[i]->getXsisGlobal(), conec[i]->getValuesOfBlendingFunction()));
-    //         }
-    //     }
-    // }
     for (Element *el : elements_)
     {
-
-        std::vector<Node *> conec = el->getConnection();
-        int nh;
-        if (conec.size() == 6)
+        std::vector<bool> insideBlendZone = el->ipInsideBlendZone();
+        std::vector<Node *> connection = el->getConnection();
+        int nnodes = connection.size();
+        if (insideBlendZone.size() == 0) //o elemento não tem nenhum ponto de hammer na blending zone
         {
-            nh = 7;
-        }
-        else if (conec.size() == 10)
-        {
-            nh = 12;
-        }
-        matrix<double> pointCoord(nh, 3);
+            int nh;
 
-        pointCoord = el->hammerQuadrature(nh);
-
-        matrix<double, column_major> phiMatrix(nnod, nnod, 0.0);
-        matrix<double, column_major> cauchyStress(nnod, 4, 0.0);
-        //matrix<double> cauchyStressNode(nnod, 4, 0.0);
-
-        for (int i = 0; i < nnod; i++)
-        {
-            bounded_vector<double, 4> stress;
-
-            bounded_vector<double, 2> qxsi;
-            qxsi(0) = pointCoord(i, 0);
-            qxsi(1) = pointCoord(i, 1);
-
-            vector<double> phi = el->domainShapeFunction(qxsi(0), qxsi(1));
-
-            for (int j = 0; j < nnod; j++)
+            if (nnodes == 6)
             {
-                phiMatrix(i, j) = phi(j);
+                nh = 7;
+            }
+            else if (nnodes == 10)
+            {
+                nh = 12;
             }
 
-            int cellIndex = conec[i]->getCellIndex();
+            matrix<double> pointCoord(nh, 3);
 
-            if (cellIndex == -1)
+            pointCoord = el->hammerQuadrature(nh);
+
+            matrix<double, column_major> phiMatrix(nnodes, nnodes, 0.0);
+            matrix<double, column_major> cauchyStress(nnodes, 4, 0.0);
+
+            for (int i = 0; i < nnodes; i++)
             {
+                bounded_vector<double, 4> stress;
+
+                bounded_vector<double, 2> qxsi;
+                qxsi(0) = pointCoord(i, 0);
+                qxsi(1) = pointCoord(i, 1);
+
+                vector<double> phi = el->domainShapeFunction(qxsi(0), qxsi(1));
+
+                for (int j = 0; j < nnodes; j++)
+                {
+                    phiMatrix(i, j) = phi(j);
+                }
+
                 stress = el->getCauchyStress(qxsi, planeState_);
+
+                cauchyStress(i, 0) = stress(0);
+                cauchyStress(i, 1) = stress(1);
+                cauchyStress(i, 2) = stress(2);
+                cauchyStress(i, 3) = stress(3);
             }
-            else
+
+            vector<int> c(nnodes, 0);
+
+            boost::numeric::bindings::lapack::gesv(phiMatrix, c, cauchyStress);
+
+            for (int i = 0; i < nnodes; i++)
             {
-                Cell *cell = cells_[cellIndex];
-                stress = el->getCauchyStressBlendZone(qxsi, planeState_, cell, conec[i]->getXsisGlobal(), conec[i]->getValuesOfBlendingFunction());
+                bounded_vector<double, 4> stress;
+                stress(0) = cauchyStress(i, 0);
+                stress(1) = cauchyStress(i, 1);
+                stress(2) = cauchyStress(i, 2);
+                stress(3) = cauchyStress(i, 3);
+                connection[i]->setStressState(stress);
+            }
+        }
+        else
+        {
+            int order;
+            if (nnodes == 3)
+            {
+                order = 1;
+            }
+            else if (nnodes == 6)
+            {
+                order = 2;
+            }
+            else if (nnodes == 10)
+            {
+                order = 3;
             }
 
-            cauchyStress(i, 0) = stress(0);
-            cauchyStress(i, 1) = stress(1);
-            cauchyStress(i, 2) = stress(2);
-            cauchyStress(i, 3) = stress(3);
-        }
+            matrix<double> xsiLocal = coordinatesFEM(order);
+            for (int i = 0; i < nnodes; i++)
+            {
+                bounded_vector<double, 2> qxsi;
+                qxsi(0) = xsiLocal(i, 0);
+                qxsi(1) = xsiLocal(i, 1);
 
-        vector<int> c(nnod, 0);
+                int cellIndex = connection[i]->getCellIndex();
 
-        boost::numeric::bindings::lapack::gesv(phiMatrix, c, cauchyStress);
-
-        for (int i = 0; i < nnod; i++)
-        {
-            bounded_vector<double, 4> stress;
-            stress(0) = cauchyStress(i, 0);
-            stress(1) = cauchyStress(i, 1);
-            stress(2) = cauchyStress(i, 2);
-            stress(3) = cauchyStress(i, 3);
-            conec[i]->setStressState(stress);
+                if (cellIndex == -1)
+                {
+                    connection[i]->setStressState(el->getCauchyStress(qxsi, planeState_));
+                }
+                else
+                {
+                    Cell *cell = cells_[cellIndex];
+                    connection[i]->setStressState(el->getCauchyStressBlendZone(qxsi, planeState_, cell, connection[i]->getXsisGlobal(), connection[i]->getValuesOfBlendingFunction()));
+                }
+            }
         }
     }
 }
@@ -4756,7 +4892,13 @@ void GlobalSolid::generateMesh(Geometry *geometry, const std::string &elementTyp
     MPI_Comm_rank(PETSC_COMM_WORLD, &rank);
 
     finiteElementType_ = elementType;
-    initialGeometry_ = geometry;
+    geometry_ = geometry;
+    typeAlgorithm_ = algorithm;
+
+    if (geometry->getTypeOfDomain() == "LOCAL")
+    {
+        geometry->createGeometryFromCrack();
+    }
 
     std::string mshfile;
     bool deleteFiles = false;
@@ -4870,6 +5012,11 @@ void GlobalSolid::generateMesh(Geometry *geometry, const std::string &elementTyp
     }
 
     domainDecompositionMETIS(elementType);
+
+    if (quarterPointElement_ == true)
+    {
+        quarterPointElements();
+    }
 
     for (int i = 0; i < elements_.size(); i++)
     {
@@ -5007,7 +5154,7 @@ void GlobalSolid::applyBoundaryConditions(Geometry *geometry)
     }
 }
 
-void GlobalSolid::addBlending(std::vector<Line *> lines, const double &thickness)
+void GlobalSolid::addBlendingZone(std::vector<Line *> lines, const double &thickness, const bool &plotHammerPoints)
 {
     for (Line *l : lines)
     {
@@ -5017,218 +5164,40 @@ void GlobalSolid::addBlending(std::vector<Line *> lines, const double &thickness
             blendingBoundary_.push_back(b);
         }
     }
-    blendZoneThickness_ = thickness;
+    blendingZoneThickness_ = thickness;
+    overlappingAnalysis_ = true;
+    plotHammerPointsInBlendingZone_ = plotHammerPoints;
 }
 
-void GlobalSolid::remesh(const bounded_vector<double, 2> &newCrack)
+void GlobalSolid::addBlendingZoneInLocalMesh(const double &thickness, const bool &plotHammerPoints)
 {
-    // int rank, size;
+    blendingZoneThickness_ = thickness;
+    plotHammerPointsInBlendingZone_ = plotHammerPoints;
+    overlappingAnalysis_ = true;
+    localOverlapping_ = true;
+}
 
-    // MPI_Comm_rank(PETSC_COMM_WORLD, &rank);
-    // MPI_Comm_size(PETSC_COMM_WORLD, &size);
-
-    Geometry *geo = new Geometry;
-
-    std::vector<Line *> lines;
-
-    for (int nline = 0; nline < nlines_; nline++)
+void GlobalSolid::setBlendingZoneLines()
+{
+    std::unordered_map<std::string, Crack *> crackes = geometry_->getCrackes();
+    for (std::unordered_map<std::string, Crack *>::const_iterator crack = crackes.begin(); crack != crackes.end(); crack++)
     {
-        std::string name = "l" + std::to_string(nline);
-
-        std::vector<BoundaryElement *> bound = finiteElementBoundary_[name];
-
-        std::vector<Point *> points;
-
-        for (int i = 0; i < bound.size(); i++)
+        std::vector<BoundaryElement *> boundary = finiteElementBoundary_[crack->second->getPlaneSurface()->getLineLoop(0)->getLine(0)->getName()];
+        for (BoundaryElement *b : boundary)
         {
-            std::vector<Node *> conec = bound[i]->getNodes();
-            if (i == 0)
-            {
-                bounded_vector<double, 2> coordAux = conec[0]->getCurrentCoordinate();
-                std::vector<double> coord;
-                coord.push_back(coordAux(0));
-                coord.push_back(coordAux(1));
-
-                Point *p = geo->addPoint(coord, 1.0, conec[0]->getPoint());
-                points.push_back(p);
-            }
-
-            if (conec.size() > 2)
-            {
-                for (int j = 2; j < conec.size(); j++)
-                {
-                    bounded_vector<double, 2> coordAux = conec[j]->getCurrentCoordinate();
-                    std::vector<double> coord;
-                    coord.push_back(coordAux(0));
-                    coord.push_back(coordAux(1));
-
-                    Point *p = geo->addPoint(coord, 1.0, conec[j]->getPoint());
-                    points.push_back(p);
-                }
-            }
-
-            bounded_vector<double, 2> coordAux = conec[1]->getCurrentCoordinate();
-            std::vector<double> coord;
-            coord.push_back(coordAux(0));
-            coord.push_back(coordAux(1));
-
-            Point *p = geo->addPoint(coord, 1.0, conec[1]->getPoint());
-            points.push_back(p);
-
-            delete bound[i];
+            blendingBoundary_.push_back(b);
         }
-        Line *l = geo->addSpline(points);
-        lines.push_back(l);
     }
+}
 
-    for (int ncrack = 0; ncrack < ncrackes_; ncrack++)
-    {
-        std::string name = "c" + std::to_string(ncrack);
-        std::vector<BoundaryElement *> bound = finiteElementBoundary_[name + "1"];
-        std::vector<Point *> points;
-        double lcar = 0.05;
-
-        for (int i = 0; i < bound.size(); i++)
-        {
-            std::vector<Node *> conec = bound[i]->getNodes();
-            if (i >= bound.size() / 2)
-            {
-                lcar = 0.0001;
-            }
-            else
-            {
-                lcar = 0.0001;
-            }
-
-            if (i == 0)
-            {
-                bounded_vector<double, 2> coordAux = conec[0]->getCurrentCoordinate();
-                std::vector<double> coord;
-                coord.push_back(coordAux(0));
-                coord.push_back(coordAux(1));
-
-                Point *p = geo->addPoint(coord, lcar, conec[0]->getPoint());
-                points.push_back(p);
-            }
-
-            if (conec.size() > 2)
-            {
-                for (int j = 2; j < conec.size(); j++)
-                {
-                    bounded_vector<double, 2> coordAux = conec[j]->getCurrentCoordinate();
-                    std::vector<double> coord;
-                    coord.push_back(coordAux(0));
-                    coord.push_back(coordAux(1));
-
-                    Point *p = geo->addPoint(coord, lcar, conec[j]->getPoint());
-                    points.push_back(p);
-                }
-            }
-
-            bounded_vector<double, 2> coordAux = conec[1]->getCurrentCoordinate();
-            std::vector<double> coord;
-            coord.push_back(coordAux(0));
-            coord.push_back(coordAux(1));
-
-            Point *p = geo->addPoint(coord, lcar, conec[1]->getPoint());
-            points.push_back(p);
-
-            delete bound[i];
-        }
-
-        Line *l = geo->addSpline(points);
-        lines.push_back(l);
-
-        bound = finiteElementBoundary_[name + "0"];
-        points.clear();
-
-        for (int i = (bound.size() - 1); i >= 0; i--)
-        {
-            std::vector<Node *> conec = bound[i]->getNodes();
-
-            if (i >= bound.size() / 2)
-            {
-                lcar = 0.0001;
-            }
-            else
-            {
-                lcar = 0.0001;
-            }
-
-            if (i == bound.size() - 1)
-            {
-                bounded_vector<double, 2> coordAux = conec[1]->getCurrentCoordinate();
-                std::vector<double> coord;
-                coord.push_back(coordAux(0));
-                coord.push_back(coordAux(1));
-
-                Point *p = geo->addPoint(coord, lcar, conec[1]->getPoint());
-                points.push_back(p);
-            }
-
-            if (conec.size() > 2)
-            {
-                for (int j = conec.size() - 1; j >= 2; j--)
-                {
-                    bounded_vector<double, 2> coordAux = conec[j]->getCurrentCoordinate();
-                    std::vector<double> coord;
-                    coord.push_back(coordAux(0));
-                    coord.push_back(coordAux(1));
-
-                    Point *p = geo->addPoint(coord, lcar, conec[j]->getPoint());
-                    points.push_back(p);
-                }
-            }
-
-            bounded_vector<double, 2> coordAux = conec[0]->getCurrentCoordinate();
-            std::vector<double> coord;
-            coord.push_back(coordAux(0));
-            coord.push_back(coordAux(1));
-
-            Point *p = geo->addPoint(coord, lcar, conec[0]->getPoint());
-            points.push_back(p);
-
-            delete bound[i];
-        }
-
-        Line *l1 = geo->addSpline(points);
-        lines.push_back(l1);
-    }
-
-    geo->appendGmshCode("Coherence; \n // \n");
-
-    LineLoop *ll = geo->addLineLoop(lines, false);
-
-    PlaneSurface *s = geo->addPlaneSurface({ll});
-
-    for (int i = 0; i < elements_.size(); i++)
-    {
-        delete elements_[i];
-    }
-    for (int i = 0; i < dirichletConditionsFE_.size(); i++)
-    {
-        delete dirichletConditionsFE_[i];
-    }
-    for (int i = 0; i < neumannConditionsFE_.size(); i++)
-    {
-        delete neumannConditionsFE_[i];
-    }
-    for (int i = 0; i < nodes_.size(); i++)
-    {
-        delete nodes_[i];
-    }
-
-    elements_.clear();
-    elements_part.clear();
-    nodes_.clear();
-    finiteElementBoundary_.clear();
-    meshes_.clear();
-    dirichletConditionsFE_.clear();
-    neumannConditionsFE_.clear();
-
-    cpnumber_ = cpaux_;
-
-    generateMesh(geo, "T6", "ADAPT", "newMesh", true, false);
+void GlobalSolid::setParametersOfCrackPropagation(const double &length, const double &fractureThougness, const bool &plotSIFs, const bool &viewNewMesh, const bool &exportUndeformedMesh)
+{
+    crackLengthPropagation_ = length;
+    fractureThougness_ = fractureThougness;
+    viewNewMesh_ = viewNewMesh;
+    exportUndeformedMesh_ = exportUndeformedMesh;
+    analysisOfCrackPropagation_ = true;
+    plotSIFs_ = plotSIFs;
 }
 
 bounded_vector<double, 2> GlobalSolid::getSIFs()
@@ -5237,35 +5206,218 @@ bounded_vector<double, 2> GlobalSolid::getSIFs()
     sif(0) = 0.0;
     sif(1) = 0.0;
 
-    std::vector<BoundaryElement *> c00 = finiteElementBoundary_["c00"];
-    std::vector<BoundaryElement *> c01 = finiteElementBoundary_["c01"];
+    // std::vector<BoundaryElement *> c00 = finiteElementBoundary_["c00"];
+    // std::vector<BoundaryElement *> c01 = finiteElementBoundary_["c01"];
 
-    Node *node = initialGeometry_->getCrackes()["c0"]->getLastPoint()->getPointNode();
+    Node *node = geometry_->getCrackes()["c0"]->getLastPoint()->getPointNode();
 
-    bounded_vector<double, 2> vec00 = c00[c00.size() - 2]->getVectorTangente(1.0, "initial");
-    bounded_vector<double, 2> vec01 = c01[c01.size() - 2]->getVectorTangente(1.0, "initial");
+    // bounded_vector<double, 2> vec00 = c00[c00.size() - 2]->getVectorTangente(1.0, "initial");
+    // bounded_vector<double, 2> vec01 = c01[c01.size() - 2]->getVectorTangente(1.0, "initial");
 
-    double angle = 0.5 * (atan2(vec00(1), vec00(0)) + atan2(vec01(1), vec01(0)));
+    double angle = geometry_->getCrackes()["c0"]->getLastAngle();
+
+    // for (Element *el : JintegralElements_)
+    // {
+    //     sif += el->contributionJ_IntegralInitial(quadrature_, elementsSideJintegral_[el->getIndex()], planeState_, angle, node->getInitialCoordinate());
+    // }
 
     for (Element *el : JintegralElements_)
     {
-        sif += el->contributionJ_IntegralInitial(quadrature_, elementsSideJintegral_[el->getIndex()], planeState_, 0.5235987756, node->getInitialCoordinate());
+        sif += el->contributionJ_IntegralFromRice(quadrature_, elementsSideJintegral_[el->getIndex()], planeState_, angle, node);
     }
 
     return sif;
+}
 
-    // for (int j = 0; j < gaussPoints.size1(); j++)
-    // {
-    //     bounded_vector<double, 2> vectortangente = c00[c00.size() - 1]->getVectorTangente(gaussPoints(j, 0));
-    //     angle += atan2(vectortangente(1), vectortangente(0));
+void GlobalSolid::verifyCrackPropagation(bool &testPropagation)
+{
+    int rank;
+    MPI_Comm_rank(PETSC_COMM_WORLD, &rank);
 
-    //     vectortangente = c01[c01.size() - 1]->getVectorTangente(gaussPoints(j, 0));
-    //     angle += atan2(vectortangente(1), vectortangente(0));
-    //     aux += 2.0;
-    // }
-    // for (Element *el : JintegralElements_)
-    // {
-    //     jIntegral += el->contributionJ_Integral4(quadrature_, elementsSideJintegral_[el->getIndex()], planeState_, angle, node, false);
-    // }
-    //std::cout << "J INTEGRAL: " << jIntegral(0) << " " << jIntegral(1) << std::endl;
+    bounded_vector<double, 2> SIFs = getSIFs();
+
+    double tetap;
+
+    if (SIFs(1) == 0)
+    {
+        tetap = 0.0;
+    }
+    else if (SIFs(1) > 0)
+    {
+        double aux = SIFs(0) / SIFs(1);
+        tetap = 2.0 * atan(0.25 * (aux - sqrt(aux * aux + 8.0)));
+    }
+    else
+    {
+        double aux = SIFs(0) / SIFs(1);
+        tetap = 2.0 * atan(0.25 * (aux + sqrt(aux * aux + 8.0)));
+    }
+
+    double SIFeq = cos(0.5 * tetap) * (SIFs(0) * cos(0.5 * tetap) * cos(0.5 * tetap) - 1.5 * SIFs(1) * sin(tetap));
+
+    bounded_vector<double, 2> tipCrack = geometry_->getCrackes()["c0"]->getLastPoint()->getCoordinates();
+    double alfa = geometry_->getCrackes()["c0"]->getLastAngle();
+
+    bounded_vector<double, 2> newTipCrack;
+    if (SIFeq >= fractureThougness_)
+    {
+        newTipCrack(0) = tipCrack(0) + crackLengthPropagation_ * cos(tetap + alfa);
+        newTipCrack(1) = tipCrack(1) + crackLengthPropagation_ * sin(tetap + alfa);
+        geometry_->addCrackPoint("c0", newTipCrack);
+
+        for (int i = 0; i < elements_.size(); i++)
+        {
+            delete elements_[i];
+        }
+        for (int i = 0; i < dirichletConditionsFE_.size(); i++)
+        {
+            delete dirichletConditionsFE_[i];
+        }
+        for (int i = 0; i < neumannConditionsFE_.size(); i++)
+        {
+            delete neumannConditionsFE_[i];
+        }
+        for (int i = 0; i < nodes_.size(); i++)
+        {
+            delete nodes_[i];
+        }
+        for (std::unordered_map<std::string, std::vector<BoundaryElement *>>::const_iterator bound = finiteElementBoundary_.begin(); bound != finiteElementBoundary_.end(); bound++)
+        {
+            std::vector<BoundaryElement *> boundElements = bound->second;
+            for (int i = 0; i < boundElements.size(); i++)
+            {
+                delete boundElements[i];
+            }
+        }
+        for (std::unordered_map<std::string, Mesh *>::const_iterator m = meshes_.begin(); m != meshes_.end(); m++)
+        {
+            delete m->second;
+        }
+        for (int i = 0; i < inactiveCP_.size(); i++)
+        {
+            delete inactiveCP_[i];
+        }
+        for (int i = 0; i < inactiveNode_.size(); i++)
+        {
+            delete inactiveNode_[i];
+        }
+        elements_.clear();
+        elements_part.clear();
+        nodes_.clear();
+        finiteElementBoundary_.clear();
+        meshes_.clear();
+        dirichletConditionsFE_.clear();
+        neumannConditionsFE_.clear();
+        JintegralElements_.clear();
+        elementsSideJintegral_.clear();
+        inactiveCP_.clear();
+        inactiveNode_.clear();
+        inactiveCPandNode_.clear();
+        blendingBoundary_.clear();
+
+        cpnumber_ = cpaux_;
+
+        testPropagation = true;
+
+        generateMesh(geometry_, finiteElementType_, typeAlgorithm_, "newMesh", viewNewMesh_, false);
+
+        if (rank == 0)
+        {
+            std::cout << "The crack tip propagated and a new mesh have been done." << std::endl;
+        }
+    }
+    else
+    {
+        testPropagation = false;
+    }
+}
+
+void GlobalSolid::quarterPointElements()
+{
+    std::unordered_map<std::string, Crack *> crackes = geometry_->getCrackes();
+    for (std::unordered_map<std::string, Crack *>::const_iterator crack = crackes.begin(); crack != crackes.end(); crack++)
+    {
+        std::string open = crack->second->getOpenBoundary();
+        if (open != "second")
+        {
+            Node *lastnode = crack->second->getLastPoint()->getPointNode();
+            for (Element *el : elements_)
+            {
+                std::vector<Node *> conection = el->getConnection();
+                bounded_vector<double, 2> coord0, coord1, coord2;
+                coord0 = conection[0]->getInitialCoordinate();
+                coord1 = conection[1]->getInitialCoordinate();
+                coord2 = conection[2]->getInitialCoordinate();
+
+                if (conection[0] == lastnode)
+                {
+                    bounded_vector<double, 2> coord3, coord5;
+                    coord3 = 0.25 * (3.0 * coord0 + coord1);
+                    coord5 = 0.25 * (3.0 * coord0 + coord2);
+                    conection[3]->setInitialCoordinate(coord3);
+                    conection[5]->setInitialCoordinate(coord5);
+                }
+                else if (conection[1] == lastnode)
+                {
+
+                    bounded_vector<double, 2> coord3, coord4;
+                    coord3 = 0.25 * (coord0 + 3.0 * coord1);
+                    coord4 = 0.25 * (3.0 * coord1 + coord2);
+                    conection[3]->setInitialCoordinate(coord3);
+                    conection[4]->setInitialCoordinate(coord4);
+                }
+                else if (conection[2] == lastnode)
+                {
+                    bounded_vector<double, 2> coord5, coord4;
+                    coord5 = 0.25 * (coord0 + 3.0 * coord2);
+                    coord4 = 0.25 * (coord1 + 3.0 * coord2);
+                    conection[5]->setInitialCoordinate(coord5);
+                    conection[4]->setInitialCoordinate(coord4);
+                }
+            }
+        }
+        if (open != "first")
+        {
+            Node *initialnode = crack->second->getFirstPoint()->getPointNode();
+            for (Element *el : elements_)
+            {
+                std::vector<Node *> conection = el->getConnection();
+                bounded_vector<double, 2> coord0, coord1, coord2;
+                coord0 = conection[0]->getInitialCoordinate();
+                coord1 = conection[1]->getInitialCoordinate();
+                coord2 = conection[2]->getInitialCoordinate();
+
+                if (conection[0] == initialnode)
+                {
+                    bounded_vector<double, 2> coord3, coord5;
+                    coord3 = 0.25 * (3.0 * coord0 + coord1);
+                    coord5 = 0.25 * (3.0 * coord0 + coord2);
+                    conection[3]->setInitialCoordinate(coord3);
+                    conection[5]->setInitialCoordinate(coord5);
+                }
+                else if (conection[1] == initialnode)
+                {
+
+                    bounded_vector<double, 2> coord3, coord4;
+                    coord3 = 0.25 * (coord0 + 3.0 * coord1);
+                    coord4 = 0.25 * (3.0 * coord1 + coord2);
+                    conection[3]->setInitialCoordinate(coord3);
+                    conection[4]->setInitialCoordinate(coord4);
+                }
+                else if (conection[2] == initialnode)
+                {
+                    bounded_vector<double, 2> coord5, coord4;
+                    coord5 = 0.25 * (coord0 + 3.0 * coord2);
+                    coord4 = 0.25 * (coord1 + 3.0 * coord2);
+                    conection[5]->setInitialCoordinate(coord5);
+                    conection[4]->setInitialCoordinate(coord4);
+                }
+            }
+        }
+    }
+}
+
+void GlobalSolid::useQuarterPointElements()
+{
+    quarterPointElement_ = true;
 }

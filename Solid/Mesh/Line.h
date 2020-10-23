@@ -8,7 +8,7 @@ class Line
 public:
     Line();
 
-    Line(const std::string &name, std::vector<Point *> points, const std::string &type, const bool& discretization); //, const bool &discretization = true);
+    Line(const std::string &name, std::vector<Point *> points, const std::string &type, const bool &discretization); //, const bool &discretization = true);
 
     ~Line();
 
@@ -28,14 +28,16 @@ public:
 
     // std::string getGmshCodeSpline();
 
-    void appendNodes(std::vector<Node *> nodes);
+    //void appendNodes(std::vector<Node *> nodes);
 
     void setName(const std::string &name);
+
+    void setPoints(const std::vector<Point *> &newPoints);
 
 private:
     std::string name_;
     std::vector<Point *> points_;
     bool discretization_;
-    std::vector<Node *> lineNodes_;
-    std::string typeLine_; //typeOfLine line, circle, bpsline, spline 
+    //std::vector<Node *> lineNodes_;
+    std::string typeLine_; //typeOfLine line, circle, bpsline, spline
 };

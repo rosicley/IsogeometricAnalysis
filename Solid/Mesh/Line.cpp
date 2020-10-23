@@ -6,7 +6,7 @@ Line::Line(const std::string &name, std::vector<Point *> points, const std::stri
 {
     name_ = name;
     discretization_ = discretization;
-    points_.reserve(points.size());
+    //points_.reserve(points.size());
     typeLine_ = type;
     points_ = points;
     // for (Point *point : points)
@@ -183,20 +183,25 @@ void Line::setName(const std::string &name)
     name_ = name;
 }
 
-void Line::appendNodes(std::vector<Node *> nodes)
+// void Line::appendNodes(std::vector<Node *> nodes)
+// {
+//     for (Node *node1 : nodes)
+//     {
+//         bool notDuplicate = true;
+//         for (Node *node2 : lineNodes_)
+//         {
+//             if (node1->getIndex() == node2->getIndex())
+//             {
+//                 notDuplicate = false;
+//                 break;
+//             }
+//         }
+//         if (notDuplicate)
+//             lineNodes_.push_back(node1);
+//     }
+// }
+
+void Line::setPoints(const std::vector<Point *> &newPoints)
 {
-    for (Node *node1 : nodes)
-    {
-        bool notDuplicate = true;
-        for (Node *node2 : lineNodes_)
-        {
-            if (node1->getIndex() == node2->getIndex())
-            {
-                notDuplicate = false;
-                break;
-            }
-        }
-        if (notDuplicate)
-            lineNodes_.push_back(node1);
-    }
+    points_ = newPoints;
 }

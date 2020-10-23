@@ -44,3 +44,8 @@ std::string PlaneSurface::getGmshCode()
     text << "}; Physical Surface('" << name_ << "') = {" << name_ << "};\n//\n";
     return text.str();
 }
+
+LineLoop *PlaneSurface::getLineLoop(const int &index)
+{
+    return lineLoop_[index];
+}

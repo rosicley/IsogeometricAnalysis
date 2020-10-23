@@ -10,6 +10,9 @@
 #include <boost/numeric/ublas/matrix.hpp>
 #include <boost/numeric/ublas/vector.hpp>
 #include "../Isogeometric/Cell.h"
+#include <boost/numeric/bindings/lapack/driver/gesv.hpp>
+#include <boost/numeric/bindings/ublas/matrix.hpp>
+#include <boost/numeric/bindings/ublas/vector.hpp>
 
 using namespace boost::numeric::ublas;
 
@@ -101,6 +104,12 @@ public:
     bounded_vector<double, 2> contributionJ_Integral4(const int &quadraturePoints, const int &side, const std::string &ep, const double &rotation, Node *tipNode, const bool &crack);
 
     bounded_vector<double, 2> contributionJ_IntegralInitial(const int &quadraturePoints, const int &side, const std::string &ep, const double &rotation, const bounded_vector<double, 2> &tipCoordinates);
+
+    bounded_vector<double, 2> contributionJ_Integral5(const int &quadraturePoints, const int &side, const std::string &ep, const double &rotation, Node *tipNode, const bool &crack);
+
+    bounded_vector<double, 2> contributionJ_IntegralFromRice(const int &quadraturePoints, const int &side, const std::string &ep, const double &rotation, Node *tipNode);
+
+    // void setCauchyStressToNode(const std::string &planeState);
 
 private:
     int index_;

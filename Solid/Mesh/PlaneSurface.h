@@ -20,6 +20,8 @@ public:
 
     std::string getGmshCode();
 
+    LineLoop *getLineLoop(const int &index);
+
 private:
     std::string name_;
     double thickness_;

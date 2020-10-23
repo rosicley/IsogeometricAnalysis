@@ -13,7 +13,7 @@ public:
 
     std::string getName();
 
-    // Line *getLine(const int &index);
+    Line *getLine(const int &index);
 
     std::vector<Line *> getLines();
 
