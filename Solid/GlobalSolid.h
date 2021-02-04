@@ -93,6 +93,8 @@ public:
 
     void exportMirror();
 
+    int getNodesNumber();
+
     void dataReading(const std::string &inputParameters,
                      const std::string &inputProperties,
                      const std::string &inputMeshIso,
@@ -141,9 +143,9 @@ public:
 
     void applyBoundaryConditions(Geometry *geometry);
 
-    void addBlendingZone(std::vector<Line *> lines, const double &thickness, const bool &plotHammerPoints);
+    void addBlendingZone(std::vector<Line *> lines, const double &thickness, const int &blendingFunctionOrder, const bool &plotHammerPoints);
 
-    void addBlendingZoneInLocalMesh(const double &thickness, const bool &plotHammerPoints);
+    void addBlendingZoneInLocalMesh(const double &thickness, const int &blendingFunctionOrder, const bool &plotHammerPoints);
 
     void setBlendingZoneLines();
 
@@ -187,7 +189,8 @@ private:
     std::vector<Element *> elements_part;
 
     //Overlapping
-    std::vector<int> inactiveCPandNode_;
+    std::unordered_set<int> inactiveCPandNode_;
+    //std::vector<int> inactiveCPandNode_;
 
     std::vector<InactiveCP *> inactiveCP_;
 
@@ -200,6 +203,10 @@ private:
     bool overlappingAnalysis_; ////REVER
 
     bool plotHammerPointsInBlendingZone_; ////REVER
+
+    int blendingFunctionOrder_;
+
+    std::vector<Line *> linesOfBlendingZone_;
 
     //Analysis parameters
     std::string planeState_;
@@ -223,6 +230,8 @@ private:
     int hammerPointsBlendZone_; //number of hammer points for elements inside the blend zone
 
     int quadrature_;
+
+    int quadratureBlendingZone_;
 
     //General
     std::vector<Material *> materials_;
@@ -256,6 +265,8 @@ private:
     //Crack analysis
     std::vector<Element *> JintegralElements_;
 
+    std::vector<Element *> dynamicJintegralElements_;
+
     std::vector<int> elementsSideJintegral_;
 
     double crackLengthPropagation_;
@@ -273,4 +284,6 @@ private:
     bool localOverlapping_;
 
     bool quarterPointElement_;
+
+    bool crackProblem_ = true;
 };

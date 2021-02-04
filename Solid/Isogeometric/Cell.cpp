@@ -694,140 +694,140 @@ matrix<double> Cell::isoQuadrature(const int &points)
     }
     else if (points == 6)
     {
-        pointCoordIso(0, 0) = -0.9324695142;
-        pointCoordIso(1, 0) = -0.9324695142;
-        pointCoordIso(2, 0) = -0.9324695142;
-        pointCoordIso(3, 0) = -0.9324695142;
-        pointCoordIso(4, 0) = -0.9324695142;
-        pointCoordIso(5, 0) = -0.9324695142;
-        pointCoordIso(6, 0) = -0.6612093864;
-        pointCoordIso(7, 0) = -0.6612093864;
-        pointCoordIso(8, 0) = -0.6612093864;
-        pointCoordIso(9, 0) = -0.6612093864;
-        pointCoordIso(10, 0) = -0.6612093864;
-        pointCoordIso(11, 0) = -0.6612093864;
-        pointCoordIso(12, 0) = -0.238619186;
-        pointCoordIso(13, 0) = -0.238619186;
-        pointCoordIso(14, 0) = -0.238619186;
-        pointCoordIso(15, 0) = -0.238619186;
-        pointCoordIso(16, 0) = -0.238619186;
-        pointCoordIso(17, 0) = -0.238619186;
-        pointCoordIso(18, 0) = 0.238619186;
-        pointCoordIso(19, 0) = 0.238619186;
-        pointCoordIso(20, 0) = 0.238619186;
-        pointCoordIso(21, 0) = 0.238619186;
-        pointCoordIso(22, 0) = 0.238619186;
-        pointCoordIso(23, 0) = 0.238619186;
-        pointCoordIso(24, 0) = 0.6612093864;
-        pointCoordIso(25, 0) = 0.6612093864;
-        pointCoordIso(26, 0) = 0.6612093864;
-        pointCoordIso(27, 0) = 0.6612093864;
-        pointCoordIso(28, 0) = 0.6612093864;
-        pointCoordIso(29, 0) = 0.6612093864;
-        pointCoordIso(30, 0) = 0.9324695142;
-        pointCoordIso(31, 0) = 0.9324695142;
-        pointCoordIso(32, 0) = 0.9324695142;
-        pointCoordIso(33, 0) = 0.9324695142;
-        pointCoordIso(34, 0) = 0.9324695142;
-        pointCoordIso(35, 0) = 0.9324695142;
+        pointCoordIso(0, 0) = -0.932469514203152;
+        pointCoordIso(1, 0) = -0.932469514203152;
+        pointCoordIso(2, 0) = -0.932469514203152;
+        pointCoordIso(3, 0) = -0.932469514203152;
+        pointCoordIso(4, 0) = -0.932469514203152;
+        pointCoordIso(5, 0) = -0.932469514203152;
+        pointCoordIso(6, 0) = -0.661209386466265;
+        pointCoordIso(7, 0) = -0.661209386466265;
+        pointCoordIso(8, 0) = -0.661209386466265;
+        pointCoordIso(9, 0) = -0.661209386466265;
+        pointCoordIso(10, 0) = -0.661209386466265;
+        pointCoordIso(11, 0) = -0.661209386466265;
+        pointCoordIso(12, 0) = -0.238619186083197;
+        pointCoordIso(13, 0) = -0.238619186083197;
+        pointCoordIso(14, 0) = -0.238619186083197;
+        pointCoordIso(15, 0) = -0.238619186083197;
+        pointCoordIso(16, 0) = -0.238619186083197;
+        pointCoordIso(17, 0) = -0.238619186083197;
+        pointCoordIso(18, 0) = 0.238619186083197;
+        pointCoordIso(19, 0) = 0.238619186083197;
+        pointCoordIso(20, 0) = 0.238619186083197;
+        pointCoordIso(21, 0) = 0.238619186083197;
+        pointCoordIso(22, 0) = 0.238619186083197;
+        pointCoordIso(23, 0) = 0.238619186083197;
+        pointCoordIso(24, 0) = 0.661209386466265;
+        pointCoordIso(25, 0) = 0.661209386466265;
+        pointCoordIso(26, 0) = 0.661209386466265;
+        pointCoordIso(27, 0) = 0.661209386466265;
+        pointCoordIso(28, 0) = 0.661209386466265;
+        pointCoordIso(29, 0) = 0.661209386466265;
+        pointCoordIso(30, 0) = 0.932469514203152;
+        pointCoordIso(31, 0) = 0.932469514203152;
+        pointCoordIso(32, 0) = 0.932469514203152;
+        pointCoordIso(33, 0) = 0.932469514203152;
+        pointCoordIso(34, 0) = 0.932469514203152;
+        pointCoordIso(35, 0) = 0.932469514203152;
 
-        pointCoordIso(0, 1) = -0.9324695142;
-        pointCoordIso(1, 1) = -0.6612093864;
-        pointCoordIso(2, 1) = -0.238619186;
-        pointCoordIso(3, 1) = 0.238619186;
-        pointCoordIso(4, 1) = 0.6612093864;
-        pointCoordIso(5, 1) = 0.9324695142;
-        pointCoordIso(6, 1) = -0.9324695142;
-        pointCoordIso(7, 1) = -0.6612093864;
-        pointCoordIso(8, 1) = -0.238619186;
-        pointCoordIso(9, 1) = 0.238619186;
-        pointCoordIso(10, 1) = 0.6612093864;
-        pointCoordIso(11, 1) = 0.9324695142;
-        pointCoordIso(12, 1) = -0.9324695142;
-        pointCoordIso(13, 1) = -0.6612093864;
-        pointCoordIso(14, 1) = -0.238619186;
-        pointCoordIso(15, 1) = 0.238619186;
-        pointCoordIso(16, 1) = 0.6612093864;
-        pointCoordIso(17, 1) = 0.9324695142;
-        pointCoordIso(18, 1) = -0.9324695142;
-        pointCoordIso(19, 1) = -0.6612093864;
-        pointCoordIso(20, 1) = -0.238619186;
-        pointCoordIso(21, 1) = 0.238619186;
-        pointCoordIso(22, 1) = 0.6612093864;
-        pointCoordIso(23, 1) = 0.9324695142;
-        pointCoordIso(24, 1) = -0.9324695142;
-        pointCoordIso(25, 1) = -0.6612093864;
-        pointCoordIso(26, 1) = -0.238619186;
-        pointCoordIso(27, 1) = 0.238619186;
-        pointCoordIso(28, 1) = 0.6612093864;
-        pointCoordIso(29, 1) = 0.9324695142;
-        pointCoordIso(30, 1) = -0.9324695142;
-        pointCoordIso(31, 1) = -0.6612093864;
-        pointCoordIso(32, 1) = -0.238619186;
-        pointCoordIso(33, 1) = 0.238619186;
-        pointCoordIso(34, 1) = 0.6612093864;
-        pointCoordIso(35, 1) = 0.9324695142;
+        pointCoordIso(0, 1) = -0.932469514203152;
+        pointCoordIso(1, 1) = -0.661209386466265;
+        pointCoordIso(2, 1) = -0.238619186083197;
+        pointCoordIso(3, 1) = 0.238619186083197;
+        pointCoordIso(4, 1) = 0.661209386466265;
+        pointCoordIso(5, 1) = 0.932469514203152;
+        pointCoordIso(6, 1) = -0.932469514203152;
+        pointCoordIso(7, 1) = -0.661209386466265;
+        pointCoordIso(8, 1) = -0.238619186083197;
+        pointCoordIso(9, 1) = 0.238619186083197;
+        pointCoordIso(10, 1) = 0.661209386466265;
+        pointCoordIso(11, 1) = 0.932469514203152;
+        pointCoordIso(12, 1) = -0.932469514203152;
+        pointCoordIso(13, 1) = -0.661209386466265;
+        pointCoordIso(14, 1) = -0.238619186083197;
+        pointCoordIso(15, 1) = 0.238619186083197;
+        pointCoordIso(16, 1) = 0.661209386466265;
+        pointCoordIso(17, 1) = 0.932469514203152;
+        pointCoordIso(18, 1) = -0.932469514203152;
+        pointCoordIso(19, 1) = -0.661209386466265;
+        pointCoordIso(20, 1) = -0.238619186083197;
+        pointCoordIso(21, 1) = 0.238619186083197;
+        pointCoordIso(22, 1) = 0.661209386466265;
+        pointCoordIso(23, 1) = 0.932469514203152;
+        pointCoordIso(24, 1) = -0.932469514203152;
+        pointCoordIso(25, 1) = -0.661209386466265;
+        pointCoordIso(26, 1) = -0.238619186083197;
+        pointCoordIso(27, 1) = 0.238619186083197;
+        pointCoordIso(28, 1) = 0.661209386466265;
+        pointCoordIso(29, 1) = 0.932469514203152;
+        pointCoordIso(30, 1) = -0.932469514203152;
+        pointCoordIso(31, 1) = -0.661209386466265;
+        pointCoordIso(32, 1) = -0.238619186083197;
+        pointCoordIso(33, 1) = 0.238619186083197;
+        pointCoordIso(34, 1) = 0.661209386466265;
+        pointCoordIso(35, 1) = 0.932469514203152;
 
-        pointCoordIso(0, 2) = 0.0293520816618528;
-        pointCoordIso(1, 2) = 0.0618072933355744;
-        pointCoordIso(2, 2) = 0.0801651172683080;
-        pointCoordIso(3, 2) = 0.0801651172683080;
-        pointCoordIso(4, 2) = 0.0618072933355744;
-        pointCoordIso(5, 2) = 0.0293520816618528;
-        pointCoordIso(6, 2) = 0.0618072933355744;
-        pointCoordIso(7, 2) = 0.1301489125534340;
-        pointCoordIso(8, 2) = 0.1688053670388390;
-        pointCoordIso(9, 2) = 0.1688053670388390;
-        pointCoordIso(10, 2) = 0.1301489125534340;
-        pointCoordIso(11, 2) = 0.0618072933355744;
-        pointCoordIso(12, 2) = 0.0801651172683080;
-        pointCoordIso(13, 2) = 0.1688053670388390;
-        pointCoordIso(14, 2) = 0.2189434500992700;
-        pointCoordIso(15, 2) = 0.2189434500992700;
-        pointCoordIso(16, 2) = 0.1688053670388390;
-        pointCoordIso(17, 2) = 0.0801651172683080;
-        pointCoordIso(18, 2) = 0.0801651172683080;
-        pointCoordIso(19, 2) = 0.1688053670388390;
-        pointCoordIso(20, 2) = 0.2189434500992700;
-        pointCoordIso(21, 2) = 0.2189434500992700;
-        pointCoordIso(22, 2) = 0.1688053670388390;
-        pointCoordIso(23, 2) = 0.0801651172683080;
-        pointCoordIso(24, 2) = 0.0618072933355744;
-        pointCoordIso(25, 2) = 0.1301489125534340;
-        pointCoordIso(26, 2) = 0.1688053670388390;
-        pointCoordIso(27, 2) = 0.1688053670388390;
-        pointCoordIso(28, 2) = 0.1301489125534340;
-        pointCoordIso(29, 2) = 0.0618072933355744;
-        pointCoordIso(30, 2) = 0.0293520816618528;
-        pointCoordIso(31, 2) = 0.0618072933355744;
-        pointCoordIso(32, 2) = 0.0801651172683080;
-        pointCoordIso(33, 2) = 0.0801651172683080;
-        pointCoordIso(34, 2) = 0.0618072933355744;
-        pointCoordIso(35, 2) = 0.0293520816618528;
+        pointCoordIso(0, 2) = 0.0293520816889803;
+        pointCoordIso(1, 2) = 0.0618072933723833;
+        pointCoordIso(2, 2) = 0.0801651173178065;
+        pointCoordIso(3, 2) = 0.0801651173178065;
+        pointCoordIso(4, 2) = 0.0618072933723833;
+        pointCoordIso(5, 2) = 0.0293520816889803;
+        pointCoordIso(6, 2) = 0.0618072933723833;
+        pointCoordIso(7, 2) = 0.1301489125881680;
+        pointCoordIso(8, 2) = 0.1688053670875880;
+        pointCoordIso(9, 2) = 0.1688053670875880;
+        pointCoordIso(10, 2) = 0.1301489125881680;
+        pointCoordIso(11, 2) = 0.0618072933723833;
+        pointCoordIso(12, 2) = 0.0801651173178065;
+        pointCoordIso(13, 2) = 0.1688053670875880;
+        pointCoordIso(14, 2) = 0.2189434501672970;
+        pointCoordIso(15, 2) = 0.2189434501672970;
+        pointCoordIso(16, 2) = 0.1688053670875880;
+        pointCoordIso(17, 2) = 0.0801651173178065;
+        pointCoordIso(18, 2) = 0.0801651173178065;
+        pointCoordIso(19, 2) = 0.1688053670875880;
+        pointCoordIso(20, 2) = 0.2189434501672970;
+        pointCoordIso(21, 2) = 0.2189434501672970;
+        pointCoordIso(22, 2) = 0.1688053670875880;
+        pointCoordIso(23, 2) = 0.0801651173178065;
+        pointCoordIso(24, 2) = 0.0618072933723833;
+        pointCoordIso(25, 2) = 0.1301489125881680;
+        pointCoordIso(26, 2) = 0.1688053670875880;
+        pointCoordIso(27, 2) = 0.1688053670875880;
+        pointCoordIso(28, 2) = 0.1301489125881680;
+        pointCoordIso(29, 2) = 0.0618072933723833;
+        pointCoordIso(30, 2) = 0.0293520816889803;
+        pointCoordIso(31, 2) = 0.0618072933723833;
+        pointCoordIso(32, 2) = 0.0801651173178065;
+        pointCoordIso(33, 2) = 0.0801651173178065;
+        pointCoordIso(34, 2) = 0.0618072933723833;
+        pointCoordIso(35, 2) = 0.0293520816889803;
     }
     else if (points == 7)
     {
-        pointCoordIso(0, 0) = -0.94910791230;
-        pointCoordIso(1, 0) = -0.94910791230;
-        pointCoordIso(2, 0) = -0.94910791230;
-        pointCoordIso(3, 0) = -0.94910791230;
-        pointCoordIso(4, 0) = -0.94910791230;
-        pointCoordIso(5, 0) = -0.94910791230;
-        pointCoordIso(6, 0) = -0.94910791230;
-        pointCoordIso(7, 0) = -0.74153118550;
-        pointCoordIso(8, 0) = -0.74153118550;
-        pointCoordIso(9, 0) = -0.74153118550;
-        pointCoordIso(10, 0) = -0.74153118550;
-        pointCoordIso(11, 0) = -0.74153118550;
-        pointCoordIso(12, 0) = -0.74153118550;
-        pointCoordIso(13, 0) = -0.74153118550;
-        pointCoordIso(14, 0) = -0.40584515130;
-        pointCoordIso(15, 0) = -0.40584515130;
-        pointCoordIso(16, 0) = -0.40584515130;
-        pointCoordIso(17, 0) = -0.40584515130;
-        pointCoordIso(18, 0) = -0.40584515130;
-        pointCoordIso(19, 0) = -0.40584515130;
-        pointCoordIso(20, 0) = -0.40584515130;
+        pointCoordIso(0, 0) = -0.949107912342759;
+        pointCoordIso(1, 0) = -0.949107912342759;
+        pointCoordIso(2, 0) = -0.949107912342759;
+        pointCoordIso(3, 0) = -0.949107912342759;
+        pointCoordIso(4, 0) = -0.949107912342759;
+        pointCoordIso(5, 0) = -0.949107912342759;
+        pointCoordIso(6, 0) = -0.949107912342759;
+        pointCoordIso(7, 0) = -0.741531185599394;
+        pointCoordIso(8, 0) = -0.741531185599394;
+        pointCoordIso(9, 0) = -0.741531185599394;
+        pointCoordIso(10, 0) = -0.741531185599394;
+        pointCoordIso(11, 0) = -0.741531185599394;
+        pointCoordIso(12, 0) = -0.741531185599394;
+        pointCoordIso(13, 0) = -0.741531185599394;
+        pointCoordIso(14, 0) = -0.405845151377397;
+        pointCoordIso(15, 0) = -0.405845151377397;
+        pointCoordIso(16, 0) = -0.405845151377397;
+        pointCoordIso(17, 0) = -0.405845151377397;
+        pointCoordIso(18, 0) = -0.405845151377397;
+        pointCoordIso(19, 0) = -0.405845151377397;
+        pointCoordIso(20, 0) = -0.405845151377397;
         pointCoordIso(21, 0) = 0.00000000000;
         pointCoordIso(22, 0) = 0.00000000000;
         pointCoordIso(23, 0) = 0.00000000000;
@@ -835,325 +835,695 @@ matrix<double> Cell::isoQuadrature(const int &points)
         pointCoordIso(25, 0) = 0.00000000000;
         pointCoordIso(26, 0) = 0.00000000000;
         pointCoordIso(27, 0) = 0.00000000000;
-        pointCoordIso(28, 0) = 0.40584515130;
-        pointCoordIso(29, 0) = 0.40584515130;
-        pointCoordIso(30, 0) = 0.40584515130;
-        pointCoordIso(31, 0) = 0.40584515130;
-        pointCoordIso(32, 0) = 0.40584515130;
-        pointCoordIso(33, 0) = 0.40584515130;
-        pointCoordIso(34, 0) = 0.40584515130;
-        pointCoordIso(35, 0) = 0.74153118550;
-        pointCoordIso(36, 0) = 0.74153118550;
-        pointCoordIso(37, 0) = 0.74153118550;
-        pointCoordIso(38, 0) = 0.74153118550;
-        pointCoordIso(39, 0) = 0.74153118550;
-        pointCoordIso(40, 0) = 0.74153118550;
-        pointCoordIso(41, 0) = 0.74153118550;
-        pointCoordIso(42, 0) = 0.94910791230;
-        pointCoordIso(43, 0) = 0.94910791230;
-        pointCoordIso(44, 0) = 0.94910791230;
-        pointCoordIso(45, 0) = 0.94910791230;
-        pointCoordIso(46, 0) = 0.94910791230;
-        pointCoordIso(47, 0) = 0.94910791230;
-        pointCoordIso(48, 0) = 0.94910791230;
+        pointCoordIso(28, 0) = 0.405845151377397;
+        pointCoordIso(29, 0) = 0.405845151377397;
+        pointCoordIso(30, 0) = 0.405845151377397;
+        pointCoordIso(31, 0) = 0.405845151377397;
+        pointCoordIso(32, 0) = 0.405845151377397;
+        pointCoordIso(33, 0) = 0.405845151377397;
+        pointCoordIso(34, 0) = 0.405845151377397;
+        pointCoordIso(35, 0) = 0.741531185599394;
+        pointCoordIso(36, 0) = 0.741531185599394;
+        pointCoordIso(37, 0) = 0.741531185599394;
+        pointCoordIso(38, 0) = 0.741531185599394;
+        pointCoordIso(39, 0) = 0.741531185599394;
+        pointCoordIso(40, 0) = 0.741531185599394;
+        pointCoordIso(41, 0) = 0.741531185599394;
+        pointCoordIso(42, 0) = 0.949107912342759;
+        pointCoordIso(43, 0) = 0.949107912342759;
+        pointCoordIso(44, 0) = 0.949107912342759;
+        pointCoordIso(45, 0) = 0.949107912342759;
+        pointCoordIso(46, 0) = 0.949107912342759;
+        pointCoordIso(47, 0) = 0.949107912342759;
+        pointCoordIso(48, 0) = 0.949107912342759;
 
-        pointCoordIso(0, 1) = -0.94910791230;
-        pointCoordIso(1, 1) = -0.74153118550;
-        pointCoordIso(2, 1) = -0.40584515130;
+        pointCoordIso(0, 1) = -0.949107912342759;
+        pointCoordIso(1, 1) = -0.741531185599394;
+        pointCoordIso(2, 1) = -0.405845151377397;
         pointCoordIso(3, 1) = 0.00000000000;
-        pointCoordIso(4, 1) = 0.40584515130;
-        pointCoordIso(5, 1) = 0.74153118550;
-        pointCoordIso(6, 1) = 0.94910791230;
-        pointCoordIso(7, 1) = -0.94910791230;
-        pointCoordIso(8, 1) = -0.74153118550;
-        pointCoordIso(9, 1) = -0.40584515130;
+        pointCoordIso(4, 1) = 0.405845151377397;
+        pointCoordIso(5, 1) = 0.741531185599394;
+        pointCoordIso(6, 1) = 0.949107912342759;
+        pointCoordIso(7, 1) = -0.949107912342759;
+        pointCoordIso(8, 1) = -0.741531185599394;
+        pointCoordIso(9, 1) = -0.405845151377397;
         pointCoordIso(10, 1) = 0.00000000000;
-        pointCoordIso(11, 1) = 0.40584515130;
-        pointCoordIso(12, 1) = 0.74153118550;
-        pointCoordIso(13, 1) = 0.94910791230;
-        pointCoordIso(14, 1) = -0.94910791230;
-        pointCoordIso(15, 1) = -0.74153118550;
-        pointCoordIso(16, 1) = -0.40584515130;
+        pointCoordIso(11, 1) = 0.405845151377397;
+        pointCoordIso(12, 1) = 0.741531185599394;
+        pointCoordIso(13, 1) = 0.949107912342759;
+        pointCoordIso(14, 1) = -0.949107912342759;
+        pointCoordIso(15, 1) = -0.741531185599394;
+        pointCoordIso(16, 1) = -0.405845151377397;
         pointCoordIso(17, 1) = 0.00000000000;
-        pointCoordIso(18, 1) = 0.40584515130;
-        pointCoordIso(19, 1) = 0.74153118550;
-        pointCoordIso(20, 1) = 0.94910791230;
-        pointCoordIso(21, 1) = -0.94910791230;
-        pointCoordIso(22, 1) = -0.74153118550;
-        pointCoordIso(23, 1) = -0.40584515130;
+        pointCoordIso(18, 1) = 0.405845151377397;
+        pointCoordIso(19, 1) = 0.741531185599394;
+        pointCoordIso(20, 1) = 0.949107912342759;
+        pointCoordIso(21, 1) = -0.949107912342759;
+        pointCoordIso(22, 1) = -0.741531185599394;
+        pointCoordIso(23, 1) = -0.405845151377397;
         pointCoordIso(24, 1) = 0.00000000000;
-        pointCoordIso(25, 1) = 0.40584515130;
-        pointCoordIso(26, 1) = 0.74153118550;
-        pointCoordIso(27, 1) = 0.94910791230;
-        pointCoordIso(28, 1) = -0.94910791230;
-        pointCoordIso(29, 1) = -0.74153118550;
-        pointCoordIso(30, 1) = -0.40584515130;
+        pointCoordIso(25, 1) = 0.405845151377397;
+        pointCoordIso(26, 1) = 0.741531185599394;
+        pointCoordIso(27, 1) = 0.949107912342759;
+        pointCoordIso(28, 1) = -0.949107912342759;
+        pointCoordIso(29, 1) = -0.741531185599394;
+        pointCoordIso(30, 1) = -0.405845151377397;
         pointCoordIso(31, 1) = 0.00000000000;
-        pointCoordIso(32, 1) = 0.40584515130;
-        pointCoordIso(33, 1) = 0.74153118550;
-        pointCoordIso(34, 1) = 0.94910791230;
-        pointCoordIso(35, 1) = -0.94910791230;
-        pointCoordIso(36, 1) = -0.74153118550;
-        pointCoordIso(37, 1) = -0.40584515130;
+        pointCoordIso(32, 1) = 0.405845151377397;
+        pointCoordIso(33, 1) = 0.741531185599394;
+        pointCoordIso(34, 1) = 0.949107912342759;
+        pointCoordIso(35, 1) = -0.949107912342759;
+        pointCoordIso(36, 1) = -0.741531185599394;
+        pointCoordIso(37, 1) = -0.405845151377397;
         pointCoordIso(38, 1) = 0.00000000000;
-        pointCoordIso(39, 1) = 0.40584515130;
-        pointCoordIso(40, 1) = 0.74153118550;
-        pointCoordIso(41, 1) = 0.94910791230;
-        pointCoordIso(42, 1) = -0.94910791230;
-        pointCoordIso(43, 1) = -0.74153118550;
-        pointCoordIso(44, 1) = -0.40584515130;
+        pointCoordIso(39, 1) = 0.405845151377397;
+        pointCoordIso(40, 1) = 0.741531185599394;
+        pointCoordIso(41, 1) = 0.949107912342759;
+        pointCoordIso(42, 1) = -0.949107912342759;
+        pointCoordIso(43, 1) = -0.741531185599394;
+        pointCoordIso(44, 1) = -0.405845151377397;
         pointCoordIso(45, 1) = 0.00000000000;
-        pointCoordIso(46, 1) = 0.40584515130;
-        pointCoordIso(47, 1) = 0.74153118550;
-        pointCoordIso(48, 1) = 0.94910791230;
+        pointCoordIso(46, 1) = 0.405845151377397;
+        pointCoordIso(47, 1) = 0.741531185599394;
+        pointCoordIso(48, 1) = 0.949107912342759;
 
-        pointCoordIso(0, 2) = 0.0167663564459182;
-        pointCoordIso(1, 2) = 0.0362176431234162;
-        pointCoordIso(2, 2) = 0.0494412511449538;
-        pointCoordIso(3, 2) = 0.0541194307196297;
-        pointCoordIso(4, 2) = 0.0494412511449538;
-        pointCoordIso(5, 2) = 0.0362176431234162;
-        pointCoordIso(6, 2) = 0.0167663564459182;
-        pointCoordIso(7, 2) = 0.0362176431234162;
-        pointCoordIso(8, 2) = 0.0782351059782272;
-        pointCoordIso(9, 2) = 0.1067999237233840;
-        pointCoordIso(10, 2) = 0.1169054370380620;
-        pointCoordIso(11, 2) = 0.1067999237233840;
-        pointCoordIso(12, 2) = 0.0782351059782272;
-        pointCoordIso(13, 2) = 0.0362176431234162;
-        pointCoordIso(14, 2) = 0.0494412511449538;
-        pointCoordIso(15, 2) = 0.1067999237233840;
-        pointCoordIso(16, 2) = 0.1457941874648330;
-        pointCoordIso(17, 2) = 0.1595893761809270;
-        pointCoordIso(18, 2) = 0.1457941874648330;
-        pointCoordIso(19, 2) = 0.1067999237233840;
-        pointCoordIso(20, 2) = 0.0494412511449538;
-        pointCoordIso(21, 2) = 0.0541194307196297;
-        pointCoordIso(22, 2) = 0.1169054370380620;
-        pointCoordIso(23, 2) = 0.1595893761809270;
-        pointCoordIso(24, 2) = 0.1746898791555790;
-        pointCoordIso(25, 2) = 0.1595893761809270;
-        pointCoordIso(26, 2) = 0.1169054370380620;
-        pointCoordIso(27, 2) = 0.0541194307196297;
-        pointCoordIso(28, 2) = 0.0494412511449538;
-        pointCoordIso(29, 2) = 0.1067999237233840;
-        pointCoordIso(30, 2) = 0.1457941874648330;
-        pointCoordIso(31, 2) = 0.1595893761809270;
-        pointCoordIso(32, 2) = 0.1457941874648330;
-        pointCoordIso(33, 2) = 0.1067999237233840;
-        pointCoordIso(34, 2) = 0.0494412511449538;
-        pointCoordIso(35, 2) = 0.0362176431234162;
-        pointCoordIso(36, 2) = 0.0782351059782272;
-        pointCoordIso(37, 2) = 0.1067999237233840;
-        pointCoordIso(38, 2) = 0.1169054370380620;
-        pointCoordIso(39, 2) = 0.1067999237233840;
-        pointCoordIso(40, 2) = 0.0782351059782272;
-        pointCoordIso(41, 2) = 0.0362176431234162;
-        pointCoordIso(42, 2) = 0.0167663564459182;
-        pointCoordIso(43, 2) = 0.0362176431234162;
-        pointCoordIso(44, 2) = 0.0494412511449538;
-        pointCoordIso(45, 2) = 0.0541194307196297;
-        pointCoordIso(46, 2) = 0.0494412511449538;
-        pointCoordIso(47, 2) = 0.0362176431234162;
-        pointCoordIso(48, 2) = 0.0167663564459182;
+        pointCoordIso(0, 2) = 0.0167663564637534;
+        pointCoordIso(1, 2) = 0.0362176431542396;
+        pointCoordIso(2, 2) = 0.0494412511719133;
+        pointCoordIso(3, 2) = 0.0541194307579277;
+        pointCoordIso(4, 2) = 0.0494412511719133;
+        pointCoordIso(5, 2) = 0.0362176431542396;
+        pointCoordIso(6, 2) = 0.0167663564637534;
+        pointCoordIso(7, 2) = 0.0362176431542396;
+        pointCoordIso(8, 2) = 0.0782351060281697;
+        pointCoordIso(9, 2) = 0.1067999237589050;
+        pointCoordIso(10, 2) = 0.1169054370959260;
+        pointCoordIso(11, 2) = 0.1067999237589050;
+        pointCoordIso(12, 2) = 0.0782351060281697;
+        pointCoordIso(13, 2) = 0.0362176431542396;
+        pointCoordIso(14, 2) = 0.0494412511719133;
+        pointCoordIso(15, 2) = 0.1067999237589050;
+        pointCoordIso(16, 2) = 0.1457941874687420;
+        pointCoordIso(17, 2) = 0.1595893762111190;
+        pointCoordIso(18, 2) = 0.1457941874687420;
+        pointCoordIso(19, 2) = 0.1067999237589050;
+        pointCoordIso(20, 2) = 0.0494412511719133;
+        pointCoordIso(21, 2) = 0.0541194307579277;
+        pointCoordIso(22, 2) = 0.1169054370959260;
+        pointCoordIso(23, 2) = 0.1595893762111190;
+        pointCoordIso(24, 2) = 0.1746898792169930;
+        pointCoordIso(25, 2) = 0.1595893762111190;
+        pointCoordIso(26, 2) = 0.1169054370959260;
+        pointCoordIso(27, 2) = 0.0541194307579277;
+        pointCoordIso(28, 2) = 0.0494412511719133;
+        pointCoordIso(29, 2) = 0.1067999237589050;
+        pointCoordIso(30, 2) = 0.1457941874687420;
+        pointCoordIso(31, 2) = 0.1595893762111190;
+        pointCoordIso(32, 2) = 0.1457941874687420;
+        pointCoordIso(33, 2) = 0.1067999237589050;
+        pointCoordIso(34, 2) = 0.0494412511719133;
+        pointCoordIso(35, 2) = 0.0362176431542396;
+        pointCoordIso(36, 2) = 0.0782351060281697;
+        pointCoordIso(37, 2) = 0.1067999237589050;
+        pointCoordIso(38, 2) = 0.1169054370959260;
+        pointCoordIso(39, 2) = 0.1067999237589050;
+        pointCoordIso(40, 2) = 0.0782351060281697;
+        pointCoordIso(41, 2) = 0.0362176431542396;
+        pointCoordIso(42, 2) = 0.0167663564637534;
+        pointCoordIso(43, 2) = 0.0362176431542396;
+        pointCoordIso(44, 2) = 0.0494412511719133;
+        pointCoordIso(45, 2) = 0.0541194307579277;
+        pointCoordIso(46, 2) = 0.0494412511719133;
+        pointCoordIso(47, 2) = 0.0362176431542396;
+        pointCoordIso(48, 2) = 0.0167663564637534;
     }
     else if (points == 8)
     {
-        pointCoordIso(0, 0) = -0.9602898564000;
-        pointCoordIso(1, 0) = -0.9602898564000;
-        pointCoordIso(2, 0) = -0.9602898564000;
-        pointCoordIso(3, 0) = -0.9602898564000;
-        pointCoordIso(4, 0) = -0.9602898564000;
-        pointCoordIso(5, 0) = -0.9602898564000;
-        pointCoordIso(6, 0) = -0.9602898564000;
-        pointCoordIso(7, 0) = -0.9602898564000;
-        pointCoordIso(8, 0) = -0.7966664774000;
-        pointCoordIso(9, 0) = -0.7966664774000;
-        pointCoordIso(10, 0) = -0.7966664774000;
-        pointCoordIso(11, 0) = -0.7966664774000;
-        pointCoordIso(12, 0) = -0.7966664774000;
-        pointCoordIso(13, 0) = -0.7966664774000;
-        pointCoordIso(14, 0) = -0.7966664774000;
-        pointCoordIso(15, 0) = -0.7966664774000;
-        pointCoordIso(16, 0) = -0.5255324099000;
-        pointCoordIso(17, 0) = -0.5255324099000;
-        pointCoordIso(18, 0) = -0.5255324099000;
-        pointCoordIso(19, 0) = -0.5255324099000;
-        pointCoordIso(20, 0) = -0.5255324099000;
-        pointCoordIso(21, 0) = -0.5255324099000;
-        pointCoordIso(22, 0) = -0.5255324099000;
-        pointCoordIso(23, 0) = -0.5255324099000;
-        pointCoordIso(24, 0) = -0.1834346424000;
-        pointCoordIso(25, 0) = -0.1834346424000;
-        pointCoordIso(26, 0) = -0.1834346424000;
-        pointCoordIso(27, 0) = -0.1834346424000;
-        pointCoordIso(28, 0) = -0.1834346424000;
-        pointCoordIso(29, 0) = -0.1834346424000;
-        pointCoordIso(30, 0) = -0.1834346424000;
-        pointCoordIso(31, 0) = -0.1834346424000;
-        pointCoordIso(32, 0) = 0.1834346424000;
-        pointCoordIso(33, 0) = 0.1834346424000;
-        pointCoordIso(34, 0) = 0.1834346424000;
-        pointCoordIso(35, 0) = 0.1834346424000;
-        pointCoordIso(36, 0) = 0.1834346424000;
-        pointCoordIso(37, 0) = 0.1834346424000;
-        pointCoordIso(38, 0) = 0.1834346424000;
-        pointCoordIso(39, 0) = 0.1834346424000;
-        pointCoordIso(40, 0) = 0.5255324099000;
-        pointCoordIso(41, 0) = 0.5255324099000;
-        pointCoordIso(42, 0) = 0.5255324099000;
-        pointCoordIso(43, 0) = 0.5255324099000;
-        pointCoordIso(44, 0) = 0.5255324099000;
-        pointCoordIso(45, 0) = 0.5255324099000;
-        pointCoordIso(46, 0) = 0.5255324099000;
-        pointCoordIso(47, 0) = 0.5255324099000;
-        pointCoordIso(48, 0) = 0.7966664774000;
-        pointCoordIso(49, 0) = 0.7966664774000;
-        pointCoordIso(50, 0) = 0.7966664774000;
-        pointCoordIso(51, 0) = 0.7966664774000;
-        pointCoordIso(52, 0) = 0.7966664774000;
-        pointCoordIso(53, 0) = 0.7966664774000;
-        pointCoordIso(54, 0) = 0.7966664774000;
-        pointCoordIso(55, 0) = 0.7966664774000;
-        pointCoordIso(56, 0) = 0.9602898564000;
-        pointCoordIso(57, 0) = 0.9602898564000;
-        pointCoordIso(58, 0) = 0.9602898564000;
-        pointCoordIso(59, 0) = 0.9602898564000;
-        pointCoordIso(60, 0) = 0.9602898564000;
-        pointCoordIso(61, 0) = 0.9602898564000;
-        pointCoordIso(62, 0) = 0.9602898564000;
-        pointCoordIso(63, 0) = 0.9602898564000;
+        pointCoordIso(0, 0) = -0.960289856497536;
+        pointCoordIso(1, 0) = -0.960289856497536;
+        pointCoordIso(2, 0) = -0.960289856497536;
+        pointCoordIso(3, 0) = -0.960289856497536;
+        pointCoordIso(4, 0) = -0.960289856497536;
+        pointCoordIso(5, 0) = -0.960289856497536;
+        pointCoordIso(6, 0) = -0.960289856497536;
+        pointCoordIso(7, 0) = -0.960289856497536;
+        pointCoordIso(8, 0) = -0.796666477413627;
+        pointCoordIso(9, 0) = -0.796666477413627;
+        pointCoordIso(10, 0) = -0.796666477413627;
+        pointCoordIso(11, 0) = -0.796666477413627;
+        pointCoordIso(12, 0) = -0.796666477413627;
+        pointCoordIso(13, 0) = -0.796666477413627;
+        pointCoordIso(14, 0) = -0.796666477413627;
+        pointCoordIso(15, 0) = -0.796666477413627;
+        pointCoordIso(16, 0) = -0.525532409916329;
+        pointCoordIso(17, 0) = -0.525532409916329;
+        pointCoordIso(18, 0) = -0.525532409916329;
+        pointCoordIso(19, 0) = -0.525532409916329;
+        pointCoordIso(20, 0) = -0.525532409916329;
+        pointCoordIso(21, 0) = -0.525532409916329;
+        pointCoordIso(22, 0) = -0.525532409916329;
+        pointCoordIso(23, 0) = -0.525532409916329;
+        pointCoordIso(24, 0) = -0.183434642495650;
+        pointCoordIso(25, 0) = -0.183434642495650;
+        pointCoordIso(26, 0) = -0.183434642495650;
+        pointCoordIso(27, 0) = -0.183434642495650;
+        pointCoordIso(28, 0) = -0.183434642495650;
+        pointCoordIso(29, 0) = -0.183434642495650;
+        pointCoordIso(30, 0) = -0.183434642495650;
+        pointCoordIso(31, 0) = -0.183434642495650;
+        pointCoordIso(32, 0) = 0.183434642495650;
+        pointCoordIso(33, 0) = 0.183434642495650;
+        pointCoordIso(34, 0) = 0.183434642495650;
+        pointCoordIso(35, 0) = 0.183434642495650;
+        pointCoordIso(36, 0) = 0.183434642495650;
+        pointCoordIso(37, 0) = 0.183434642495650;
+        pointCoordIso(38, 0) = 0.183434642495650;
+        pointCoordIso(39, 0) = 0.183434642495650;
+        pointCoordIso(40, 0) = 0.525532409916329;
+        pointCoordIso(41, 0) = 0.525532409916329;
+        pointCoordIso(42, 0) = 0.525532409916329;
+        pointCoordIso(43, 0) = 0.525532409916329;
+        pointCoordIso(44, 0) = 0.525532409916329;
+        pointCoordIso(45, 0) = 0.525532409916329;
+        pointCoordIso(46, 0) = 0.525532409916329;
+        pointCoordIso(47, 0) = 0.525532409916329;
+        pointCoordIso(48, 0) = 0.796666477413627;
+        pointCoordIso(49, 0) = 0.796666477413627;
+        pointCoordIso(50, 0) = 0.796666477413627;
+        pointCoordIso(51, 0) = 0.796666477413627;
+        pointCoordIso(52, 0) = 0.796666477413627;
+        pointCoordIso(53, 0) = 0.796666477413627;
+        pointCoordIso(54, 0) = 0.796666477413627;
+        pointCoordIso(55, 0) = 0.796666477413627;
+        pointCoordIso(56, 0) = 0.960289856497536;
+        pointCoordIso(57, 0) = 0.960289856497536;
+        pointCoordIso(58, 0) = 0.960289856497536;
+        pointCoordIso(59, 0) = 0.960289856497536;
+        pointCoordIso(60, 0) = 0.960289856497536;
+        pointCoordIso(61, 0) = 0.960289856497536;
+        pointCoordIso(62, 0) = 0.960289856497536;
+        pointCoordIso(63, 0) = 0.960289856497536;
 
-        pointCoordIso(0, 1) = -0.9602898564000;
-        pointCoordIso(1, 1) = -0.7966664774000;
-        pointCoordIso(2, 1) = -0.5255324099000;
-        pointCoordIso(3, 1) = -0.1834346424000;
-        pointCoordIso(4, 1) = 0.1834346424000;
-        pointCoordIso(5, 1) = 0.5255324099000;
-        pointCoordIso(6, 1) = 0.7966664774000;
-        pointCoordIso(7, 1) = 0.9602898564000;
-        pointCoordIso(8, 1) = -0.9602898564000;
-        pointCoordIso(9, 1) = -0.7966664774000;
-        pointCoordIso(10, 1) = -0.5255324099000;
-        pointCoordIso(11, 1) = -0.1834346424000;
-        pointCoordIso(12, 1) = 0.1834346424000;
-        pointCoordIso(13, 1) = 0.5255324099000;
-        pointCoordIso(14, 1) = 0.7966664774000;
-        pointCoordIso(15, 1) = 0.9602898564000;
-        pointCoordIso(16, 1) = -0.9602898564000;
-        pointCoordIso(17, 1) = -0.7966664774000;
-        pointCoordIso(18, 1) = -0.5255324099000;
-        pointCoordIso(19, 1) = -0.1834346424000;
-        pointCoordIso(20, 1) = 0.1834346424000;
-        pointCoordIso(21, 1) = 0.5255324099000;
-        pointCoordIso(22, 1) = 0.7966664774000;
-        pointCoordIso(23, 1) = 0.9602898564000;
-        pointCoordIso(24, 1) = -0.9602898564000;
-        pointCoordIso(25, 1) = -0.7966664774000;
-        pointCoordIso(26, 1) = -0.5255324099000;
-        pointCoordIso(27, 1) = -0.1834346424000;
-        pointCoordIso(28, 1) = 0.1834346424000;
-        pointCoordIso(29, 1) = 0.5255324099000;
-        pointCoordIso(30, 1) = 0.7966664774000;
-        pointCoordIso(31, 1) = 0.9602898564000;
-        pointCoordIso(32, 1) = -0.9602898564000;
-        pointCoordIso(33, 1) = -0.7966664774000;
-        pointCoordIso(34, 1) = -0.5255324099000;
-        pointCoordIso(35, 1) = -0.1834346424000;
-        pointCoordIso(36, 1) = 0.1834346424000;
-        pointCoordIso(37, 1) = 0.5255324099000;
-        pointCoordIso(38, 1) = 0.7966664774000;
-        pointCoordIso(39, 1) = 0.9602898564000;
-        pointCoordIso(40, 1) = -0.9602898564000;
-        pointCoordIso(41, 1) = -0.7966664774000;
-        pointCoordIso(42, 1) = -0.5255324099000;
-        pointCoordIso(43, 1) = -0.1834346424000;
-        pointCoordIso(44, 1) = 0.1834346424000;
-        pointCoordIso(45, 1) = 0.5255324099000;
-        pointCoordIso(46, 1) = 0.7966664774000;
-        pointCoordIso(47, 1) = 0.9602898564000;
-        pointCoordIso(48, 1) = -0.9602898564000;
-        pointCoordIso(49, 1) = -0.7966664774000;
-        pointCoordIso(50, 1) = -0.5255324099000;
-        pointCoordIso(51, 1) = -0.1834346424000;
-        pointCoordIso(52, 1) = 0.1834346424000;
-        pointCoordIso(53, 1) = 0.5255324099000;
-        pointCoordIso(54, 1) = 0.7966664774000;
-        pointCoordIso(55, 1) = 0.9602898564000;
-        pointCoordIso(56, 1) = -0.9602898564000;
-        pointCoordIso(57, 1) = -0.7966664774000;
-        pointCoordIso(58, 1) = -0.5255324099000;
-        pointCoordIso(59, 1) = -0.1834346424000;
-        pointCoordIso(60, 1) = 0.1834346424000;
-        pointCoordIso(61, 1) = 0.5255324099000;
-        pointCoordIso(62, 1) = 0.7966664774000;
-        pointCoordIso(63, 1) = 0.9602898564000;
+        pointCoordIso(0, 1) = -0.960289856497536;
+        pointCoordIso(1, 1) = -0.796666477413627;
+        pointCoordIso(2, 1) = -0.525532409916329;
+        pointCoordIso(3, 1) = -0.183434642495650;
+        pointCoordIso(4, 1) = 0.183434642495650;
+        pointCoordIso(5, 1) = 0.525532409916329;
+        pointCoordIso(6, 1) = 0.796666477413627;
+        pointCoordIso(7, 1) = 0.960289856497536;
+        pointCoordIso(8, 1) = -0.960289856497536;
+        pointCoordIso(9, 1) = -0.796666477413627;
+        pointCoordIso(10, 1) = -0.525532409916329;
+        pointCoordIso(11, 1) = -0.183434642495650;
+        pointCoordIso(12, 1) = 0.183434642495650;
+        pointCoordIso(13, 1) = 0.525532409916329;
+        pointCoordIso(14, 1) = 0.796666477413627;
+        pointCoordIso(15, 1) = 0.960289856497536;
+        pointCoordIso(16, 1) = -0.960289856497536;
+        pointCoordIso(17, 1) = -0.796666477413627;
+        pointCoordIso(18, 1) = -0.525532409916329;
+        pointCoordIso(19, 1) = -0.183434642495650;
+        pointCoordIso(20, 1) = 0.183434642495650;
+        pointCoordIso(21, 1) = 0.525532409916329;
+        pointCoordIso(22, 1) = 0.796666477413627;
+        pointCoordIso(23, 1) = 0.960289856497536;
+        pointCoordIso(24, 1) = -0.960289856497536;
+        pointCoordIso(25, 1) = -0.796666477413627;
+        pointCoordIso(26, 1) = -0.525532409916329;
+        pointCoordIso(27, 1) = -0.183434642495650;
+        pointCoordIso(28, 1) = 0.183434642495650;
+        pointCoordIso(29, 1) = 0.525532409916329;
+        pointCoordIso(30, 1) = 0.796666477413627;
+        pointCoordIso(31, 1) = 0.960289856497536;
+        pointCoordIso(32, 1) = -0.960289856497536;
+        pointCoordIso(33, 1) = -0.796666477413627;
+        pointCoordIso(34, 1) = -0.525532409916329;
+        pointCoordIso(35, 1) = -0.183434642495650;
+        pointCoordIso(36, 1) = 0.183434642495650;
+        pointCoordIso(37, 1) = 0.525532409916329;
+        pointCoordIso(38, 1) = 0.796666477413627;
+        pointCoordIso(39, 1) = 0.960289856497536;
+        pointCoordIso(40, 1) = -0.960289856497536;
+        pointCoordIso(41, 1) = -0.796666477413627;
+        pointCoordIso(42, 1) = -0.525532409916329;
+        pointCoordIso(43, 1) = -0.183434642495650;
+        pointCoordIso(44, 1) = 0.183434642495650;
+        pointCoordIso(45, 1) = 0.525532409916329;
+        pointCoordIso(46, 1) = 0.796666477413627;
+        pointCoordIso(47, 1) = 0.960289856497536;
+        pointCoordIso(48, 1) = -0.960289856497536;
+        pointCoordIso(49, 1) = -0.796666477413627;
+        pointCoordIso(50, 1) = -0.525532409916329;
+        pointCoordIso(51, 1) = -0.183434642495650;
+        pointCoordIso(52, 1) = 0.183434642495650;
+        pointCoordIso(53, 1) = 0.525532409916329;
+        pointCoordIso(54, 1) = 0.796666477413627;
+        pointCoordIso(55, 1) = 0.960289856497536;
+        pointCoordIso(56, 1) = -0.960289856497536;
+        pointCoordIso(57, 1) = -0.796666477413627;
+        pointCoordIso(58, 1) = -0.525532409916329;
+        pointCoordIso(59, 1) = -0.183434642495650;
+        pointCoordIso(60, 1) = 0.183434642495650;
+        pointCoordIso(61, 1) = 0.525532409916329;
+        pointCoordIso(62, 1) = 0.796666477413627;
+        pointCoordIso(63, 1) = 0.960289856497536;
 
-        pointCoordIso(0, 2) = 0.01024721654119470;
-        pointCoordIso(1, 2) = 0.02251130659095380;
-        pointCoordIso(2, 2) = 0.03175606455054590;
-        pointCoordIso(3, 2) = 0.03671394848693700;
-        pointCoordIso(4, 2) = 0.03671394848693700;
-        pointCoordIso(5, 2) = 0.03175606455054590;
-        pointCoordIso(6, 2) = 0.02251130659095380;
-        pointCoordIso(7, 2) = 0.01024721654119470;
-        pointCoordIso(8, 2) = 0.02251130659095380;
-        pointCoordIso(9, 2) = 0.04945332446081400;
-        pointCoordIso(10, 2) = 0.06976240839115840;
-        pointCoordIso(11, 2) = 0.08065399489035940;
-        pointCoordIso(12, 2) = 0.08065399489035940;
-        pointCoordIso(13, 2) = 0.06976240839115840;
-        pointCoordIso(14, 2) = 0.04945332446081400;
-        pointCoordIso(15, 2) = 0.02251130659095380;
-        pointCoordIso(16, 2) = 0.03175606455054590;
-        pointCoordIso(17, 2) = 0.06976240839115840;
-        pointCoordIso(18, 2) = 0.09841185961908670;
-        pointCoordIso(19, 2) = 0.11377631314509700;
-        pointCoordIso(20, 2) = 0.11377631314509700;
-        pointCoordIso(21, 2) = 0.09841185961908670;
-        pointCoordIso(22, 2) = 0.06976240839115840;
-        pointCoordIso(23, 2) = 0.03175606455054590;
-        pointCoordIso(24, 2) = 0.03671394848693700;
-        pointCoordIso(25, 2) = 0.08065399489035940;
-        pointCoordIso(26, 2) = 0.11377631314509700;
-        pointCoordIso(27, 2) = 0.13153952666880100;
-        pointCoordIso(28, 2) = 0.13153952666880100;
-        pointCoordIso(29, 2) = 0.11377631314509700;
-        pointCoordIso(30, 2) = 0.08065399489035940;
-        pointCoordIso(31, 2) = 0.03671394848693700;
-        pointCoordIso(32, 2) = 0.03671394848693700;
-        pointCoordIso(33, 2) = 0.08065399489035940;
-        pointCoordIso(34, 2) = 0.11377631314509700;
-        pointCoordIso(35, 2) = 0.13153952666880100;
-        pointCoordIso(36, 2) = 0.13153952666880100;
-        pointCoordIso(37, 2) = 0.11377631314509700;
-        pointCoordIso(38, 2) = 0.08065399489035940;
-        pointCoordIso(39, 2) = 0.03671394848693700;
-        pointCoordIso(40, 2) = 0.03175606455054590;
-        pointCoordIso(41, 2) = 0.06976240839115840;
-        pointCoordIso(42, 2) = 0.09841185961908670;
-        pointCoordIso(43, 2) = 0.11377631314509700;
-        pointCoordIso(44, 2) = 0.11377631314509700;
-        pointCoordIso(45, 2) = 0.09841185961908670;
-        pointCoordIso(46, 2) = 0.06976240839115840;
-        pointCoordIso(47, 2) = 0.03175606455054590;
-        pointCoordIso(48, 2) = 0.02251130659095380;
-        pointCoordIso(49, 2) = 0.04945332446081400;
-        pointCoordIso(50, 2) = 0.06976240839115840;
-        pointCoordIso(51, 2) = 0.08065399489035940;
-        pointCoordIso(52, 2) = 0.08065399489035940;
-        pointCoordIso(53, 2) = 0.06976240839115840;
-        pointCoordIso(54, 2) = 0.04945332446081400;
-        pointCoordIso(55, 2) = 0.02251130659095380;
-        pointCoordIso(56, 2) = 0.01024721654119470;
-        pointCoordIso(57, 2) = 0.02251130659095380;
-        pointCoordIso(58, 2) = 0.03175606455054590;
-        pointCoordIso(59, 2) = 0.03671394848693700;
-        pointCoordIso(60, 2) = 0.03671394848693700;
-        pointCoordIso(61, 2) = 0.03175606455054590;
-        pointCoordIso(62, 2) = 0.02251130659095380;
-        pointCoordIso(63, 2) = 0.01024721654119470;
+        pointCoordIso(0, 2) = 0.01024721655949200;
+        pointCoordIso(1, 2) = 0.02251130661645470;
+        pointCoordIso(2, 2) = 0.03175606458678180;
+        pointCoordIso(3, 2) = 0.03671394852764740;
+        pointCoordIso(4, 2) = 0.03671394852764740;
+        pointCoordIso(5, 2) = 0.03175606458678180;
+        pointCoordIso(6, 2) = 0.02251130661645470;
+        pointCoordIso(7, 2) = 0.01024721655949200;
+        pointCoordIso(8, 2) = 0.02251130661645470;
+        pointCoordIso(9, 2) = 0.04945332448455270;
+        pointCoordIso(10, 2) = 0.06976240842522280;
+        pointCoordIso(11, 2) = 0.08065399492714360;
+        pointCoordIso(12, 2) = 0.08065399492714360;
+        pointCoordIso(13, 2) = 0.06976240842522280;
+        pointCoordIso(14, 2) = 0.04945332448455270;
+        pointCoordIso(15, 2) = 0.02251130661645470;
+        pointCoordIso(16, 2) = 0.03175606458678180;
+        pointCoordIso(17, 2) = 0.06976240842522280;
+        pointCoordIso(18, 2) = 0.09841185966795400;
+        pointCoordIso(19, 2) = 0.11377631319792800;
+        pointCoordIso(20, 2) = 0.11377631319792800;
+        pointCoordIso(21, 2) = 0.09841185966795400;
+        pointCoordIso(22, 2) = 0.06976240842522280;
+        pointCoordIso(23, 2) = 0.03175606458678180;
+        pointCoordIso(24, 2) = 0.03671394852764740;
+        pointCoordIso(25, 2) = 0.08065399492714360;
+        pointCoordIso(26, 2) = 0.11377631319792800;
+        pointCoordIso(27, 2) = 0.13153952672564300;
+        pointCoordIso(28, 2) = 0.13153952672564300;
+        pointCoordIso(29, 2) = 0.11377631319792800;
+        pointCoordIso(30, 2) = 0.08065399492714360;
+        pointCoordIso(31, 2) = 0.03671394852764740;
+        pointCoordIso(32, 2) = 0.03671394852764740;
+        pointCoordIso(33, 2) = 0.08065399492714360;
+        pointCoordIso(34, 2) = 0.11377631319792800;
+        pointCoordIso(35, 2) = 0.13153952672564300;
+        pointCoordIso(36, 2) = 0.13153952672564300;
+        pointCoordIso(37, 2) = 0.11377631319792800;
+        pointCoordIso(38, 2) = 0.08065399492714360;
+        pointCoordIso(39, 2) = 0.03671394852764740;
+        pointCoordIso(40, 2) = 0.03175606458678180;
+        pointCoordIso(41, 2) = 0.06976240842522280;
+        pointCoordIso(42, 2) = 0.09841185966795400;
+        pointCoordIso(43, 2) = 0.11377631319792800;
+        pointCoordIso(44, 2) = 0.11377631319792800;
+        pointCoordIso(45, 2) = 0.09841185966795400;
+        pointCoordIso(46, 2) = 0.06976240842522280;
+        pointCoordIso(47, 2) = 0.03175606458678180;
+        pointCoordIso(48, 2) = 0.02251130661645470;
+        pointCoordIso(49, 2) = 0.04945332448455270;
+        pointCoordIso(50, 2) = 0.06976240842522280;
+        pointCoordIso(51, 2) = 0.08065399492714360;
+        pointCoordIso(52, 2) = 0.08065399492714360;
+        pointCoordIso(53, 2) = 0.06976240842522280;
+        pointCoordIso(54, 2) = 0.04945332448455270;
+        pointCoordIso(55, 2) = 0.02251130661645470;
+        pointCoordIso(56, 2) = 0.01024721655949200;
+        pointCoordIso(57, 2) = 0.02251130661645470;
+        pointCoordIso(58, 2) = 0.03175606458678180;
+        pointCoordIso(59, 2) = 0.03671394852764740;
+        pointCoordIso(60, 2) = 0.03671394852764740;
+        pointCoordIso(61, 2) = 0.03175606458678180;
+        pointCoordIso(62, 2) = 0.02251130661645470;
+        pointCoordIso(63, 2) = 0.01024721655949200;
     }
+    else if (points == 10)
+    {
+        pointCoordIso(0, 0) = 0.1488743389816310;
+        pointCoordIso(1, 0) = 0.1488743389816310;
+        pointCoordIso(2, 0) = 0.1488743389816310;
+        pointCoordIso(3, 0) = 0.1488743389816310;
+        pointCoordIso(4, 0) = 0.1488743389816310;
+        pointCoordIso(5, 0) = 0.1488743389816310;
+        pointCoordIso(6, 0) = 0.1488743389816310;
+        pointCoordIso(7, 0) = 0.1488743389816310;
+        pointCoordIso(8, 0) = 0.1488743389816310;
+        pointCoordIso(9, 0) = 0.1488743389816310;
+        pointCoordIso(10, 0) = 0.4333953941292470;
+        pointCoordIso(11, 0) = 0.4333953941292470;
+        pointCoordIso(12, 0) = 0.4333953941292470;
+        pointCoordIso(13, 0) = 0.4333953941292470;
+        pointCoordIso(14, 0) = 0.4333953941292470;
+        pointCoordIso(15, 0) = 0.4333953941292470;
+        pointCoordIso(16, 0) = 0.4333953941292470;
+        pointCoordIso(17, 0) = 0.4333953941292470;
+        pointCoordIso(18, 0) = 0.4333953941292470;
+        pointCoordIso(19, 0) = 0.4333953941292470;
+        pointCoordIso(20, 0) = 0.6794095682990240;
+        pointCoordIso(21, 0) = 0.6794095682990240;
+        pointCoordIso(22, 0) = 0.6794095682990240;
+        pointCoordIso(23, 0) = 0.6794095682990240;
+        pointCoordIso(24, 0) = 0.6794095682990240;
+        pointCoordIso(25, 0) = 0.6794095682990240;
+        pointCoordIso(26, 0) = 0.6794095682990240;
+        pointCoordIso(27, 0) = 0.6794095682990240;
+        pointCoordIso(28, 0) = 0.6794095682990240;
+        pointCoordIso(29, 0) = 0.6794095682990240;
+        pointCoordIso(30, 0) = 0.8650633666889850;
+        pointCoordIso(31, 0) = 0.8650633666889850;
+        pointCoordIso(32, 0) = 0.8650633666889850;
+        pointCoordIso(33, 0) = 0.8650633666889850;
+        pointCoordIso(34, 0) = 0.8650633666889850;
+        pointCoordIso(35, 0) = 0.8650633666889850;
+        pointCoordIso(36, 0) = 0.8650633666889850;
+        pointCoordIso(37, 0) = 0.8650633666889850;
+        pointCoordIso(38, 0) = 0.8650633666889850;
+        pointCoordIso(39, 0) = 0.8650633666889850;
+        pointCoordIso(40, 0) = 0.9739065285171720;
+        pointCoordIso(41, 0) = 0.9739065285171720;
+        pointCoordIso(42, 0) = 0.9739065285171720;
+        pointCoordIso(43, 0) = 0.9739065285171720;
+        pointCoordIso(44, 0) = 0.9739065285171720;
+        pointCoordIso(45, 0) = 0.9739065285171720;
+        pointCoordIso(46, 0) = 0.9739065285171720;
+        pointCoordIso(47, 0) = 0.9739065285171720;
+        pointCoordIso(48, 0) = 0.9739065285171720;
+        pointCoordIso(49, 0) = 0.9739065285171720;
+        pointCoordIso(50, 0) = -0.1488743389816310;
+        pointCoordIso(51, 0) = -0.1488743389816310;
+        pointCoordIso(52, 0) = -0.1488743389816310;
+        pointCoordIso(53, 0) = -0.1488743389816310;
+        pointCoordIso(54, 0) = -0.1488743389816310;
+        pointCoordIso(55, 0) = -0.1488743389816310;
+        pointCoordIso(56, 0) = -0.1488743389816310;
+        pointCoordIso(57, 0) = -0.1488743389816310;
+        pointCoordIso(58, 0) = -0.1488743389816310;
+        pointCoordIso(59, 0) = -0.1488743389816310;
+        pointCoordIso(60, 0) = -0.4333953941292470;
+        pointCoordIso(61, 0) = -0.4333953941292470;
+        pointCoordIso(62, 0) = -0.4333953941292470;
+        pointCoordIso(63, 0) = -0.4333953941292470;
+        pointCoordIso(64, 0) = -0.4333953941292470;
+        pointCoordIso(65, 0) = -0.4333953941292470;
+        pointCoordIso(66, 0) = -0.4333953941292470;
+        pointCoordIso(67, 0) = -0.4333953941292470;
+        pointCoordIso(68, 0) = -0.4333953941292470;
+        pointCoordIso(69, 0) = -0.4333953941292470;
+        pointCoordIso(70, 0) = -0.6794095682990240;
+        pointCoordIso(71, 0) = -0.6794095682990240;
+        pointCoordIso(72, 0) = -0.6794095682990240;
+        pointCoordIso(73, 0) = -0.6794095682990240;
+        pointCoordIso(74, 0) = -0.6794095682990240;
+        pointCoordIso(75, 0) = -0.6794095682990240;
+        pointCoordIso(76, 0) = -0.6794095682990240;
+        pointCoordIso(77, 0) = -0.6794095682990240;
+        pointCoordIso(78, 0) = -0.6794095682990240;
+        pointCoordIso(79, 0) = -0.6794095682990240;
+        pointCoordIso(80, 0) = -0.8650633666889850;
+        pointCoordIso(81, 0) = -0.8650633666889850;
+        pointCoordIso(82, 0) = -0.8650633666889850;
+        pointCoordIso(83, 0) = -0.8650633666889850;
+        pointCoordIso(84, 0) = -0.8650633666889850;
+        pointCoordIso(85, 0) = -0.8650633666889850;
+        pointCoordIso(86, 0) = -0.8650633666889850;
+        pointCoordIso(87, 0) = -0.8650633666889850;
+        pointCoordIso(88, 0) = -0.8650633666889850;
+        pointCoordIso(89, 0) = -0.8650633666889850;
+        pointCoordIso(90, 0) = -0.9739065285171720;
+        pointCoordIso(91, 0) = -0.9739065285171720;
+        pointCoordIso(92, 0) = -0.9739065285171720;
+        pointCoordIso(93, 0) = -0.9739065285171720;
+        pointCoordIso(94, 0) = -0.9739065285171720;
+        pointCoordIso(95, 0) = -0.9739065285171720;
+        pointCoordIso(96, 0) = -0.9739065285171720;
+        pointCoordIso(97, 0) = -0.9739065285171720;
+        pointCoordIso(98, 0) = -0.9739065285171720;
+        pointCoordIso(99, 0) = -0.9739065285171720;
+
+        pointCoordIso(0, 1) = 0.1488743389816310;
+        pointCoordIso(1, 1) = 0.4333953941292470;
+        pointCoordIso(2, 1) = 0.6794095682990240;
+        pointCoordIso(3, 1) = 0.8650633666889850;
+        pointCoordIso(4, 1) = 0.9739065285171720;
+        pointCoordIso(5, 1) = -0.1488743389816310;
+        pointCoordIso(6, 1) = -0.4333953941292470;
+        pointCoordIso(7, 1) = -0.6794095682990240;
+        pointCoordIso(8, 1) = -0.8650633666889850;
+        pointCoordIso(9, 1) = -0.9739065285171720;
+        pointCoordIso(10, 1) = 0.1488743389816310;
+        pointCoordIso(11, 1) = 0.4333953941292470;
+        pointCoordIso(12, 1) = 0.6794095682990240;
+        pointCoordIso(13, 1) = 0.8650633666889850;
+        pointCoordIso(14, 1) = 0.9739065285171720;
+        pointCoordIso(15, 1) = -0.1488743389816310;
+        pointCoordIso(16, 1) = -0.4333953941292470;
+        pointCoordIso(17, 1) = -0.6794095682990240;
+        pointCoordIso(18, 1) = -0.8650633666889850;
+        pointCoordIso(19, 1) = -0.9739065285171720;
+        pointCoordIso(20, 1) = 0.1488743389816310;
+        pointCoordIso(21, 1) = 0.4333953941292470;
+        pointCoordIso(22, 1) = 0.6794095682990240;
+        pointCoordIso(23, 1) = 0.8650633666889850;
+        pointCoordIso(24, 1) = 0.9739065285171720;
+        pointCoordIso(25, 1) = -0.1488743389816310;
+        pointCoordIso(26, 1) = -0.4333953941292470;
+        pointCoordIso(27, 1) = -0.6794095682990240;
+        pointCoordIso(28, 1) = -0.8650633666889850;
+        pointCoordIso(29, 1) = -0.9739065285171720;
+        pointCoordIso(30, 1) = 0.1488743389816310;
+        pointCoordIso(31, 1) = 0.4333953941292470;
+        pointCoordIso(32, 1) = 0.6794095682990240;
+        pointCoordIso(33, 1) = 0.8650633666889850;
+        pointCoordIso(34, 1) = 0.9739065285171720;
+        pointCoordIso(35, 1) = -0.1488743389816310;
+        pointCoordIso(36, 1) = -0.4333953941292470;
+        pointCoordIso(37, 1) = -0.6794095682990240;
+        pointCoordIso(38, 1) = -0.8650633666889850;
+        pointCoordIso(39, 1) = -0.9739065285171720;
+        pointCoordIso(40, 1) = 0.1488743389816310;
+        pointCoordIso(41, 1) = 0.4333953941292470;
+        pointCoordIso(42, 1) = 0.6794095682990240;
+        pointCoordIso(43, 1) = 0.8650633666889850;
+        pointCoordIso(44, 1) = 0.9739065285171720;
+        pointCoordIso(45, 1) = -0.1488743389816310;
+        pointCoordIso(46, 1) = -0.4333953941292470;
+        pointCoordIso(47, 1) = -0.6794095682990240;
+        pointCoordIso(48, 1) = -0.8650633666889850;
+        pointCoordIso(49, 1) = -0.9739065285171720;
+        pointCoordIso(50, 1) = 0.1488743389816310;
+        pointCoordIso(51, 1) = 0.4333953941292470;
+        pointCoordIso(52, 1) = 0.6794095682990240;
+        pointCoordIso(53, 1) = 0.8650633666889850;
+        pointCoordIso(54, 1) = 0.9739065285171720;
+        pointCoordIso(55, 1) = -0.1488743389816310;
+        pointCoordIso(56, 1) = -0.4333953941292470;
+        pointCoordIso(57, 1) = -0.6794095682990240;
+        pointCoordIso(58, 1) = -0.8650633666889850;
+        pointCoordIso(59, 1) = -0.9739065285171720;
+        pointCoordIso(60, 1) = 0.1488743389816310;
+        pointCoordIso(61, 1) = 0.4333953941292470;
+        pointCoordIso(62, 1) = 0.6794095682990240;
+        pointCoordIso(63, 1) = 0.8650633666889850;
+        pointCoordIso(64, 1) = 0.9739065285171720;
+        pointCoordIso(65, 1) = -0.1488743389816310;
+        pointCoordIso(66, 1) = -0.4333953941292470;
+        pointCoordIso(67, 1) = -0.6794095682990240;
+        pointCoordIso(68, 1) = -0.8650633666889850;
+        pointCoordIso(69, 1) = -0.9739065285171720;
+        pointCoordIso(70, 1) = 0.1488743389816310;
+        pointCoordIso(71, 1) = 0.4333953941292470;
+        pointCoordIso(72, 1) = 0.6794095682990240;
+        pointCoordIso(73, 1) = 0.8650633666889850;
+        pointCoordIso(74, 1) = 0.9739065285171720;
+        pointCoordIso(75, 1) = -0.1488743389816310;
+        pointCoordIso(76, 1) = -0.4333953941292470;
+        pointCoordIso(77, 1) = -0.6794095682990240;
+        pointCoordIso(78, 1) = -0.8650633666889850;
+        pointCoordIso(79, 1) = -0.9739065285171720;
+        pointCoordIso(80, 1) = 0.1488743389816310;
+        pointCoordIso(81, 1) = 0.4333953941292470;
+        pointCoordIso(82, 1) = 0.6794095682990240;
+        pointCoordIso(83, 1) = 0.8650633666889850;
+        pointCoordIso(84, 1) = 0.9739065285171720;
+        pointCoordIso(85, 1) = -0.1488743389816310;
+        pointCoordIso(86, 1) = -0.4333953941292470;
+        pointCoordIso(87, 1) = -0.6794095682990240;
+        pointCoordIso(88, 1) = -0.8650633666889850;
+        pointCoordIso(89, 1) = -0.9739065285171720;
+        pointCoordIso(90, 1) = 0.1488743389816310;
+        pointCoordIso(91, 1) = 0.4333953941292470;
+        pointCoordIso(92, 1) = 0.6794095682990240;
+        pointCoordIso(93, 1) = 0.8650633666889850;
+        pointCoordIso(94, 1) = 0.9739065285171720;
+        pointCoordIso(95, 1) = -0.1488743389816310;
+        pointCoordIso(96, 1) = -0.4333953941292470;
+        pointCoordIso(97, 1) = -0.6794095682990240;
+        pointCoordIso(98, 1) = -0.8650633666889850;
+        pointCoordIso(99, 1) = -0.9739065285171720;
+
+        pointCoordIso(0, 2) = 0.0873345673932558;
+        pointCoordIso(1, 2) = 0.0795748384655716;
+        pointCoordIso(2, 2) = 0.0647453274281109;
+        pointCoordIso(3, 2) = 0.0441664940902993;
+        pointCoordIso(4, 2) = 0.0197029973375154;
+        pointCoordIso(5, 2) = 0.0873345673932558;
+        pointCoordIso(6, 2) = 0.0795748384655716;
+        pointCoordIso(7, 2) = 0.0647453274281109;
+        pointCoordIso(8, 2) = 0.0441664940902993;
+        pointCoordIso(9, 2) = 0.0197029973375154;
+        pointCoordIso(10, 2) = 0.0795748384655716;
+        pointCoordIso(11, 2) = 0.0725045661279682;
+        pointCoordIso(12, 2) = 0.0589926660802390;
+        pointCoordIso(13, 2) = 0.0402422744822297;
+        pointCoordIso(14, 2) = 0.0179523741539876;
+        pointCoordIso(15, 2) = 0.0795748384655716;
+        pointCoordIso(16, 2) = 0.0725045661279682;
+        pointCoordIso(17, 2) = 0.0589926660802390;
+        pointCoordIso(18, 2) = 0.0402422744822297;
+        pointCoordIso(19, 2) = 0.0179523741539876;
+        pointCoordIso(20, 2) = 0.0647453274281109;
+        pointCoordIso(21, 2) = 0.0589926660802390;
+        pointCoordIso(22, 2) = 0.0479988342404843;
+        pointCoordIso(23, 2) = 0.0327427524585068;
+        pointCoordIso(24, 2) = 0.0146067823086411;
+        pointCoordIso(25, 2) = 0.0647453274281109;
+        pointCoordIso(26, 2) = 0.0589926660802390;
+        pointCoordIso(27, 2) = 0.0479988342404843;
+        pointCoordIso(28, 2) = 0.0327427524585068;
+        pointCoordIso(29, 2) = 0.0146067823086411;
+        pointCoordIso(30, 2) = 0.0441664940902993;
+        pointCoordIso(31, 2) = 0.0402422744822297;
+        pointCoordIso(32, 2) = 0.0327427524585068;
+        pointCoordIso(33, 2) = 0.0223357057629289;
+        pointCoordIso(34, 2) = 0.0099641223566163;
+        pointCoordIso(35, 2) = 0.0441664940902993;
+        pointCoordIso(36, 2) = 0.0402422744822297;
+        pointCoordIso(37, 2) = 0.0327427524585068;
+        pointCoordIso(38, 2) = 0.0223357057629289;
+        pointCoordIso(39, 2) = 0.0099641223566163;
+        pointCoordIso(40, 2) = 0.0197029973375154;
+        pointCoordIso(41, 2) = 0.0179523741539876;
+        pointCoordIso(42, 2) = 0.0146067823086411;
+        pointCoordIso(43, 2) = 0.0099641223566163;
+        pointCoordIso(44, 2) = 0.0044450681519276;
+        pointCoordIso(45, 2) = 0.0197029973375154;
+        pointCoordIso(46, 2) = 0.0179523741539876;
+        pointCoordIso(47, 2) = 0.0146067823086411;
+        pointCoordIso(48, 2) = 0.0099641223566163;
+        pointCoordIso(49, 2) = 0.0044450681519276;
+        pointCoordIso(50, 2) = 0.0873345673932558;
+        pointCoordIso(51, 2) = 0.0795748384655716;
+        pointCoordIso(52, 2) = 0.0647453274281109;
+        pointCoordIso(53, 2) = 0.0441664940902993;
+        pointCoordIso(54, 2) = 0.0197029973375154;
+        pointCoordIso(55, 2) = 0.0873345673932558;
+        pointCoordIso(56, 2) = 0.0795748384655716;
+        pointCoordIso(57, 2) = 0.0647453274281109;
+        pointCoordIso(58, 2) = 0.0441664940902993;
+        pointCoordIso(59, 2) = 0.0197029973375154;
+        pointCoordIso(60, 2) = 0.0795748384655716;
+        pointCoordIso(61, 2) = 0.0725045661279682;
+        pointCoordIso(62, 2) = 0.0589926660802390;
+        pointCoordIso(63, 2) = 0.0402422744822297;
+        pointCoordIso(64, 2) = 0.0179523741539876;
+        pointCoordIso(65, 2) = 0.0795748384655716;
+        pointCoordIso(66, 2) = 0.0725045661279682;
+        pointCoordIso(67, 2) = 0.0589926660802390;
+        pointCoordIso(68, 2) = 0.0402422744822297;
+        pointCoordIso(69, 2) = 0.0179523741539876;
+        pointCoordIso(70, 2) = 0.0647453274281109;
+        pointCoordIso(71, 2) = 0.0589926660802390;
+        pointCoordIso(72, 2) = 0.0479988342404843;
+        pointCoordIso(73, 2) = 0.0327427524585068;
+        pointCoordIso(74, 2) = 0.0146067823086411;
+        pointCoordIso(75, 2) = 0.0647453274281109;
+        pointCoordIso(76, 2) = 0.0589926660802390;
+        pointCoordIso(77, 2) = 0.0479988342404843;
+        pointCoordIso(78, 2) = 0.0327427524585068;
+        pointCoordIso(79, 2) = 0.0146067823086411;
+        pointCoordIso(80, 2) = 0.0441664940902993;
+        pointCoordIso(81, 2) = 0.0402422744822297;
+        pointCoordIso(82, 2) = 0.0327427524585068;
+        pointCoordIso(83, 2) = 0.0223357057629289;
+        pointCoordIso(84, 2) = 0.0099641223566163;
+        pointCoordIso(85, 2) = 0.0441664940902993;
+        pointCoordIso(86, 2) = 0.0402422744822297;
+        pointCoordIso(87, 2) = 0.0327427524585068;
+        pointCoordIso(88, 2) = 0.0223357057629289;
+        pointCoordIso(89, 2) = 0.0099641223566163;
+        pointCoordIso(90, 2) = 0.0197029973375154;
+        pointCoordIso(91, 2) = 0.0179523741539876;
+        pointCoordIso(92, 2) = 0.0146067823086411;
+        pointCoordIso(93, 2) = 0.0099641223566163;
+        pointCoordIso(94, 2) = 0.0044450681519276;
+        pointCoordIso(95, 2) = 0.0197029973375154;
+        pointCoordIso(96, 2) = 0.0179523741539876;
+        pointCoordIso(97, 2) = 0.0146067823086411;
+        pointCoordIso(98, 2) = 0.0099641223566163;
+        pointCoordIso(99, 2) = 0.0044450681519276;
+    }
+    else
+    {
+        int nga = points;
+        matrix<double> gauss(nga, 2, 0.0);
+        vector<double> qsi(nga, 0.0);
+        vector<double> weight(nga, 0.0);
+        const double pi = std::acos(-1.0);
+        double xmga, xlga, zga, p1ga, p2ga, p3ga, ppga, z1ga;
+        int mga = (nga + 1) / 2;
+        xmga = 0.0;
+        xlga = 1.0;
+
+        for (int iga = 1; iga <= mga; iga++)
+        {
+            zga = std::cos(pi * (double(iga) - 0.25) / (double(nga) + 0.5));
+        g1:
+            p1ga = 1.0;
+            p2ga = 0.0;
+            for (int jga = 1; jga <= nga; jga++)
+            {
+                p3ga = p2ga;
+                p2ga = p1ga;
+                p1ga = ((2.0 * double(jga) - 1.0) * zga * p2ga - (double(jga) - 1.0) * p3ga) / (double(jga));
+            }
+
+            ppga = nga * (zga * p1ga - p2ga) / (zga * zga - 1.0);
+            z1ga = zga;
+            zga = z1ga - p1ga / ppga;
+
+            if (fabs(zga - z1ga) > 1.0e-15)
+                goto g1;
+
+            // qsi(iga - 1) = xmga - xlga * zga;
+            // qsi(nga - iga) = xmga + xlga * zga;
+            // weight(iga - 1) = 2.0*xlga / ((1.0 - zga * zga)*ppga*ppga);
+            // weight(nga - iga) = weight(iga - 1);
+
+            gauss(iga - 1, 0) = xmga - xlga * zga;
+            gauss(nga - iga, 0) = xmga + xlga * zga;
+            gauss(iga - 1, 1) = 2.0 * xlga / ((1.0 - zga * zga) * ppga * ppga);
+            gauss(nga - iga, 1) = gauss(iga - 1, 1);
+
+            int aux = 0;
+            for (int i = 0; i < nga; i++)
+            {
+                for (int j = 0; j < nga; j++)
+                {
+                    pointCoordIso(aux + j, 0) = gauss(i, 0);
+
+                    pointCoordIso(aux + j, 1) = gauss(j, 0);
+
+                    pointCoordIso(aux + j, 2) = gauss(i, 1) * gauss(j, 1);
+                }
+                aux += nga;
+            }
+            // if (index_ == 0)
+            // {
+            //     for (int i = 0; i < nga * nga; i++)
+            //     {
+            //         std::cout << pointCoordIso(i, 0) << " " << pointCoordIso(i, 1) << " " << pointCoordIso(i, 2) << std::endl;
+            //     }
+            // }
+        }
+    }
+
     return pointCoordIso;
 }
 
@@ -1175,7 +1545,16 @@ std::pair<vector<double>, matrix<double>> Cell::cellContributions(const std::str
 
     vector<double> rhs(2 * npc, 0.0);
     matrix<double> tangent(2 * npc, 2 * npc, 0.0);
-    matrix<double> domainIntegrationPoints_ = isoQuadrature(pointsQuadrature);
+    matrix<double> domainIntegrationPoints_;
+
+    if (distanceFE_.size() == 0)
+    {
+        domainIntegrationPoints_ = isoQuadrature(pointsQuadrature);
+    }
+    else
+    {
+        domainIntegrationPoints_ = isoQuadrature(sqrt(distanceFE_.size()));
+    }
 
     double young, poisson, density;
     patch_->getMaterial()->setProperties(young, poisson, density);
@@ -1716,7 +2095,7 @@ matrix<double> Cell::massMatrix(const int &pointsQuadrature)
 {
     int number = controlPoints_.size();
     matrix<double> mass(2 * number, 2 * number, 0.0);
-    matrix<double> domainIntegrationPoints_ = isoQuadrature(pointsQuadrature);
+    matrix<double> domainIntegrationPoints_;
     double auxiliar = patch_->getMaterial()->getDensity() * patch_->getThickness();
     double resul;
     bounded_vector<int, 2> INC_;
@@ -1728,9 +2107,18 @@ matrix<double> Cell::massMatrix(const int &pointsQuadrature)
         wpc2(i) = controlPoints_[i]->getWeight();
     }
 
-    for (int ih = 0; ih < domainIntegrationPoints_.size1(); ih++)
+    if (distanceFE_.size() == 0)
     {
-        if (distanceFE_[ih] <= 0.0)
+        domainIntegrationPoints_ = isoQuadrature(pointsQuadrature);
+    }
+    else
+    {
+        domainIntegrationPoints_ = isoQuadrature(sqrt(distanceFE_.size()));
+    }
+
+    if (distanceFE_.size() == 0)
+    {
+        for (int ih = 0; ih < domainIntegrationPoints_.size1(); ih++)
         {
             bounded_vector<double, 2> qxsi;
             qxsi(0) = domainIntegrationPoints_(ih, 0);
@@ -1750,6 +2138,32 @@ matrix<double> Cell::massMatrix(const int &pointsQuadrature)
             }
         }
     }
+    else
+    {
+        for (int ih = 0; ih < domainIntegrationPoints_.size1(); ih++)
+        {
+            if (distanceFE_[ih] <= 0.0)
+            {
+                bounded_vector<double, 2> qxsi;
+                qxsi(0) = domainIntegrationPoints_(ih, 0);
+                qxsi(1) = domainIntegrationPoints_(ih, 1);
+                double weight = domainIntegrationPoints_(ih, 2);
+
+                vector<double> phi = shapeFunction(qxsi, wpc2, INC_);
+
+                for (int i = 0; i < controlPoints_.size(); i++)
+                {
+                    for (int k = 0; k < controlPoints_.size(); k++)
+                    {
+                        resul = auxiliar * phi(i) * phi(k) * weight;
+                        mass(2 * i, 2 * k) += resul;
+                        mass(2 * i + 1, 2 * k + 1) += resul;
+                    }
+                }
+            }
+        }
+    }
+
     return mass;
 }
 
@@ -1971,22 +2385,22 @@ matrix<double> Cell::boundaryIsoQuadrature(const int &points)
     }
     else if (points == 6)
     {
-        pointCoordIso(0, 0) = -0.9324695142;
+        pointCoordIso(0, 0) = -0.932469514203152;
         pointCoordIso(0, 1) = 0.1713244923;
 
-        pointCoordIso(1, 0) = -0.6612093864;
+        pointCoordIso(1, 0) = -0.661209386466265;
         pointCoordIso(1, 1) = 0.360761573;
 
-        pointCoordIso(2, 0) = -0.238619186;
+        pointCoordIso(2, 0) = -0.238619186083197;
         pointCoordIso(2, 1) = 0.4679139345;
 
-        pointCoordIso(3, 0) = 0.238619186;
+        pointCoordIso(3, 0) = 0.238619186083197;
         pointCoordIso(3, 1) = 0.4679139345;
 
-        pointCoordIso(4, 0) = 0.6612093864;
+        pointCoordIso(4, 0) = 0.661209386466265;
         pointCoordIso(4, 1) = 0.360761573;
 
-        pointCoordIso(5, 0) = 0.9324695142;
+        pointCoordIso(5, 0) = 0.932469514203152;
         pointCoordIso(5, 1) = 0.1713244923;
     }
     else if (points == 7)
@@ -2014,29 +2428,61 @@ matrix<double> Cell::boundaryIsoQuadrature(const int &points)
     }
     else if (points == 8)
     {
-        pointCoordIso(0, 0) = -0.9602898564;
+        pointCoordIso(0, 0) = -0.960289856497536;
         pointCoordIso(0, 1) = 0.1012285362;
 
-        pointCoordIso(1, 0) = -0.7966664774;
+        pointCoordIso(1, 0) = -0.796666477413627;
         pointCoordIso(1, 1) = 0.2223810344;
 
-        pointCoordIso(2, 0) = -0.5255324099;
+        pointCoordIso(2, 0) = -0.525532409916329;
         pointCoordIso(2, 1) = 0.3137066458;
 
-        pointCoordIso(3, 0) = -0.1834346424;
+        pointCoordIso(3, 0) = -0.183434642495650;
         pointCoordIso(3, 1) = 0.3626837833;
 
-        pointCoordIso(4, 0) = 0.1834346424;
+        pointCoordIso(4, 0) = 0.183434642495650;
         pointCoordIso(4, 1) = 0.3626837833;
 
-        pointCoordIso(5, 0) = 0.5255324099;
+        pointCoordIso(5, 0) = 0.525532409916329;
         pointCoordIso(5, 1) = 0.3137066458;
 
-        pointCoordIso(6, 0) = 0.7966664774;
+        pointCoordIso(6, 0) = 0.796666477413627;
         pointCoordIso(6, 1) = 0.2223810344;
 
-        pointCoordIso(7, 0) = 0.9602898564;
+        pointCoordIso(7, 0) = 0.960289856497536;
         pointCoordIso(7, 1) = 0.1012285362;
+    }
+    else if (points == 10)
+    {
+        pointCoordIso(0, 0) = 0.148874338981631;
+        pointCoordIso(0, 1) = 0.295524224714753;
+
+        pointCoordIso(1, 0) = 0.433395394129247;
+        pointCoordIso(1, 1) = 0.269266719309996;
+
+        pointCoordIso(2, 0) = 0.679409568299024;
+        pointCoordIso(2, 1) = 0.219086362515982;
+
+        pointCoordIso(3, 0) = 0.865063366688985;
+        pointCoordIso(3, 1) = 0.149451349150581;
+
+        pointCoordIso(4, 0) = 0.973906528517172;
+        pointCoordIso(4, 1) = 0.0666713443086883;
+
+        pointCoordIso(5, 0) = -0.148874338981631;
+        pointCoordIso(5, 1) = 0.295524224714753;
+
+        pointCoordIso(6, 0) = -0.433395394129247;
+        pointCoordIso(6, 1) = 0.269266719309996;
+
+        pointCoordIso(7, 0) = -0.679409568299024;
+        pointCoordIso(7, 1) = 0.219086362515982;
+
+        pointCoordIso(8, 0) = -0.865063366688985;
+        pointCoordIso(8, 1) = 0.149451349150581;
+
+        pointCoordIso(9, 0) = -0.973906528517172;
+        pointCoordIso(9, 1) = 0.066671344308688;
     }
 
     return pointCoordIso;
@@ -2327,7 +2773,7 @@ vector<double> Cell::diagonalMass(const int &points)
 {
     int number = controlPoints_.size();
     vector<double> mass(number, 0.0);
-    matrix<double> domainIntegrationPoints_ = isoQuadrature(points);
+    matrix<double> domainIntegrationPoints_;
     bounded_vector<int, 2> INC_;
     vector<double> wpc2(number);
 
@@ -2338,9 +2784,18 @@ vector<double> Cell::diagonalMass(const int &points)
         wpc2(i) = controlPoints_[i]->getWeight();
     }
 
-    for (int ih = 0; ih < domainIntegrationPoints_.size1(); ih++)
+    if (distanceFE_.size() == 0)
     {
-        if (distanceFE_[ih] <= 0.0)
+        domainIntegrationPoints_ = isoQuadrature(points);
+    }
+    else
+    {
+        domainIntegrationPoints_ = isoQuadrature(sqrt(distanceFE_.size()));
+    }
+
+    if (distanceFE_.size() == 0)
+    {
+        for (int ih = 0; ih < domainIntegrationPoints_.size1(); ih++)
         {
             bounded_vector<double, 2> qxsi;
             qxsi(0) = domainIntegrationPoints_(ih, 0);
@@ -2355,5 +2810,26 @@ vector<double> Cell::diagonalMass(const int &points)
             }
         }
     }
+    else
+    {
+        for (int ih = 0; ih < domainIntegrationPoints_.size1(); ih++)
+        {
+            if (distanceFE_[ih] <= 0.0)
+            {
+                bounded_vector<double, 2> qxsi;
+                qxsi(0) = domainIntegrationPoints_(ih, 0);
+                qxsi(1) = domainIntegrationPoints_(ih, 1);
+                double weight = domainIntegrationPoints_(ih, 2);
+
+                vector<double> phi = shapeFunction(qxsi, wpc2, INC_);
+
+                for (int i = 0; i < number; i++)
+                {
+                    mass(i) += phi(i) * phi(i) * weight;
+                }
+            }
+        }
+    }
+
     return mass;
 }

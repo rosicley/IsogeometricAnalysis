@@ -393,19 +393,19 @@ std::string Geometry::createGmshCode()
         versorNormal(1) = versor(0);
 
         bounded_vector<double, 2> coordaux = coordLastPoint - versor * Jradius_;
-        Point *p1aux = new Point("p" + std::to_string(npoints++), coordaux, lcarJ_, true);
+        Point *p1aux = new Point("p" + std::to_string(npoints++), coordaux, lcarJ_, false);
         gmshCode += p1aux->getGmshCode();
 
         coordaux = coordLastPoint - versorNormal * Jradius_;
-        Point *p2aux = new Point("p" + std::to_string(npoints++), coordaux, lcarJ_, true);
+        Point *p2aux = new Point("p" + std::to_string(npoints++), coordaux, lcarJ_, false);
         gmshCode += p2aux->getGmshCode();
 
         coordaux = coordLastPoint + versor * Jradius_;
-        Point *p3aux = new Point("p" + std::to_string(npoints++), coordaux, lcarJ_, true);
+        Point *p3aux = new Point("p" + std::to_string(npoints++), coordaux, lcarJ_, false);
         gmshCode += p3aux->getGmshCode();
 
         coordaux = coordLastPoint + versorNormal * Jradius_;
-        Point *p4aux = new Point("p" + std::to_string(npoints++), coordaux, lcarJ_, true);
+        Point *p4aux = new Point("p" + std::to_string(npoints++), coordaux, lcarJ_, false);
         gmshCode += p4aux->getGmshCode();
 
         gmshCode += nameOfCrack + " = newl;\n //\n";

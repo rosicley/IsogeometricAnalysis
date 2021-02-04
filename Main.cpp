@@ -16,29 +16,65 @@ int main(int argc, char **args)
 
     std::string file;
 
-    Geometry *solid = new Geometry("LOCAL"); //LOCAL OR GLOBAL
+    Geometry *solid = new Geometry("GLOBAL"); //LOCAL OR GLOBAL
 
-    // double angle = 0.5235987756;
-    // double length = 1.0;
+    Point *p0 = solid->addPoint({10.0, 0.125}, 1.0);
+    Point *p1 = solid->addPoint({10.0, 0.0}, 1.0);
+    Point *p2 = solid->addPoint({20.0, 0.0}, 1.0);
+    Point *p3 = solid->addPoint({20.0, 0.125}, 1.0);
 
-    // Point *p0 = solid->addPoint({5.0 - cos(angle) * length * 0.5, 5.0 - sin(angle) * length * 0.5}, 0.05);
-    // Point *p1 = solid->addPoint({5.0 + cos(angle) * length * 0.5, 5.0 + sin(angle) * length * 0.5}, 0.05);
+    Line *l0 = solid->addLine({p0, p1});
+    Line *l1 = solid->addLine({p1, p2});
+    Line *l2 = solid->addLine({p2, p3});
+    Line *l3 = solid->addLine({p3, p0});
 
-    Point *p0 = solid->addPoint({1.10, 0.0}, 0.025);
-    Point *p1 = solid->addPoint({1.10, 0.05}, 0.005);
+    LineLoop *ll0 = solid->addLineLoop({l0, l1, l2, l3});
 
-    solid->addCrackOnGlobal({p0, p1}, "first", 0.02, 0.01, 0.08, 0.025);
+    PlaneSurface *s0 = solid->addPlaneSurface({ll0});
+
+    // Point *p0 = solid->addPoint({10.0, 0.125}, 1.0);
+    // Point *p1 = solid->addPoint({0.0, 0.125}, 1.0);
+    // Point *p2 = solid->addPoint({0.0, 0.0}, 1.0);
+    // Point *p3 = solid->addPoint({20.0, 0.0}, 1.0);
+    // Point *p4 = solid->addPoint({20.0, 0.125}, 1.0);
+
+    // Line *l0 = solid->addLine({p0, p1});
+    // Line *l1 = solid->addLine({p1, p2});
+    // Line *l2 = solid->addLine({p2, p3});
+    // Line *l3 = solid->addLine({p3, p4});
+    // Line *l4 = solid->addLine({p4, p0});
+
+    // LineLoop *ll0 = solid->addLineLoop({l0, l1, l2, l3, l4});
+
+    // PlaneSurface *s0 = solid->addPlaneSurface({ll0});
+
+    //solid->addCrack({p0, p1}, s0, "first", 0.1, 0.0375);
+
+    double sigma = 500.0;
+    // solid->addDirichletCondition(l0, {}, {0.0});
+    solid->addDirichletCondition(l2, {0.0}, {0.0});
+
+    // solid->addDirichletCondition(l1, {0.0}, {0.0});
+    // solid->addDirichletCondition(l3, {0.0}, {0.0});
+
+    //solid->addDirichletCondition(l3, {0.0}, {});
+    //solid->addDirichletCondition(l4, {0.0}, {});
+
+    solid->addNeumannCondition(p0, {}, {-640.0});
 
     GlobalSolid *problem = new GlobalSolid;
 
-    problem->useQuarterPointElements();
+    //problem->useQuarterPointElements();
 
-    problem->dataReading("parameters.txt", "properties.txt", "heiderme2.txt", true);
-    problem->generateMesh(solid, "T6", "AUTO", "initial", true, false);
+    problem->dataReading("parameters.txt", "properties.txt", "MondkarISO.txt", true);
 
-    problem->setParametersOfCrackPropagation(0.025, 1.0e-30, true, false, true);
+    problem->generateMesh(solid, "T10", "AUTO", "initial", true, false);
 
-    problem->addBlendingZoneInLocalMesh(0.01, false);
+    //problem->setParametersOfCrackPropagation(0.025, 1.0e-30, true, false, true);
+
+    problem->addBlendingZone({l0, l1, l3}, 0.025, 4, true);
+
+    //problem->addBlendingZoneInLocalMesh(0.15, 4, false);
 
     if (rank == 0)
     {
@@ -69,10 +105,14 @@ int main(int argc, char **args)
     }
 
     bounded_vector<double, 2> sifs;
+    if (rank == 0)
+    {
+        sifs = problem->getSIFs() / sigma;
 
-    sifs = problem->getSIFs();
+        std::cout << sifs(0) << " " << sifs(1) << std::endl;
 
-    std::cout << sifs(0) / 1.0e05 << " " << sifs(1) / 1.0e05 << std::endl;
+        file += std::to_string(sifs(0)) + " " + std::to_string(sifs(1)) + "\n";
+    }
 
     delete solid;
     delete problem;

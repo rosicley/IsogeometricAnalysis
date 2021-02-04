@@ -176,6 +176,41 @@ matrix<double> Element::domainSecondDerivativeShapeFunction(const double &xsi1, 
     }
     else if (order_ == 3)
     {
+        // d2Phi/dsi1 dxsi1
+        d2phi_dxsi2(0, 0) = 0.5 * (54.0 * xsi1 - 18.0);
+        d2phi_dxsi2(0, 1) = 0.0;
+        d2phi_dxsi2(0, 2) = -0.5 * (54.0 * xsi2 + 54.0 * xsi1 - 36.0);
+        d2phi_dxsi2(0, 3) = 0.5 * (54.0 * xsi2);
+        d2phi_dxsi2(0, 4) = 0.0;
+        d2phi_dxsi2(0, 5) = 0.0;
+        d2phi_dxsi2(0, 6) = 0.5 * (54.0 * xsi2);
+        d2phi_dxsi2(0, 7) = 0.5 * (108.0 * xsi2 + 162.0 * xsi1 - 90.0);
+        d2phi_dxsi2(0, 8) = -0.5 * (54.0 * xsi2 + 162.0 * xsi1 - 72.0);
+        d2phi_dxsi2(0, 9) = -54.0 * xsi2;
+
+        // d2Phi/dsi1 dxsi2
+        d2phi_dxsi2(1, 0) = 0.0;
+        d2phi_dxsi2(1, 1) = 0.0;
+        d2phi_dxsi2(1, 2) = -0.5 * (54.0 * xsi2 + 54.0 * xsi1 - 36.0);
+        d2phi_dxsi2(1, 3) = 0.5 * (54.0 * xsi1 - 9.0);
+        d2phi_dxsi2(1, 4) = 0.5 * (54.0 * xsi2 - 9.0);
+        d2phi_dxsi2(1, 5) = -0.5 * (54.0 * xsi2 - 9.0);
+        d2phi_dxsi2(1, 6) = 0.5 * (108.0 * xsi2 + 54.0 * xsi1 - 45.0);
+        d2phi_dxsi2(1, 7) = 0.5 * (54.0 * xsi2 + 108.0 * xsi1 - 45.0);
+        d2phi_dxsi2(1, 8) = -0.5 * (54.0 * xsi1 - 9.0);
+        d2phi_dxsi2(1, 9) = -54.0 * xsi2 - 54.0 * xsi1 + 27.0;
+
+        // d2Phi/dsi2 dxsi2
+        d2phi_dxsi2(2, 0) = 0.0;
+        d2phi_dxsi2(2, 1) = 0.5 * (54.0 * xsi2 - 18.0);
+        d2phi_dxsi2(2, 2) = -0.5 * (54.0 * xsi2 + 54.0 * xsi1 - 36.0);
+        d2phi_dxsi2(2, 3) = 0.0;
+        d2phi_dxsi2(2, 4) = 0.5 * (54.0 * xsi1);
+        d2phi_dxsi2(2, 5) = -0.5 * (162.0 * xsi2 + 54.0 * xsi1 - 72.0);
+        d2phi_dxsi2(2, 6) = 0.5 * (162.0 * xsi2 + 108.0 * xsi1 - 90.0);
+        d2phi_dxsi2(2, 7) = 0.5 * (54.0 * xsi1);
+        d2phi_dxsi2(2, 8) = 0.0;
+        d2phi_dxsi2(2, 9) = -54.0 * xsi1;
     }
 
     return d2phi_dxsi2;
@@ -1411,7 +1446,7 @@ matrix<double> Element::hammerQuadrature(const int &nH)
     }
     else
     {
-        std::cout << "SELECT A VALID NUMBER FOR THE AMOUNT OF HAMMER POINTS." << std::endl;
+        std::cout << "SELECT A VALID NUMBER FOR THE AMOUNT OF HAMMER POINTS. THE SELECTED NUMBER IS" << nH << "." << std::endl;
     }
 
     return pointCoord;
@@ -3044,8 +3079,18 @@ bounded_vector<double, 2> Element::contributionJ_Integral4(const int &gaussPoint
     return jIntegral;
 }
 
-bounded_vector<double, 2> Element::contributionJ_IntegralInitial(const int &gaussPoints, const int &side, const std::string &ep, const double &rotation, const bounded_vector<double, 2> &tipCoordinates)
+bounded_vector<double, 2> Element::contributionJ_IntegralInitial(const int &gaussPoints, const int &sideaux, const std::string &ep, const double &rotation, const bounded_vector<double, 2> &tipCoordinates)
 {
+    int side;
+    if (sideaux >= 10)
+    {
+        side = sideaux - 11;
+    }
+    else
+    {
+        side = sideaux;
+    }
+
     bounded_vector<double, 2> jIntegral;
     jIntegral(0) = 0.0;
     jIntegral(1) = 0.0;
@@ -3134,6 +3179,10 @@ bounded_vector<double, 2> Element::contributionJ_IntegralInitial(const int &gaus
             xsi1 = (xsi + 1.0) / (2.0);
             xsi2 = 0.0;
         }
+        else
+        {
+            std::cout << "ERROR!" << std::endl;
+        }
 
         vector<double> phi = domainShapeFunction(xsi1, xsi2);
         matrix<double> dphi_dxsi = domainDerivativeShapeFunction(xsi1, xsi2);
@@ -3171,7 +3220,7 @@ bounded_vector<double, 2> Element::contributionJ_IntegralInitial(const int &gaus
         Pt = prod(Ac, S);
         bounded_vector<double, 2> force = prod(Pt, normal);
 
-        const double pi = 3.14159265359;
+        const double pi = 3.14159265358979323846;
 
         //AUXILIARY STATES K1 = 1 E K2 = 0;
         double du1aux_dr, du2aux_dr, du1aux_dteta, du2aux_dteta;
@@ -3575,8 +3624,18 @@ bounded_vector<double, 2> Element::contributionJ_Integral5(const int &gaussPoint
     return jIntegral;
 }
 
-bounded_vector<double, 2> Element::contributionJ_IntegralFromRice(const int &gaussPoints, const int &side, const std::string &ep, const double &rotation, Node *tipNode)
+bounded_vector<double, 2> Element::contributionJ_IntegralFromRice(const int &gaussPoints, const int &sideaux, const std::string &ep, const double &rotation, Node *tipNode)
 {
+    int side;
+    if (sideaux >= 10)
+    {
+        side = sideaux - 11;
+    }
+    else
+    {
+        side = sideaux;
+    }
+
     bounded_vector<double, 2> jIntegral;
     jIntegral(0) = 0.0;
     jIntegral(1) = 0.0;
@@ -3667,6 +3726,10 @@ bounded_vector<double, 2> Element::contributionJ_IntegralFromRice(const int &gau
         {
             xsi1 = (xsi + 1.0) / (2.0);
             xsi2 = 0.0;
+        }
+        else
+        {
+            std::cout << "ERROR!" << std::endl;
         }
 
         vector<double> phi = domainShapeFunction(xsi1, xsi2);
@@ -3805,5 +3868,1276 @@ bounded_vector<double, 2> Element::contributionJ_IntegralFromRice(const int &gau
         // jIntegral(1) += (0.5 * youngLine * (0.5 * (we + we1) * normal(0) - force(0) * du1aux_dy1chapeu - force(1) * du2aux_dy1chapeu - forceAux(0) * du1_dy1Chapeu - forceAux(1) * du2_dy1Chapeu)) * weight * jacobian;
     }
     delete bound;
+    return jIntegral;
+}
+
+bounded_vector<double, 2> Element::domainJ_IntegralInitial(const int &nHammer, const std::string &ep, const std::string &type, const double &Jintegral_radius, const double &rotation, const bounded_vector<double, 2> &tipCoordinates)
+{
+    bounded_vector<double, 2> jIntegral;
+    jIntegral(0) = 0.0;
+    jIntegral(1) = 0.0;
+
+    int nnos = connection_.size();
+
+    //Material properties
+    double young, poisson, density;
+    mesh_->getMaterial()->setProperties(young, poisson, density);
+    double thickness = mesh_->getThickness();
+    double mi = young / (2.0 * (1.0 + poisson));
+    double youngLine;
+    double k;
+    if (ep == "EPD")
+    {
+        k = 3.0 - 4.0 * poisson;
+        youngLine = thickness * young / (1.0 - poisson * poisson);
+    }
+    else
+    {
+        k = (3.0 - poisson) / (1.0 + poisson);
+        youngLine = thickness * young;
+    }
+
+    matrix<double> domainIntegrationPoints = hammerQuadrature(nHammer);
+
+    bounded_matrix<double, 2, 2> matrixRotation;
+    matrixRotation(0, 0) = cos(rotation);
+    matrixRotation(0, 1) = sin(rotation);
+    matrixRotation(1, 0) = -sin(rotation);
+    matrixRotation(1, 1) = cos(rotation);
+
+    for (int ihh = 0; ihh < nHammer; ihh++)
+    {
+
+        double xsi1 = domainIntegrationPoints(ihh, 0);
+        double xsi2 = domainIntegrationPoints(ihh, 1);
+        double weight = domainIntegrationPoints(ihh, 2);
+
+        vector<double> phi = domainShapeFunction(xsi1, xsi2);
+        matrix<double> dphi_dxsi = domainDerivativeShapeFunction(xsi1, xsi2); //row = direction, column = node
+        matrix<double> d2phi_d2xsi = domainSecondDerivativeShapeFunction(xsi1, xsi2);
+
+        bounded_matrix<double, 2, 2> dA1_dxsi1, dA1_dxsi2, A0loc, A1loc, mataux;
+        dA1_dxsi1(0, 0) = 0.0;
+        dA1_dxsi1(0, 1) = 0.0;
+        dA1_dxsi1(1, 0) = 0.0;
+        dA1_dxsi1(1, 1) = 0.0;
+
+        dA1_dxsi2(0, 0) = 0.0;
+        dA1_dxsi2(0, 1) = 0.0;
+        dA1_dxsi2(1, 0) = 0.0;
+        dA1_dxsi2(1, 1) = 0.0;
+
+        A0loc(0, 0) = 0.0;
+        A0loc(0, 1) = 0.0;
+        A0loc(1, 0) = 0.0;
+        A0loc(1, 1) = 0.0;
+
+        A1loc(0, 0) = 0.0;
+        A1loc(0, 1) = 0.0;
+        A1loc(1, 0) = 0.0;
+        A1loc(1, 1) = 0.0;
+
+        for (int in = 0; in < nnos; in++)
+        {
+            bounded_vector<double, 2> coordNode = prod(matrixRotation, connection_[in]->getCurrentCoordinate());
+
+            bounded_vector<double, 2> initialNode = prod(matrixRotation, connection_[in]->getInitialCoordinate());
+
+            dA1_dxsi1(0, 0) += d2phi_d2xsi(0, in) * coordNode(0);
+            dA1_dxsi1(0, 1) += d2phi_d2xsi(1, in) * coordNode(0);
+            dA1_dxsi1(1, 0) += d2phi_d2xsi(0, in) * coordNode(1);
+            dA1_dxsi1(1, 1) += d2phi_d2xsi(1, in) * coordNode(1);
+
+            dA1_dxsi2(0, 0) += d2phi_d2xsi(1, in) * coordNode(0);
+            dA1_dxsi2(0, 1) += d2phi_d2xsi(2, in) * coordNode(0);
+            dA1_dxsi2(1, 0) += d2phi_d2xsi(1, in) * coordNode(1);
+            dA1_dxsi2(1, 1) += d2phi_d2xsi(2, in) * coordNode(1);
+
+            A0loc(0, 0) += initialNode(0) * dphi_dxsi(0, in);
+            A0loc(0, 1) += initialNode(0) * dphi_dxsi(1, in);
+            A0loc(1, 0) += initialNode(1) * dphi_dxsi(0, in);
+            A0loc(1, 1) += initialNode(1) * dphi_dxsi(1, in);
+
+            // A1loc(0, 0) += coordNode(0) * dphi_dxsi(0, in);
+            // A1loc(0, 1) += coordNode(0) * dphi_dxsi(1, in);
+            // A1loc(1, 0) += coordNode(1) * dphi_dxsi(0, in);
+            // A1loc(1, 1) += coordNode(1) * dphi_dxsi(1, in);
+        }
+
+        bounded_matrix<double, 2, 2> A0glob = referenceJacobianMatrix(xsi1, xsi2);
+        double j0 = jacobianDeterminant(A0glob);
+        bounded_matrix<double, 2, 2> A0Iglob = inverseMatrix(A0glob);
+        bounded_matrix<double, 2, 2> A1glob = currentJacobianMatrix(xsi1, xsi2);
+        bounded_matrix<double, 2, 2> Acglob = prod(A1glob, A0Iglob); //dyi / dxj
+
+        bounded_matrix<double, 2, 2> Ac; // Aclocteste;
+
+        //Aclocteste = prod(A1loc, inverseMatrix(A0loc));
+
+        mataux = prod(matrixRotation, Acglob);
+        Ac = prod(mataux, trans(matrixRotation)); //gradiente nos eixos da ponta da fissura
+
+        // std::cout << Aclocteste(0, 0) / Ac(0, 0) << " " << Aclocteste(0, 1) / Ac(0, 1) << " " << Aclocteste(1, 0) / Ac(1, 0) << " " << Aclocteste(1, 1) / Ac(1, 1) << std::endl;
+
+        const identity_matrix<double> I(2);
+        bounded_matrix<double, 2, 2> Ec = 0.5 * (prod(trans(Ac), Ac) - I);
+        bounded_matrix<double, 2, 2> S;
+
+        if (ep == "EPD")
+        {
+            S(0, 0) = (young / ((1.0 + poisson) * (1.0 - 2.0 * poisson))) * ((1.0 - poisson) * Ec(0, 0) + poisson * Ec(1, 1));
+            S(1, 1) = (young / ((1.0 + poisson) * (1.0 - 2.0 * poisson))) * ((1.0 - poisson) * Ec(1, 1) + poisson * Ec(0, 0));
+            S(1, 0) = (young / (1.0 + poisson)) * Ec(1, 0);
+            S(0, 1) = (young / (1.0 + poisson)) * Ec(0, 1);
+        }
+        else
+        {
+            S(0, 0) = (young / (1.0 - poisson * poisson)) * (Ec(0, 0) + poisson * Ec(1, 1));
+            S(1, 1) = (young / (1.0 - poisson * poisson)) * (Ec(1, 1) + poisson * Ec(0, 0));
+            S(1, 0) = (young / (1.0 + poisson)) * Ec(1, 0);
+            S(0, 1) = (young / (1.0 + poisson)) * Ec(0, 1);
+        }
+
+        bounded_matrix<double, 2, 2> Pt;
+        Pt = prod(Ac, S);
+
+        bounded_matrix<double, 2, 2> dAc_dxsi1, dAc_dxsi2, A0Iloc;
+
+        A0Iloc = inverseMatrix(A0loc);
+        dAc_dxsi1 = prod(dA1_dxsi1, A0Iloc);
+        dAc_dxsi2 = prod(dA1_dxsi2, A0Iloc);
+
+        bounded_vector<double, 2> a;
+        a(0) = Ac(0, 0) - 1.0;
+        a(1) = Ac(1, 0);
+
+        bounded_matrix<double, 2, 2> grad_a, dEc_dx1, dAc_dx1;
+
+        grad_a(0, 0) = dAc_dxsi1(0, 0) * A0Iloc(0, 0) + dAc_dxsi2(0, 0) * A0Iloc(1, 0); //ok
+        grad_a(0, 1) = dAc_dxsi1(0, 0) * A0Iloc(0, 1) + dAc_dxsi2(0, 0) * A0Iloc(1, 1);
+        grad_a(1, 0) = dAc_dxsi1(1, 0) * A0Iloc(0, 0) + dAc_dxsi2(1, 0) * A0Iloc(1, 0); //ok
+        grad_a(1, 1) = dAc_dxsi1(1, 0) * A0Iloc(0, 1) + dAc_dxsi2(1, 0) * A0Iloc(1, 1);
+
+        dAc_dx1 = dAc_dxsi1 * A0Iloc(0, 0) + dAc_dxsi2 * A0Iloc(1, 0);
+
+        dEc_dx1 = 0.5 * (prod(trans(dAc_dx1), Ac) + prod(trans(Ac), dAc_dx1));
+
+        //////////////////////////////////
+        //Q FUNCTION
+        //////////////////////////////////
+        double radius = 0.0;
+        bounded_vector<double, 2> dradius_dxsi, coordP;
+        coordP(0) = 0.0;
+        coordP(1) = 0.0;
+        dradius_dxsi(0) = 0.0;
+        dradius_dxsi(1) = 0.0;
+
+        for (int i = 0; i < connection_.size(); i++)
+        {
+            coordP += phi(i) * connection_[i]->getInitialCoordinate();
+
+            const double radiusNODE = norm_2(connection_[i]->getInitialCoordinate() - tipCoordinates);
+
+            dradius_dxsi(0) += dphi_dxsi(0, i) * radiusNODE; //dDAhammer_dxsiLocal1
+            dradius_dxsi(1) += dphi_dxsi(1, i) * radiusNODE; //dDAhammer_dxsiLocal1
+
+            radius += phi(i) * radiusNODE;
+        }
+
+        bounded_vector<double, 2> tipToPointAux = coordP - tipCoordinates;
+        bounded_vector<double, 2> tipToPoint = prod(matrixRotation, tipToPointAux);
+        const double teta = atan2(tipToPoint(1), tipToPoint(0));
+
+        const double aux = radius / Jintegral_radius;
+        const double q = 2.0 * aux * aux * aux - 3.0 * aux * aux + 1.0;
+        const double dq_dradius = (6.0 / Jintegral_radius) * aux * aux - (6.0 / Jintegral_radius) * aux;
+
+        bounded_vector<double, 2> dq_dxsi;
+        dq_dxsi(0) = dq_dradius * dradius_dxsi(0);
+        dq_dxsi(1) = dq_dradius * dradius_dxsi(1);
+
+        bounded_vector<double, 2> grad_q;
+
+        grad_q(0) = dq_dxsi(0) * A0Iloc(0, 0) + dq_dxsi(1) * A0Iloc(1, 0);
+        grad_q(1) = dq_dxsi(0) * A0Iloc(0, 1) + dq_dxsi(1) * A0Iloc(1, 1);
+
+        //////////////////////////////////
+        //AUXILIARY STATES K1 = 1 E K2 = 0;
+        //////////////////////////////////
+
+        const double pi = 3.14159265358979323846;
+        const double meio_teta = 0.5 * teta;
+
+        double dl_dr, d2l_dr2, dm_dtheta, d2m_dtetha2, dn_dtheta, d2n_dtheta2, K1, K2, l, m, n;
+
+        K1 = 1.0;
+        K2 = 0.0;
+
+        l = (sqrt(radius / (2.0 * pi)) / (2.0 * mi));
+        dl_dr = sqrt(2.0 * pi * radius) / (8.0 * mi * pi * radius);
+        d2l_dr2 = -sqrt(2.0 * pi * radius) / (16.0 * mi * pi * radius * radius);
+
+        m = K1 * cos(meio_teta) * (k - cos(teta)) + K2 * sin(meio_teta) * (k + 2.0 + cos(teta));
+        dm_dtheta = K1 * (-0.5 * sin(meio_teta) * (k - cos(teta)) + sin(teta) * cos(meio_teta)) + K2 * (0.5 * cos(meio_teta) * (k + 2.0 + cos(teta)) - sin(teta) * sin(meio_teta));
+        d2m_dtetha2 = K1 * (-cos(meio_teta) * 0.25 * (k - cos(teta)) - sin(meio_teta) * sin(teta) + cos(meio_teta) * cos(teta)) + K2 * (-sin(meio_teta) * 0.25 * (k + 2.0 + cos(teta)) - sin(teta) * cos(meio_teta) - cos(teta) * sin(meio_teta));
+
+        n = K1 * sin(meio_teta) * (k - cos(teta)) - K2 * cos(meio_teta) * (k - 2.0 + cos(teta));
+        dn_dtheta = K1 * (0.5 * cos(meio_teta) * (k - cos(teta)) + sin(teta) * sin(meio_teta)) + K2 * (0.5 * sin(meio_teta) * (k - 2.0 + cos(teta)) + sin(teta) * cos(meio_teta));
+        d2n_dtheta2 = K1 * (-sin(meio_teta) * 0.25 * (k - cos(teta)) + cos(meio_teta) * sin(teta) + sin(meio_teta) * cos(teta)) - K2 * (-cos(meio_teta) * 0.25 * (k - 2.0 + cos(teta)) + sin(meio_teta) * sin(teta) - cos(teta) * cos(meio_teta));
+
+        double du1aux_dr, du2aux_dr, du1aux_dteta, du2aux_dteta, d2u1aux_dr2, d2u1aux_drdteta, d2u1aux_dteta2, d2u2aux_dr2, d2u2aux_drdteta, d2u2aux_dteta2;
+
+        //FIRST DERIVATES OF U1
+        du1aux_dr = dl_dr * m;
+        du1aux_dteta = l * dm_dtheta;
+
+        //SECOND DERIVATES OF U1
+        d2u1aux_dr2 = d2l_dr2 * m;
+        d2u1aux_drdteta = dl_dr * dm_dtheta;
+        d2u1aux_dteta2 = l * d2m_dtetha2;
+
+        //FIRST DERIVATES OF U2
+        du2aux_dr = dl_dr * n;
+        du2aux_dteta = l * dn_dtheta;
+
+        //SECOND DERIVATES OF U2
+        d2u2aux_dr2 = d2l_dr2 * n;
+        d2u2aux_drdteta = dl_dr * dn_dtheta;
+        d2u2aux_dteta2 = l * d2n_dtheta2;
+
+        //FIRST DERIVATES: dui_dxj
+        double du1aux_dx1, du2aux_dx1, du1aux_dx2, du2aux_dx2;
+        du1aux_dx1 = cos(teta) * du1aux_dr - (sin(teta) / radius) * du1aux_dteta;
+        du1aux_dx2 = sin(teta) * du1aux_dr + (cos(teta) / radius) * du1aux_dteta;
+
+        du2aux_dx1 = cos(teta) * du2aux_dr - (sin(teta) / radius) * du2aux_dteta;
+        du2aux_dx2 = sin(teta) * du2aux_dr + (cos(teta) / radius) * du2aux_dteta;
+
+        //SECOND DERIVATES: d2ui_dxjdxk
+        double d2u1aux_dx1dx1, d2u1aux_dx1dx2, d2u1aux_dx2dx2, d2u2aux_dx1dx1, d2u2aux_dx1dx2, d2u2aux_dx2dx2;
+
+        d2u1aux_dx1dx1 = cos(teta) * cos(teta) * d2u1aux_dr2 + 2.0 * sin(teta) * cos(teta) / (radius * radius) * du1aux_dteta - 2.0 * sin(teta) * cos(teta) / radius * d2u1aux_drdteta + sin(teta) * sin(teta) * (du1aux_dr / radius + d2u1aux_dteta2 / (radius * radius));
+        d2u1aux_dx1dx2 = sin(teta) * (cos(teta) * d2u1aux_dr2 + sin(teta) / (radius * radius) * du1aux_dteta - sin(teta) / radius * d2u1aux_drdteta) + cos(teta) / radius * (-sin(teta) * du1aux_dr + cos(teta) * d2u1aux_drdteta - cos(teta) / radius * du1aux_dteta - sin(teta) / radius * d2u1aux_dteta2);
+        d2u1aux_dx2dx2 = sin(teta) * sin(teta) * d2u1aux_dr2 - 2.0 * sin(teta) * cos(teta) / (radius * radius) * du1aux_dteta + 2.0 * sin(teta) * cos(teta) / radius * d2u1aux_drdteta + cos(teta) * cos(teta) * (du1aux_dr / radius + d2u1aux_dteta2 / (radius * radius));
+
+        d2u2aux_dx1dx1 = cos(teta) * cos(teta) * d2u2aux_dr2 + 2.0 * sin(teta) * cos(teta) / (radius * radius) * du2aux_dteta - 2.0 * sin(teta) * cos(teta) / radius * d2u2aux_drdteta + sin(teta) * sin(teta) * (du2aux_dr / radius + d2u2aux_dteta2 / (radius * radius));
+        d2u2aux_dx1dx2 = sin(teta) * (cos(teta) * d2u2aux_dr2 + sin(teta) / (radius * radius) * du2aux_dteta - sin(teta) / radius * d2u2aux_drdteta) + cos(teta) / radius * (-sin(teta) * du2aux_dr + cos(teta) * d2u2aux_drdteta - cos(teta) / radius * du2aux_dteta - sin(teta) / radius * d2u2aux_dteta2);
+        d2u2aux_dx2dx2 = sin(teta) * sin(teta) * d2u2aux_dr2 - 2.0 * sin(teta) * cos(teta) / (radius * radius) * du2aux_dteta + 2.0 * sin(teta) * cos(teta) / radius * d2u2aux_drdteta + cos(teta) * cos(teta) * (du2aux_dr / radius + d2u2aux_dteta2 / (radius * radius));
+
+        bounded_matrix<double, 2, 2> Acaux, Ecaux, Saux, Ptaux;
+
+        Acaux(0, 0) = du1aux_dx1 + 1.0;
+        Acaux(0, 1) = du1aux_dx2;
+        Acaux(1, 0) = du2aux_dx1;
+        Acaux(1, 1) = du2aux_dx2 + 1.0;
+
+        Ecaux = 0.5 * (prod(trans(Acaux), Acaux) - I);
+
+        if (ep == "EPD")
+        {
+            Saux(0, 0) = (young / ((1.0 + poisson) * (1.0 - 2.0 * poisson))) * ((1.0 - poisson) * Ecaux(0, 0) + poisson * Ecaux(1, 1));
+            Saux(1, 1) = (young / ((1.0 + poisson) * (1.0 - 2.0 * poisson))) * ((1.0 - poisson) * Ecaux(1, 1) + poisson * Ecaux(0, 0));
+            Saux(1, 0) = (young / (1.0 + poisson)) * Ecaux(1, 0);
+            Saux(0, 1) = (young / (1.0 + poisson)) * Ecaux(0, 1);
+        }
+        else
+        {
+            Saux(0, 0) = (young / (1.0 - poisson * poisson)) * (Ecaux(0, 0) + poisson * Ecaux(1, 1));
+            Saux(1, 1) = (young / (1.0 - poisson * poisson)) * (Ecaux(1, 1) + poisson * Ecaux(0, 0));
+            Saux(1, 0) = (young / (1.0 + poisson)) * Ecaux(1, 0);
+            Saux(0, 1) = (young / (1.0 + poisson)) * Ecaux(0, 1);
+        }
+
+        Ptaux = prod(Acaux, Saux);
+
+        // bounded_matrix<double, 2, 2> Accoupled, Scoupled, Ptcouped, Ptsoma;
+
+        // Accoupled = Ac + Acaux - I;
+        // Scoupled = S + Saux;
+
+        // Ptcouped = prod(Accoupled, Scoupled);
+        // Ptsoma = Pt + Ptaux;
+
+        // std::cout <<std::scientific << Ptsoma(0, 0) / Ptcouped(0, 0) - 1.0 << " " << Ptsoma(0, 1) / Ptcouped(0, 1) - 1.0 << " " << Ptsoma(1, 0) / Ptcouped(1, 0) - 1.0 << " " << Ptsoma(1, 1) / Ptcouped(1, 1) - 1.0 << " " << std::endl;
+
+        bounded_vector<double, 2> divPtaux, aaux;
+        bounded_matrix<double, 2, 2> dAcaux_dx1, dAcaux_dx2, dEcaux_dx1, dEcaux_dx2, grad_aaux, dSaux_dx1, dSaux_dx2, dPtaux_dx1, dPtaux_dx2;
+
+        aaux(0) = du1aux_dx1;
+        aaux(1) = du2aux_dx1;
+
+        dAcaux_dx1(0, 0) = d2u1aux_dx1dx1;
+        dAcaux_dx1(0, 1) = d2u1aux_dx1dx2;
+        dAcaux_dx1(1, 0) = d2u2aux_dx1dx1;
+        dAcaux_dx1(1, 1) = d2u2aux_dx1dx2;
+
+        dAcaux_dx2(0, 0) = d2u1aux_dx1dx2;
+        dAcaux_dx2(0, 1) = d2u1aux_dx2dx2;
+        dAcaux_dx2(1, 0) = d2u2aux_dx1dx2;
+        dAcaux_dx2(1, 1) = d2u2aux_dx2dx2;
+
+        dEcaux_dx1 = 0.5 * (prod(trans(dAcaux_dx1), Acaux) + prod(trans(Acaux), dAcaux_dx1));
+        dEcaux_dx2 = 0.5 * (prod(trans(dAcaux_dx2), Acaux) + prod(trans(Acaux), dAcaux_dx2));
+
+        if (ep == "EPD")
+        {
+            dSaux_dx1(0, 0) = (young / ((1.0 + poisson) * (1.0 - 2.0 * poisson)) * ((1.0 - poisson) * dEcaux_dx1(0, 0) + poisson * dEcaux_dx1(1, 1)));
+            dSaux_dx1(1, 1) = (young / ((1.0 + poisson) * (1.0 - 2.0 * poisson)) * ((1.0 - poisson) * dEcaux_dx1(1, 1) + poisson * dEcaux_dx1(0, 0)));
+            dSaux_dx1(1, 0) = (young / (1.0 + poisson)) * dEcaux_dx1(1, 0);
+            dSaux_dx1(0, 1) = (young / (1.0 + poisson)) * dEcaux_dx1(0, 1);
+
+            dSaux_dx2(0, 0) = (young / ((1.0 + poisson) * (1.0 - 2.0 * poisson)) * ((1.0 - poisson) * dEcaux_dx2(0, 0) + poisson * dEcaux_dx2(1, 1)));
+            dSaux_dx2(1, 1) = (young / ((1.0 + poisson) * (1.0 - 2.0 * poisson)) * ((1.0 - poisson) * dEcaux_dx2(1, 1) + poisson * dEcaux_dx2(0, 0)));
+            dSaux_dx2(1, 0) = (young / (1.0 + poisson)) * dEcaux_dx2(1, 0);
+            dSaux_dx2(0, 1) = (young / (1.0 + poisson)) * dEcaux_dx2(0, 1);
+        }
+        else
+        {
+            dSaux_dx1(0, 0) = (young / (1.0 - poisson * poisson)) * (dEcaux_dx1(0, 0) + poisson * dEcaux_dx1(1, 1));
+            dSaux_dx1(1, 1) = (young / (1.0 - poisson * poisson)) * (dEcaux_dx1(1, 1) + poisson * dEcaux_dx1(0, 0));
+            dSaux_dx1(1, 0) = (young / (1.0 + poisson)) * dEcaux_dx1(1, 0);
+            dSaux_dx1(0, 1) = (young / (1.0 + poisson)) * dEcaux_dx1(0, 1);
+
+            dSaux_dx2(0, 0) = (young / (1.0 - poisson * poisson)) * (dEcaux_dx2(0, 0) + poisson * dEcaux_dx2(1, 1));
+            dSaux_dx2(1, 1) = (young / (1.0 - poisson * poisson)) * (dEcaux_dx2(1, 1) + poisson * dEcaux_dx2(0, 0));
+            dSaux_dx2(1, 0) = (young / (1.0 + poisson)) * dEcaux_dx2(1, 0);
+            dSaux_dx2(0, 1) = (young / (1.0 + poisson)) * dEcaux_dx2(0, 1);
+        }
+
+        dPtaux_dx1 = prod(dAcaux_dx1, Saux) + prod(Acaux, dSaux_dx1);
+        dPtaux_dx2 = prod(dAcaux_dx2, Saux) + prod(Acaux, dSaux_dx2);
+
+        divPtaux(0) = dPtaux_dx1(0, 0) + dPtaux_dx2(0, 1);
+        divPtaux(1) = dPtaux_dx1(1, 0) + dPtaux_dx2(1, 1);
+
+        grad_aaux(0, 0) = dAcaux_dx1(0, 0);
+        grad_aaux(1, 0) = dAcaux_dx1(1, 0);
+        grad_aaux(0, 1) = dAcaux_dx2(0, 0);
+        grad_aaux(1, 1) = dAcaux_dx2(1, 0);
+
+        bounded_vector<double, 2> term1, term2, term3, unitX1, accel;
+
+        unitX1(0) = 1.0;
+        unitX1(1) = 0.0;
+
+        double term4, term5, term6, term7, term8, term9;
+
+        term1 = prod(trans(Pt), aaux);
+
+        term2 = prod(trans(Ptaux), a);
+
+        term3 = -0.5 * (tensorContraction(S, Ecaux) + tensorContraction(Saux, Ec)) * unitX1;
+
+        if (type == "STATIC")
+        {
+            term4 = 0.0;
+        }
+        else
+        {
+            accel = 0.0;
+            for (int i = 0; i < connection_.size(); i++)
+            {
+                accel += phi(i) * connection_[i]->getCurrentAcceleration();
+            }
+            term4 = density * (inner_prod(accel, aaux));
+        }
+
+        term5 = inner_prod(divPtaux, a);
+
+        term6 = tensorContraction(Pt, grad_aaux);
+
+        term7 = tensorContraction(Ptaux, grad_a);
+
+        term8 = -1.0 * tensorContraction(S, dEcaux_dx1);
+
+        term9 = -1.0 * tensorContraction(Saux, dEc_dx1);
+
+        // std::cout << 0.5 * youngLine * term4 << " " << 0.5 * youngLine * term5 << " " << 0.5 * youngLine * term6 << " " << 0.5 * youngLine * term7 << " " << 0.5 * youngLine * term8 << " " << 0.5 * youngLine * term9 << std::endl;
+
+        // term5 = 0.0;
+
+        // term4 = 0.0;
+
+        // term6 = 0.0;
+
+        // term7 = 0.0;
+
+        // term8 = 0.0;
+
+        // term9 = 0.0;
+
+        //q = 1.0;
+
+        jIntegral(0) += 0.5 * youngLine * (inner_prod((term1 + term2 + term3), grad_q) + (term4 + term5 + term6 + term7 + term8 + term9) * q) * weight * j0 * thickness;
+
+        //////////////////////////////////
+        //AUXILIARY STATE K1 = 0 E K2 = 1
+        //////////////////////////////////
+
+        K1 = 0.0;
+        K2 = 1.0;
+
+        l = (sqrt(radius / (2.0 * pi)) / (2.0 * mi));
+        dl_dr = sqrt(2.0 * pi * radius) / (8.0 * mi * pi * radius);
+        d2l_dr2 = -sqrt(2.0 * pi * radius) / (16.0 * mi * pi * radius * radius);
+
+        m = K1 * cos(meio_teta) * (k - cos(teta)) + K2 * sin(meio_teta) * (k + 2.0 + cos(teta));
+        dm_dtheta = K1 * (-0.5 * sin(meio_teta) * (k - cos(teta)) + sin(teta) * cos(meio_teta)) + K2 * (0.5 * cos(meio_teta) * (k + 2.0 + cos(teta)) - sin(teta) * sin(meio_teta));
+        d2m_dtetha2 = K1 * (-cos(meio_teta) * 0.25 * (k - cos(teta)) - sin(meio_teta) * sin(teta) + cos(meio_teta) * cos(teta)) + K2 * (-sin(meio_teta) * 0.25 * (k + 2.0 + cos(teta)) - sin(teta) * cos(meio_teta) - cos(teta) * sin(meio_teta));
+
+        n = K1 * sin(meio_teta) * (k - cos(teta)) - K2 * cos(meio_teta) * (k - 2.0 + cos(teta));
+        dn_dtheta = K1 * (0.5 * cos(meio_teta) * (k - cos(teta)) + sin(teta) * sin(meio_teta)) + K2 * (0.5 * sin(meio_teta) * (k - 2.0 + cos(teta)) + sin(teta) * cos(meio_teta));
+        d2n_dtheta2 = K1 * (-sin(meio_teta) * 0.25 * (k - cos(teta)) + cos(meio_teta) * sin(teta) + sin(meio_teta) * cos(teta)) - K2 * (-cos(meio_teta) * 0.25 * (k - 2.0 + cos(teta)) + sin(meio_teta) * sin(teta) - cos(teta) * cos(meio_teta));
+
+        //FIRST DERIVATES OF U1
+        du1aux_dr = dl_dr * m;
+        du1aux_dteta = l * dm_dtheta;
+
+        //SECOND DERIVATES OF U1
+        d2u1aux_dr2 = d2l_dr2 * m;
+        d2u1aux_drdteta = dl_dr * dm_dtheta;
+        d2u1aux_dteta2 = l * d2m_dtetha2;
+
+        //FIRST DERIVATES OF U2
+        du2aux_dr = dl_dr * n;
+        du2aux_dteta = l * dn_dtheta;
+
+        //SECOND DERIVATES OF U2
+        d2u2aux_dr2 = d2l_dr2 * n;
+        d2u2aux_drdteta = dl_dr * dn_dtheta;
+        d2u2aux_dteta2 = l * d2n_dtheta2;
+
+        //FIRST DERIVATES: dui_dxj
+        du1aux_dx1 = cos(teta) * du1aux_dr - (sin(teta) / radius) * du1aux_dteta;
+        du1aux_dx2 = sin(teta) * du1aux_dr + (cos(teta) / radius) * du1aux_dteta;
+
+        du2aux_dx1 = cos(teta) * du2aux_dr - (sin(teta) / radius) * du2aux_dteta;
+        du2aux_dx2 = sin(teta) * du2aux_dr + (cos(teta) / radius) * du2aux_dteta;
+
+        //SECOND DERIVATES: d2ui_dxjdxk
+        d2u1aux_dx1dx1 = cos(teta) * cos(teta) * d2u1aux_dr2 + 2.0 * sin(teta) * cos(teta) / (radius * radius) * du1aux_dteta - 2.0 * sin(teta) * cos(teta) / radius * d2u1aux_drdteta + sin(teta) * sin(teta) * (du1aux_dr / radius + d2u1aux_dteta2 / (radius * radius));
+        d2u1aux_dx1dx2 = sin(teta) * (cos(teta) * d2u1aux_dr2 + sin(teta) / (radius * radius) * du1aux_dteta - sin(teta) / radius * d2u1aux_drdteta) + cos(teta) / radius * (-sin(teta) * du1aux_dr + cos(teta) * d2u1aux_drdteta - cos(teta) / radius * du1aux_dteta - sin(teta) / radius * d2u1aux_dteta2);
+        d2u1aux_dx2dx2 = sin(teta) * sin(teta) * d2u1aux_dr2 - 2.0 * sin(teta) * cos(teta) / (radius * radius) * du1aux_dteta + 2.0 * sin(teta) * cos(teta) / radius * d2u1aux_drdteta + cos(teta) * cos(teta) * (du1aux_dr / radius + d2u1aux_dteta2 / (radius * radius));
+
+        d2u2aux_dx1dx1 = cos(teta) * cos(teta) * d2u2aux_dr2 + 2.0 * sin(teta) * cos(teta) / (radius * radius) * du2aux_dteta - 2.0 * sin(teta) * cos(teta) / radius * d2u2aux_drdteta + sin(teta) * sin(teta) * (du2aux_dr / radius + d2u2aux_dteta2 / (radius * radius));
+        d2u2aux_dx1dx2 = sin(teta) * (cos(teta) * d2u2aux_dr2 + sin(teta) / (radius * radius) * du2aux_dteta - sin(teta) / radius * d2u2aux_drdteta) + cos(teta) / radius * (-sin(teta) * du2aux_dr + cos(teta) * d2u2aux_drdteta - cos(teta) / radius * du2aux_dteta - sin(teta) / radius * d2u2aux_dteta2);
+        d2u2aux_dx2dx2 = sin(teta) * sin(teta) * d2u2aux_dr2 - 2.0 * sin(teta) * cos(teta) / (radius * radius) * du2aux_dteta + 2.0 * sin(teta) * cos(teta) / radius * d2u2aux_drdteta + cos(teta) * cos(teta) * (du2aux_dr / radius + d2u2aux_dteta2 / (radius * radius));
+
+        Acaux(0, 0) = du1aux_dx1 + 1.0;
+        Acaux(0, 1) = du1aux_dx2;
+        Acaux(1, 0) = du2aux_dx1;
+        Acaux(1, 1) = du2aux_dx2 + 1.0;
+
+        Ecaux = 0.5 * (prod(trans(Acaux), Acaux) - I);
+
+        if (ep == "EPD")
+        {
+            Saux(0, 0) = (young / ((1.0 + poisson) * (1.0 - 2.0 * poisson))) * ((1.0 - poisson) * Ecaux(0, 0) + poisson * Ecaux(1, 1));
+            Saux(1, 1) = (young / ((1.0 + poisson) * (1.0 - 2.0 * poisson))) * ((1.0 - poisson) * Ecaux(1, 1) + poisson * Ecaux(0, 0));
+            Saux(1, 0) = (young / (1.0 + poisson)) * Ecaux(1, 0);
+            Saux(0, 1) = (young / (1.0 + poisson)) * Ecaux(0, 1);
+        }
+        else
+        {
+            Saux(0, 0) = (young / (1.0 - poisson * poisson)) * (Ecaux(0, 0) + poisson * Ecaux(1, 1));
+            Saux(1, 1) = (young / (1.0 - poisson * poisson)) * (Ecaux(1, 1) + poisson * Ecaux(0, 0));
+            Saux(1, 0) = (young / (1.0 + poisson)) * Ecaux(1, 0);
+            Saux(0, 1) = (young / (1.0 + poisson)) * Ecaux(0, 1);
+        }
+
+        Ptaux = prod(Acaux, Saux);
+
+        aaux(0) = du1aux_dx1;
+        aaux(1) = du2aux_dx1;
+
+        dAcaux_dx1(0, 0) = d2u1aux_dx1dx1;
+        dAcaux_dx1(0, 1) = d2u1aux_dx1dx2;
+        dAcaux_dx1(1, 0) = d2u2aux_dx1dx1;
+        dAcaux_dx1(1, 1) = d2u2aux_dx1dx2;
+
+        dAcaux_dx2(0, 0) = d2u1aux_dx1dx2;
+        dAcaux_dx2(0, 1) = d2u1aux_dx2dx2;
+        dAcaux_dx2(1, 0) = d2u2aux_dx1dx2;
+        dAcaux_dx2(1, 1) = d2u2aux_dx2dx2;
+
+        dEcaux_dx1 = 0.5 * (prod(trans(dAcaux_dx1), Acaux) + prod(trans(Acaux), dAcaux_dx1));
+        dEcaux_dx2 = 0.5 * (prod(trans(dAcaux_dx2), Acaux) + prod(trans(Acaux), dAcaux_dx2));
+
+        if (ep == "EPD")
+        {
+            dSaux_dx1(0, 0) = (young / ((1.0 + poisson) * (1.0 - 2.0 * poisson)) * ((1.0 - poisson) * dEcaux_dx1(0, 0) + poisson * dEcaux_dx1(1, 1)));
+            dSaux_dx1(1, 1) = (young / ((1.0 + poisson) * (1.0 - 2.0 * poisson)) * ((1.0 - poisson) * dEcaux_dx1(1, 1) + poisson * dEcaux_dx1(0, 0)));
+            dSaux_dx1(1, 0) = (young / (1.0 + poisson)) * dEcaux_dx1(1, 0);
+            dSaux_dx1(0, 1) = (young / (1.0 + poisson)) * dEcaux_dx1(0, 1);
+
+            dSaux_dx2(0, 0) = (young / ((1.0 + poisson) * (1.0 - 2.0 * poisson)) * ((1.0 - poisson) * dEcaux_dx2(0, 0) + poisson * dEcaux_dx2(1, 1)));
+            dSaux_dx2(1, 1) = (young / ((1.0 + poisson) * (1.0 - 2.0 * poisson)) * ((1.0 - poisson) * dEcaux_dx2(1, 1) + poisson * dEcaux_dx2(0, 0)));
+            dSaux_dx2(1, 0) = (young / (1.0 + poisson)) * dEcaux_dx2(1, 0);
+            dSaux_dx2(0, 1) = (young / (1.0 + poisson)) * dEcaux_dx2(0, 1);
+        }
+        else
+        {
+            dSaux_dx1(0, 0) = (young / (1.0 - poisson * poisson)) * (dEcaux_dx1(0, 0) + poisson * dEcaux_dx1(1, 1));
+            dSaux_dx1(1, 1) = (young / (1.0 - poisson * poisson)) * (dEcaux_dx1(1, 1) + poisson * dEcaux_dx1(0, 0));
+            dSaux_dx1(1, 0) = (young / (1.0 + poisson)) * dEcaux_dx1(1, 0);
+            dSaux_dx1(0, 1) = (young / (1.0 + poisson)) * dEcaux_dx1(0, 1);
+
+            dSaux_dx2(0, 0) = (young / (1.0 - poisson * poisson)) * (dEcaux_dx2(0, 0) + poisson * dEcaux_dx2(1, 1));
+            dSaux_dx2(1, 1) = (young / (1.0 - poisson * poisson)) * (dEcaux_dx2(1, 1) + poisson * dEcaux_dx2(0, 0));
+            dSaux_dx2(1, 0) = (young / (1.0 + poisson)) * dEcaux_dx2(1, 0);
+            dSaux_dx2(0, 1) = (young / (1.0 + poisson)) * dEcaux_dx2(0, 1);
+        }
+
+        dPtaux_dx1 = prod(dAcaux_dx1, Saux) + prod(Acaux, dSaux_dx1);
+        dPtaux_dx2 = prod(dAcaux_dx2, Saux) + prod(Acaux, dSaux_dx2);
+
+        divPtaux(0) = dPtaux_dx1(0, 0) + dPtaux_dx2(0, 1);
+        divPtaux(1) = dPtaux_dx1(1, 0) + dPtaux_dx2(1, 1);
+
+        grad_aaux(0, 0) = dAcaux_dx1(0, 0);
+        grad_aaux(1, 0) = dAcaux_dx1(1, 0);
+        grad_aaux(0, 1) = dAcaux_dx2(0, 0);
+        grad_aaux(1, 1) = dAcaux_dx2(1, 0);
+
+        unitX1(0) = 1.0;
+        unitX1(1) = 0.0;
+
+        term1 = prod(Pt, aaux);
+
+        term2 = prod(Ptaux, a);
+
+        term3 = -1.0 * tensorContraction(S, Ecaux) * unitX1;
+
+        if (type == "STATIC")
+        {
+            term4 = 0.0;
+        }
+        else
+        {
+            accel = 0.0;
+            for (int i = 0; i < connection_.size(); i++)
+            {
+                accel += phi(i) * connection_[i]->getCurrentAcceleration();
+            }
+            term4 = density * (inner_prod(accel, aaux));
+        }
+
+        term5 = inner_prod(divPtaux, a);
+
+        term6 = tensorContraction(Pt, grad_aaux);
+
+        term7 = tensorContraction(Ptaux, grad_a);
+
+        term8 = -1.0 * tensorContraction(S, dEcaux_dx1);
+
+        term9 = -1.0 * tensorContraction(Saux, dEc_dx1);
+
+        term5 = 0.0;
+        term4 = 0.0;
+
+        term6 = 0.0;
+
+        term7 = 0.0;
+
+        term8 = 0.0;
+
+        term9 = 0.0;
+
+        jIntegral(1) += 0.5 * youngLine * (inner_prod((term1 + term2 + term3), grad_q) + (term4 + term5 + term6 + term7 + term8 + term9) * q) * weight * j0 * thickness;
+    }
+    return jIntegral;
+}
+
+bounded_vector<double, 2> Element::domainJ_IntegralInitial2(const int &nHammer, const std::string &ep, const std::string &type, const double &Jintegral_radius, const double &rotation, const bounded_vector<double, 2> &tipCoordinates)
+{
+    bounded_vector<double, 2> jIntegral;
+    jIntegral(0) = 0.0;
+    jIntegral(1) = 0.0;
+
+    int nnos = connection_.size();
+
+    //Material properties
+    double young, poisson, density;
+    mesh_->getMaterial()->setProperties(young, poisson, density);
+    double thickness = mesh_->getThickness();
+    double mi = young / (2.0 * (1.0 + poisson));
+    double youngLine;
+    double k;
+    if (ep == "EPD")
+    {
+        k = 3.0 - 4.0 * poisson;
+        youngLine = young / (1.0 - poisson * poisson);
+    }
+    else
+    {
+        k = (3.0 - poisson) / (1.0 + poisson);
+        youngLine = young;
+    }
+
+    matrix<double> domainIntegrationPoints = hammerQuadrature(nHammer);
+
+    bounded_matrix<double, 2, 2> matrixRotation;
+    matrixRotation(0, 0) = cos(rotation);
+    matrixRotation(0, 1) = sin(rotation);
+    matrixRotation(1, 0) = -sin(rotation);
+    matrixRotation(1, 1) = cos(rotation);
+
+    for (int ihh = 0; ihh < nHammer; ihh++)
+    {
+
+        double xsi1 = domainIntegrationPoints(ihh, 0);
+        double xsi2 = domainIntegrationPoints(ihh, 1);
+        double weight = domainIntegrationPoints(ihh, 2);
+
+        vector<double> phi = domainShapeFunction(xsi1, xsi2);
+        matrix<double> dphi_dxsi = domainDerivativeShapeFunction(xsi1, xsi2); //row = direction, column = node
+        matrix<double> d2phi_d2xsi = domainSecondDerivativeShapeFunction(xsi1, xsi2);
+
+        bounded_matrix<double, 2, 2> dA1_dxsi1, dA1_dxsi2, A0loc, mataux; //A1loc,
+        dA1_dxsi1(0, 0) = 0.0;
+        dA1_dxsi1(0, 1) = 0.0;
+        dA1_dxsi1(1, 0) = 0.0;
+        dA1_dxsi1(1, 1) = 0.0;
+
+        dA1_dxsi2(0, 0) = 0.0;
+        dA1_dxsi2(0, 1) = 0.0;
+        dA1_dxsi2(1, 0) = 0.0;
+        dA1_dxsi2(1, 1) = 0.0;
+
+        A0loc(0, 0) = 0.0;
+        A0loc(0, 1) = 0.0;
+        A0loc(1, 0) = 0.0;
+        A0loc(1, 1) = 0.0;
+
+        // A1loc(0, 0) = 0.0;
+        // A1loc(0, 1) = 0.0;
+        // A1loc(1, 0) = 0.0;
+        // A1loc(1, 1) = 0.0;
+
+        for (int in = 0; in < nnos; in++)
+        {
+            bounded_vector<double, 2> coordNode = prod(matrixRotation, connection_[in]->getCurrentCoordinate());
+
+            bounded_vector<double, 2> initialNode = prod(matrixRotation, connection_[in]->getInitialCoordinate());
+
+            dA1_dxsi1(0, 0) += d2phi_d2xsi(0, in) * coordNode(0);
+            dA1_dxsi1(0, 1) += d2phi_d2xsi(1, in) * coordNode(0);
+            dA1_dxsi1(1, 0) += d2phi_d2xsi(0, in) * coordNode(1);
+            dA1_dxsi1(1, 1) += d2phi_d2xsi(1, in) * coordNode(1);
+
+            dA1_dxsi2(0, 0) += d2phi_d2xsi(1, in) * coordNode(0);
+            dA1_dxsi2(0, 1) += d2phi_d2xsi(2, in) * coordNode(0);
+            dA1_dxsi2(1, 0) += d2phi_d2xsi(1, in) * coordNode(1);
+            dA1_dxsi2(1, 1) += d2phi_d2xsi(2, in) * coordNode(1);
+
+            A0loc(0, 0) += initialNode(0) * dphi_dxsi(0, in);
+            A0loc(0, 1) += initialNode(0) * dphi_dxsi(1, in);
+            A0loc(1, 0) += initialNode(1) * dphi_dxsi(0, in);
+            A0loc(1, 1) += initialNode(1) * dphi_dxsi(1, in);
+
+            // A1loc(0, 0) += coordNode(0) * dphi_dxsi(0, in);
+            // A1loc(0, 1) += coordNode(0) * dphi_dxsi(1, in);
+            // A1loc(1, 0) += coordNode(1) * dphi_dxsi(0, in);
+            // A1loc(1, 1) += coordNode(1) * dphi_dxsi(1, in);
+        }
+
+        bounded_matrix<double, 2, 2> A0glob = referenceJacobianMatrix(xsi1, xsi2);
+        double j0 = jacobianDeterminant(A0glob);
+        bounded_matrix<double, 2, 2> A0Iglob = inverseMatrix(A0glob);
+        bounded_matrix<double, 2, 2> A1glob = currentJacobianMatrix(xsi1, xsi2);
+        bounded_matrix<double, 2, 2> Acglob = prod(A1glob, A0Iglob); //dyi / dxj
+
+        bounded_matrix<double, 2, 2> Ac; // Aclocteste;
+
+        //Aclocteste = prod(A1loc, inverseMatrix(A0loc));
+
+        mataux = prod(matrixRotation, Acglob);
+        Ac = prod(mataux, trans(matrixRotation)); //gradiente nos eixos da ponta da fissura
+
+        // std::cout << Aclocteste(0, 0) / Ac(0, 0) << " " << Aclocteste(0, 1) / Ac(0, 1) << " " << Aclocteste(1, 0) / Ac(1, 0) << " " << Aclocteste(1, 1) / Ac(1, 1) << std::endl;
+
+        const identity_matrix<double> I(2);
+        bounded_matrix<double, 2, 2> Ec = 0.5 * (prod(trans(Ac), Ac) - I);
+        bounded_matrix<double, 2, 2> S;
+
+        if (ep == "EPD")
+        {
+            S(0, 0) = (young / ((1.0 + poisson) * (1.0 - 2.0 * poisson))) * ((1.0 - poisson) * Ec(0, 0) + poisson * Ec(1, 1));
+            S(1, 1) = (young / ((1.0 + poisson) * (1.0 - 2.0 * poisson))) * ((1.0 - poisson) * Ec(1, 1) + poisson * Ec(0, 0));
+            S(1, 0) = (young / (1.0 + poisson)) * Ec(1, 0);
+            S(0, 1) = (young / (1.0 + poisson)) * Ec(0, 1);
+        }
+        else
+        {
+            S(0, 0) = (young / (1.0 - poisson * poisson)) * (Ec(0, 0) + poisson * Ec(1, 1));
+            S(1, 1) = (young / (1.0 - poisson * poisson)) * (Ec(1, 1) + poisson * Ec(0, 0));
+            S(1, 0) = (young / (1.0 + poisson)) * Ec(1, 0);
+            S(0, 1) = (young / (1.0 + poisson)) * Ec(0, 1);
+        }
+
+        bounded_matrix<double, 2, 2> Pt;
+        Pt = prod(Ac, S);
+
+        bounded_matrix<double, 2, 2> dAc_dxsi1, dAc_dxsi2, A0Iloc;
+
+        A0Iloc = inverseMatrix(A0loc);
+        dAc_dxsi1 = prod(dA1_dxsi1, A0Iloc);
+        dAc_dxsi2 = prod(dA1_dxsi2, A0Iloc);
+
+        bounded_vector<double, 2> a;
+        a(0) = Ac(0, 0) - 1.0;
+        a(1) = Ac(1, 0);
+
+        bounded_matrix<double, 2, 2> grad_a, dEc_dx1, dAc_dx1;
+
+        grad_a(0, 0) = dAc_dxsi1(0, 0) * A0Iloc(0, 0) + dAc_dxsi2(0, 0) * A0Iloc(1, 0); //ok
+        grad_a(0, 1) = dAc_dxsi1(0, 0) * A0Iloc(0, 1) + dAc_dxsi2(0, 0) * A0Iloc(1, 1);
+        grad_a(1, 0) = dAc_dxsi1(1, 0) * A0Iloc(0, 0) + dAc_dxsi2(1, 0) * A0Iloc(1, 0); //ok
+        grad_a(1, 1) = dAc_dxsi1(1, 0) * A0Iloc(0, 1) + dAc_dxsi2(1, 0) * A0Iloc(1, 1);
+
+        dAc_dx1 = dAc_dxsi1 * A0Iloc(0, 0) + dAc_dxsi2 * A0Iloc(1, 0); //é igual a grad_a
+
+        dEc_dx1 = 0.5 * (prod(trans(dAc_dx1), Ac) + prod(trans(Ac), dAc_dx1));
+
+        //////////////////////////////////
+        //Q FUNCTION
+        //////////////////////////////////
+        double radius = 0.0;
+        bounded_vector<double, 2> dradius_dxsi, coordP;
+        coordP(0) = 0.0;
+        coordP(1) = 0.0;
+        dradius_dxsi(0) = 0.0;
+        dradius_dxsi(1) = 0.0;
+
+        for (int in = 0; in < connection_.size(); in++)
+        {
+            coordP += phi(in) * connection_[in]->getInitialCoordinate();
+
+            const double radiusNODE = norm_2(connection_[in]->getInitialCoordinate() - tipCoordinates);
+
+            dradius_dxsi(0) += dphi_dxsi(0, in) * radiusNODE; //dDAhammer_dxsiLocal1
+            dradius_dxsi(1) += dphi_dxsi(1, in) * radiusNODE; //dDAhammer_dxsiLocal1
+
+            radius += phi(in) * radiusNODE;
+        }
+
+        bounded_vector<double, 2> tipToPointAux = coordP - tipCoordinates;
+        bounded_vector<double, 2> tipToPoint = prod(matrixRotation, tipToPointAux);
+        const double teta = atan2(tipToPoint(1), tipToPoint(0));
+
+        const double aux = radius / Jintegral_radius;
+        const double q = 2.0 * aux * aux * aux - 3.0 * aux * aux + 1.0;
+        const double dq_dradius = (6.0 / Jintegral_radius) * aux * aux - (6.0 / Jintegral_radius) * aux;
+
+        // const double q = 1.0 - radius / Jintegral_radius;
+        // const double dq_dradius = -1.0 / Jintegral_radius;
+
+        bounded_vector<double, 2> dq_dxsi;
+        dq_dxsi(0) = dq_dradius * dradius_dxsi(0);
+        dq_dxsi(1) = dq_dradius * dradius_dxsi(1);
+
+        bounded_vector<double, 2> grad_q;
+
+        grad_q(0) = dq_dxsi(0) * A0Iloc(0, 0) + dq_dxsi(1) * A0Iloc(1, 0);
+        grad_q(1) = dq_dxsi(0) * A0Iloc(0, 1) + dq_dxsi(1) * A0Iloc(1, 1);
+
+        //////////////////////////////////
+        //AUXILIARY STATES K1 = 1 E K2 = 0;
+        //////////////////////////////////
+
+        const double pi = 3.14159265358979323846;
+        const double meio_teta = 0.5 * teta;
+
+        double dl_dr, d2l_dr2, dm_dtheta, d2m_dtetha2, dn_dtheta, d2n_dtheta2, K1, K2, l, m, n;
+
+        K1 = 1.0;
+        K2 = 0.0;
+
+        l = (sqrt(radius / (2.0 * pi)) / (2.0 * mi));
+        dl_dr = sqrt(2.0 * pi * radius) / (8.0 * mi * pi * radius);
+        d2l_dr2 = -sqrt(2.0 * pi * radius) / (16.0 * mi * pi * radius * radius);
+
+        m = K1 * cos(meio_teta) * (k - cos(teta)) + K2 * sin(meio_teta) * (k + 2.0 + cos(teta));
+        dm_dtheta = K1 * (-0.5 * sin(meio_teta) * (k - cos(teta)) + sin(teta) * cos(meio_teta)) + K2 * (0.5 * cos(meio_teta) * (k + 2.0 + cos(teta)) - sin(teta) * sin(meio_teta));
+        d2m_dtetha2 = K1 * (-cos(meio_teta) * 0.25 * (k - cos(teta)) - sin(meio_teta) * sin(teta) + cos(meio_teta) * cos(teta)) + K2 * (-sin(meio_teta) * 0.25 * (k + 2.0 + cos(teta)) - sin(teta) * cos(meio_teta) - cos(teta) * sin(meio_teta));
+
+        n = K1 * sin(meio_teta) * (k - cos(teta)) - K2 * cos(meio_teta) * (k - 2.0 + cos(teta));
+        dn_dtheta = K1 * (0.5 * cos(meio_teta) * (k - cos(teta)) + sin(teta) * sin(meio_teta)) + K2 * (0.5 * sin(meio_teta) * (k - 2.0 + cos(teta)) + sin(teta) * cos(meio_teta));
+        d2n_dtheta2 = K1 * (-sin(meio_teta) * 0.25 * (k - cos(teta)) + cos(meio_teta) * sin(teta) + sin(meio_teta) * cos(teta)) - K2 * (-cos(meio_teta) * 0.25 * (k - 2.0 + cos(teta)) + sin(meio_teta) * sin(teta) - cos(teta) * cos(meio_teta));
+
+        double du1aux_dr, du2aux_dr, du1aux_dteta, du2aux_dteta, d2u1aux_dr2, d2u1aux_drdteta, d2u1aux_dteta2, d2u2aux_dr2, d2u2aux_drdteta, d2u2aux_dteta2;
+
+        //FIRST DERIVATES OF U1
+        du1aux_dr = dl_dr * m;
+        du1aux_dteta = l * dm_dtheta;
+
+        //SECOND DERIVATES OF U1
+        d2u1aux_dr2 = d2l_dr2 * m;
+        d2u1aux_drdteta = dl_dr * dm_dtheta;
+        d2u1aux_dteta2 = l * d2m_dtetha2;
+
+        //FIRST DERIVATES OF U2
+        du2aux_dr = dl_dr * n;
+        du2aux_dteta = l * dn_dtheta;
+
+        //SECOND DERIVATES OF U2
+        d2u2aux_dr2 = d2l_dr2 * n;
+        d2u2aux_drdteta = dl_dr * dn_dtheta;
+        d2u2aux_dteta2 = l * d2n_dtheta2;
+
+        //FIRST DERIVATES: dui_dxj
+        double du1aux_dx1, du2aux_dx1, du1aux_dx2, du2aux_dx2;
+        du1aux_dx1 = cos(teta) * du1aux_dr - (sin(teta) / radius) * du1aux_dteta;
+        du1aux_dx2 = sin(teta) * du1aux_dr + (cos(teta) / radius) * du1aux_dteta;
+
+        du2aux_dx1 = cos(teta) * du2aux_dr - (sin(teta) / radius) * du2aux_dteta;
+        du2aux_dx2 = sin(teta) * du2aux_dr + (cos(teta) / radius) * du2aux_dteta;
+
+        //SECOND DERIVATES: d2ui_dxjdxk
+        double d2u1aux_dx1dx1, d2u1aux_dx1dx2, d2u1aux_dx2dx2, d2u2aux_dx1dx1, d2u2aux_dx1dx2, d2u2aux_dx2dx2;
+
+        d2u1aux_dx1dx1 = cos(teta) * cos(teta) * d2u1aux_dr2 + 2.0 * sin(teta) * cos(teta) / (radius * radius) * du1aux_dteta - 2.0 * sin(teta) * cos(teta) / radius * d2u1aux_drdteta + sin(teta) * sin(teta) * (du1aux_dr / radius + d2u1aux_dteta2 / (radius * radius));
+        d2u1aux_dx1dx2 = sin(teta) * (cos(teta) * d2u1aux_dr2 + sin(teta) / (radius * radius) * du1aux_dteta - sin(teta) / radius * d2u1aux_drdteta) + cos(teta) / radius * (-sin(teta) * du1aux_dr + cos(teta) * d2u1aux_drdteta - cos(teta) / radius * du1aux_dteta - sin(teta) / radius * d2u1aux_dteta2);
+        d2u1aux_dx2dx2 = sin(teta) * sin(teta) * d2u1aux_dr2 - 2.0 * sin(teta) * cos(teta) / (radius * radius) * du1aux_dteta + 2.0 * sin(teta) * cos(teta) / radius * d2u1aux_drdteta + cos(teta) * cos(teta) * (du1aux_dr / radius + d2u1aux_dteta2 / (radius * radius));
+
+        d2u2aux_dx1dx1 = cos(teta) * cos(teta) * d2u2aux_dr2 + 2.0 * sin(teta) * cos(teta) / (radius * radius) * du2aux_dteta - 2.0 * sin(teta) * cos(teta) / radius * d2u2aux_drdteta + sin(teta) * sin(teta) * (du2aux_dr / radius + d2u2aux_dteta2 / (radius * radius));
+        d2u2aux_dx1dx2 = sin(teta) * (cos(teta) * d2u2aux_dr2 + sin(teta) / (radius * radius) * du2aux_dteta - sin(teta) / radius * d2u2aux_drdteta) + cos(teta) / radius * (-sin(teta) * du2aux_dr + cos(teta) * d2u2aux_drdteta - cos(teta) / radius * du2aux_dteta - sin(teta) / radius * d2u2aux_dteta2);
+        d2u2aux_dx2dx2 = sin(teta) * sin(teta) * d2u2aux_dr2 - 2.0 * sin(teta) * cos(teta) / (radius * radius) * du2aux_dteta + 2.0 * sin(teta) * cos(teta) / radius * d2u2aux_drdteta + cos(teta) * cos(teta) * (du2aux_dr / radius + d2u2aux_dteta2 / (radius * radius));
+
+        bounded_matrix<double, 2, 2> Acaux, Ecaux, Saux, Ptaux;
+
+        Acaux(0, 0) = du1aux_dx1 + 1.0;
+        Acaux(0, 1) = du1aux_dx2;
+        Acaux(1, 0) = du2aux_dx1;
+        Acaux(1, 1) = du2aux_dx2 + 1.0;
+
+        Ecaux = 0.5 * (prod(trans(Acaux), Acaux) - I);
+
+        if (ep == "EPD")
+        {
+            Saux(0, 0) = (young / ((1.0 + poisson) * (1.0 - 2.0 * poisson))) * ((1.0 - poisson) * Ecaux(0, 0) + poisson * Ecaux(1, 1));
+            Saux(1, 1) = (young / ((1.0 + poisson) * (1.0 - 2.0 * poisson))) * ((1.0 - poisson) * Ecaux(1, 1) + poisson * Ecaux(0, 0));
+            Saux(1, 0) = (young / (1.0 + poisson)) * Ecaux(1, 0);
+            Saux(0, 1) = (young / (1.0 + poisson)) * Ecaux(0, 1);
+        }
+        else
+        {
+            Saux(0, 0) = (young / (1.0 - poisson * poisson)) * (Ecaux(0, 0) + poisson * Ecaux(1, 1));
+            Saux(1, 1) = (young / (1.0 - poisson * poisson)) * (Ecaux(1, 1) + poisson * Ecaux(0, 0));
+            Saux(1, 0) = (young / (1.0 + poisson)) * Ecaux(1, 0);
+            Saux(0, 1) = (young / (1.0 + poisson)) * Ecaux(0, 1);
+        }
+
+        Ptaux = prod(Acaux, Saux);
+
+        // bounded_matrix<double, 2, 2> Accoupled, Scoupled, Ptcouped, Ptsoma;
+
+        // Accoupled = Ac + Acaux - I;
+        // Scoupled = S + Saux;
+
+        // Ptcouped = prod(Accoupled, Scoupled);
+        // Ptsoma = Pt + Ptaux;
+
+        // std::cout <<std::scientific << Ptsoma(0, 0) / Ptcouped(0, 0) - 1.0 << " " << Ptsoma(0, 1) / Ptcouped(0, 1) - 1.0 << " " << Ptsoma(1, 0) / Ptcouped(1, 0) - 1.0 << " " << Ptsoma(1, 1) / Ptcouped(1, 1) - 1.0 << " " << std::endl;
+
+        bounded_vector<double, 2> aaux;                                                         //divPtaux
+        bounded_matrix<double, 2, 2> dAcaux_dx1, dAcaux_dx2, dEcaux_dx1, dEcaux_dx2, grad_aaux; // dSaux_dx1, dSaux_dx2, dPtaux_dx1, dPtaux_dx2;
+
+        aaux(0) = du1aux_dx1;
+        aaux(1) = du2aux_dx1;
+
+        dAcaux_dx1(0, 0) = d2u1aux_dx1dx1;
+        dAcaux_dx1(0, 1) = d2u1aux_dx1dx2;
+        dAcaux_dx1(1, 0) = d2u2aux_dx1dx1;
+        dAcaux_dx1(1, 1) = d2u2aux_dx1dx2;
+
+        dAcaux_dx2(0, 0) = d2u1aux_dx1dx2;
+        dAcaux_dx2(0, 1) = d2u1aux_dx2dx2;
+        dAcaux_dx2(1, 0) = d2u2aux_dx1dx2;
+        dAcaux_dx2(1, 1) = d2u2aux_dx2dx2;
+
+        dEcaux_dx1 = 0.5 * (prod(trans(dAcaux_dx1), Acaux) + prod(trans(Acaux), dAcaux_dx1));
+        dEcaux_dx2 = 0.5 * (prod(trans(dAcaux_dx2), Acaux) + prod(trans(Acaux), dAcaux_dx2));
+
+        // if (ep == "EPD")
+        // {
+        //     dSaux_dx1(0, 0) = (young / ((1.0 + poisson) * (1.0 - 2.0 * poisson)) * ((1.0 - poisson) * dEcaux_dx1(0, 0) + poisson * dEcaux_dx1(1, 1)));
+        //     dSaux_dx1(1, 1) = (young / ((1.0 + poisson) * (1.0 - 2.0 * poisson)) * ((1.0 - poisson) * dEcaux_dx1(1, 1) + poisson * dEcaux_dx1(0, 0)));
+        //     dSaux_dx1(1, 0) = (young / (1.0 + poisson)) * dEcaux_dx1(1, 0);
+        //     dSaux_dx1(0, 1) = (young / (1.0 + poisson)) * dEcaux_dx1(0, 1);
+
+        //     dSaux_dx2(0, 0) = (young / ((1.0 + poisson) * (1.0 - 2.0 * poisson)) * ((1.0 - poisson) * dEcaux_dx2(0, 0) + poisson * dEcaux_dx2(1, 1)));
+        //     dSaux_dx2(1, 1) = (young / ((1.0 + poisson) * (1.0 - 2.0 * poisson)) * ((1.0 - poisson) * dEcaux_dx2(1, 1) + poisson * dEcaux_dx2(0, 0)));
+        //     dSaux_dx2(1, 0) = (young / (1.0 + poisson)) * dEcaux_dx2(1, 0);
+        //     dSaux_dx2(0, 1) = (young / (1.0 + poisson)) * dEcaux_dx2(0, 1);
+        // }
+        // else
+        // {
+        //     dSaux_dx1(0, 0) = (young / (1.0 - poisson * poisson)) * (dEcaux_dx1(0, 0) + poisson * dEcaux_dx1(1, 1));
+        //     dSaux_dx1(1, 1) = (young / (1.0 - poisson * poisson)) * (dEcaux_dx1(1, 1) + poisson * dEcaux_dx1(0, 0));
+        //     dSaux_dx1(1, 0) = (young / (1.0 + poisson)) * dEcaux_dx1(1, 0);
+        //     dSaux_dx1(0, 1) = (young / (1.0 + poisson)) * dEcaux_dx1(0, 1);
+
+        //     dSaux_dx2(0, 0) = (young / (1.0 - poisson * poisson)) * (dEcaux_dx2(0, 0) + poisson * dEcaux_dx2(1, 1));
+        //     dSaux_dx2(1, 1) = (young / (1.0 - poisson * poisson)) * (dEcaux_dx2(1, 1) + poisson * dEcaux_dx2(0, 0));
+        //     dSaux_dx2(1, 0) = (young / (1.0 + poisson)) * dEcaux_dx2(1, 0);
+        //     dSaux_dx2(0, 1) = (young / (1.0 + poisson)) * dEcaux_dx2(0, 1);
+        // }
+
+        // dPtaux_dx1 = prod(dAcaux_dx1, Saux) + prod(Acaux, dSaux_dx1);
+        // dPtaux_dx2 = prod(dAcaux_dx2, Saux) + prod(Acaux, dSaux_dx2);
+
+        // divPtaux(0) = dPtaux_dx1(0, 0) + dPtaux_dx2(0, 1);
+        // divPtaux(1) = dPtaux_dx1(1, 0) + dPtaux_dx2(1, 1);
+
+        grad_aaux(0, 0) = dAcaux_dx1(0, 0);
+        grad_aaux(1, 0) = dAcaux_dx1(1, 0);
+        grad_aaux(0, 1) = dAcaux_dx2(0, 0);
+        grad_aaux(1, 1) = dAcaux_dx2(1, 0);
+
+        bounded_vector<double, 2> term1, term2, term3, unitX1, accel;
+
+        unitX1(0) = 1.0;
+        unitX1(1) = 0.0;
+
+        double term4, term5, term6, term7, term8;
+
+        term1 = prod(trans(Pt), aaux);
+
+        term2 = prod(trans(Ptaux), a);
+
+        term3 = -0.5 * (tensorContraction(S, Ecaux) + tensorContraction(Saux, Ec)) * unitX1;
+
+        if (type == "STATIC")
+        {
+            term4 = 0.0;
+        }
+        else
+        {
+            accel(0) = 0.0;
+            accel(1) = 0.0;
+            for (int ij = 0; ij < connection_.size(); ij++)
+            {
+                accel += phi(ij) * prod(matrixRotation, connection_[ij]->getCurrentAcceleration());
+            }
+            term4 = density * (inner_prod(accel, aaux));
+        }
+
+        term5 = tensorContraction(Pt, grad_aaux);
+
+        term6 = tensorContraction(Ptaux, grad_a);
+
+        term7 = -1.0 * tensorContraction(S, dEcaux_dx1);
+
+        term8 = -1.0 * tensorContraction(Saux, dEc_dx1);
+
+        jIntegral(0) += 0.5 * youngLine * (inner_prod((term1 + term2 + term3), grad_q) + (term4 + term5 + term6 + term7 + term8) * q) * weight * j0 * thickness;
+
+        //////////////////////////////////
+        //AUXILIARY STATE K1 = 0 E K2 = 1
+        //////////////////////////////////
+
+        K1 = 0.0;
+        K2 = 1.0;
+
+        l = (sqrt(radius / (2.0 * pi)) / (2.0 * mi));
+        dl_dr = sqrt(2.0 * pi * radius) / (8.0 * mi * pi * radius);
+        d2l_dr2 = -sqrt(2.0 * pi * radius) / (16.0 * mi * pi * radius * radius);
+
+        m = K1 * cos(meio_teta) * (k - cos(teta)) + K2 * sin(meio_teta) * (k + 2.0 + cos(teta));
+        dm_dtheta = K1 * (-0.5 * sin(meio_teta) * (k - cos(teta)) + sin(teta) * cos(meio_teta)) + K2 * (0.5 * cos(meio_teta) * (k + 2.0 + cos(teta)) - sin(teta) * sin(meio_teta));
+        d2m_dtetha2 = K1 * (-cos(meio_teta) * 0.25 * (k - cos(teta)) - sin(meio_teta) * sin(teta) + cos(meio_teta) * cos(teta)) + K2 * (-sin(meio_teta) * 0.25 * (k + 2.0 + cos(teta)) - sin(teta) * cos(meio_teta) - cos(teta) * sin(meio_teta));
+
+        n = K1 * sin(meio_teta) * (k - cos(teta)) - K2 * cos(meio_teta) * (k - 2.0 + cos(teta));
+        dn_dtheta = K1 * (0.5 * cos(meio_teta) * (k - cos(teta)) + sin(teta) * sin(meio_teta)) + K2 * (0.5 * sin(meio_teta) * (k - 2.0 + cos(teta)) + sin(teta) * cos(meio_teta));
+        d2n_dtheta2 = K1 * (-sin(meio_teta) * 0.25 * (k - cos(teta)) + cos(meio_teta) * sin(teta) + sin(meio_teta) * cos(teta)) - K2 * (-cos(meio_teta) * 0.25 * (k - 2.0 + cos(teta)) + sin(meio_teta) * sin(teta) - cos(teta) * cos(meio_teta));
+
+        //FIRST DERIVATES OF U1
+        du1aux_dr = dl_dr * m;
+        du1aux_dteta = l * dm_dtheta;
+
+        //SECOND DERIVATES OF U1
+        d2u1aux_dr2 = d2l_dr2 * m;
+        d2u1aux_drdteta = dl_dr * dm_dtheta;
+        d2u1aux_dteta2 = l * d2m_dtetha2;
+
+        //FIRST DERIVATES OF U2
+        du2aux_dr = dl_dr * n;
+        du2aux_dteta = l * dn_dtheta;
+
+        //SECOND DERIVATES OF U2
+        d2u2aux_dr2 = d2l_dr2 * n;
+        d2u2aux_drdteta = dl_dr * dn_dtheta;
+        d2u2aux_dteta2 = l * d2n_dtheta2;
+
+        //FIRST DERIVATES: dui_dxj
+        du1aux_dx1 = cos(teta) * du1aux_dr - (sin(teta) / radius) * du1aux_dteta;
+        du1aux_dx2 = sin(teta) * du1aux_dr + (cos(teta) / radius) * du1aux_dteta;
+
+        du2aux_dx1 = cos(teta) * du2aux_dr - (sin(teta) / radius) * du2aux_dteta;
+        du2aux_dx2 = sin(teta) * du2aux_dr + (cos(teta) / radius) * du2aux_dteta;
+
+        //SECOND DERIVATES: d2ui_dxjdxk
+        d2u1aux_dx1dx1 = cos(teta) * cos(teta) * d2u1aux_dr2 + 2.0 * sin(teta) * cos(teta) / (radius * radius) * du1aux_dteta - 2.0 * sin(teta) * cos(teta) / radius * d2u1aux_drdteta + sin(teta) * sin(teta) * (du1aux_dr / radius + d2u1aux_dteta2 / (radius * radius));
+        d2u1aux_dx1dx2 = sin(teta) * (cos(teta) * d2u1aux_dr2 + sin(teta) / (radius * radius) * du1aux_dteta - sin(teta) / radius * d2u1aux_drdteta) + cos(teta) / radius * (-sin(teta) * du1aux_dr + cos(teta) * d2u1aux_drdteta - cos(teta) / radius * du1aux_dteta - sin(teta) / radius * d2u1aux_dteta2);
+        d2u1aux_dx2dx2 = sin(teta) * sin(teta) * d2u1aux_dr2 - 2.0 * sin(teta) * cos(teta) / (radius * radius) * du1aux_dteta + 2.0 * sin(teta) * cos(teta) / radius * d2u1aux_drdteta + cos(teta) * cos(teta) * (du1aux_dr / radius + d2u1aux_dteta2 / (radius * radius));
+
+        d2u2aux_dx1dx1 = cos(teta) * cos(teta) * d2u2aux_dr2 + 2.0 * sin(teta) * cos(teta) / (radius * radius) * du2aux_dteta - 2.0 * sin(teta) * cos(teta) / radius * d2u2aux_drdteta + sin(teta) * sin(teta) * (du2aux_dr / radius + d2u2aux_dteta2 / (radius * radius));
+        d2u2aux_dx1dx2 = sin(teta) * (cos(teta) * d2u2aux_dr2 + sin(teta) / (radius * radius) * du2aux_dteta - sin(teta) / radius * d2u2aux_drdteta) + cos(teta) / radius * (-sin(teta) * du2aux_dr + cos(teta) * d2u2aux_drdteta - cos(teta) / radius * du2aux_dteta - sin(teta) / radius * d2u2aux_dteta2);
+        d2u2aux_dx2dx2 = sin(teta) * sin(teta) * d2u2aux_dr2 - 2.0 * sin(teta) * cos(teta) / (radius * radius) * du2aux_dteta + 2.0 * sin(teta) * cos(teta) / radius * d2u2aux_drdteta + cos(teta) * cos(teta) * (du2aux_dr / radius + d2u2aux_dteta2 / (radius * radius));
+
+        Acaux(0, 0) = du1aux_dx1 + 1.0;
+        Acaux(0, 1) = du1aux_dx2;
+        Acaux(1, 0) = du2aux_dx1;
+        Acaux(1, 1) = du2aux_dx2 + 1.0;
+
+        Ecaux = 0.5 * (prod(trans(Acaux), Acaux) - I);
+
+        if (ep == "EPD")
+        {
+            Saux(0, 0) = (young / ((1.0 + poisson) * (1.0 - 2.0 * poisson))) * ((1.0 - poisson) * Ecaux(0, 0) + poisson * Ecaux(1, 1));
+            Saux(1, 1) = (young / ((1.0 + poisson) * (1.0 - 2.0 * poisson))) * ((1.0 - poisson) * Ecaux(1, 1) + poisson * Ecaux(0, 0));
+            Saux(1, 0) = (young / (1.0 + poisson)) * Ecaux(1, 0);
+            Saux(0, 1) = (young / (1.0 + poisson)) * Ecaux(0, 1);
+        }
+        else
+        {
+            Saux(0, 0) = (young / (1.0 - poisson * poisson)) * (Ecaux(0, 0) + poisson * Ecaux(1, 1));
+            Saux(1, 1) = (young / (1.0 - poisson * poisson)) * (Ecaux(1, 1) + poisson * Ecaux(0, 0));
+            Saux(1, 0) = (young / (1.0 + poisson)) * Ecaux(1, 0);
+            Saux(0, 1) = (young / (1.0 + poisson)) * Ecaux(0, 1);
+        }
+
+        Ptaux = prod(Acaux, Saux);
+
+        // bounded_matrix<double, 2, 2> Accoupled, Scoupled, Ptcouped, Ptsoma;
+
+        // Accoupled = Ac + Acaux - I;
+        // Scoupled = S + Saux;
+
+        // Ptcouped = prod(Accoupled, Scoupled);
+        // Ptsoma = Pt + Ptaux;
+
+        // std::cout <<std::scientific << Ptsoma(0, 0) / Ptcouped(0, 0) - 1.0 << " " << Ptsoma(0, 1) / Ptcouped(0, 1) - 1.0 << " " << Ptsoma(1, 0) / Ptcouped(1, 0) - 1.0 << " " << Ptsoma(1, 1) / Ptcouped(1, 1) - 1.0 << " " << std::endl;
+
+        aaux(0) = du1aux_dx1;
+        aaux(1) = du2aux_dx1;
+
+        dAcaux_dx1(0, 0) = d2u1aux_dx1dx1;
+        dAcaux_dx1(0, 1) = d2u1aux_dx1dx2;
+        dAcaux_dx1(1, 0) = d2u2aux_dx1dx1;
+        dAcaux_dx1(1, 1) = d2u2aux_dx1dx2;
+
+        dAcaux_dx2(0, 0) = d2u1aux_dx1dx2;
+        dAcaux_dx2(0, 1) = d2u1aux_dx2dx2;
+        dAcaux_dx2(1, 0) = d2u2aux_dx1dx2;
+        dAcaux_dx2(1, 1) = d2u2aux_dx2dx2;
+
+        dEcaux_dx1 = 0.5 * (prod(trans(dAcaux_dx1), Acaux) + prod(trans(Acaux), dAcaux_dx1));
+        dEcaux_dx2 = 0.5 * (prod(trans(dAcaux_dx2), Acaux) + prod(trans(Acaux), dAcaux_dx2));
+
+        // if (ep == "EPD")
+        // {
+        //     dSaux_dx1(0, 0) = (young / ((1.0 + poisson) * (1.0 - 2.0 * poisson)) * ((1.0 - poisson) * dEcaux_dx1(0, 0) + poisson * dEcaux_dx1(1, 1)));
+        //     dSaux_dx1(1, 1) = (young / ((1.0 + poisson) * (1.0 - 2.0 * poisson)) * ((1.0 - poisson) * dEcaux_dx1(1, 1) + poisson * dEcaux_dx1(0, 0)));
+        //     dSaux_dx1(1, 0) = (young / (1.0 + poisson)) * dEcaux_dx1(1, 0);
+        //     dSaux_dx1(0, 1) = (young / (1.0 + poisson)) * dEcaux_dx1(0, 1);
+
+        //     dSaux_dx2(0, 0) = (young / ((1.0 + poisson) * (1.0 - 2.0 * poisson)) * ((1.0 - poisson) * dEcaux_dx2(0, 0) + poisson * dEcaux_dx2(1, 1)));
+        //     dSaux_dx2(1, 1) = (young / ((1.0 + poisson) * (1.0 - 2.0 * poisson)) * ((1.0 - poisson) * dEcaux_dx2(1, 1) + poisson * dEcaux_dx2(0, 0)));
+        //     dSaux_dx2(1, 0) = (young / (1.0 + poisson)) * dEcaux_dx2(1, 0);
+        //     dSaux_dx2(0, 1) = (young / (1.0 + poisson)) * dEcaux_dx2(0, 1);
+        // }
+        // else
+        // {
+        //     dSaux_dx1(0, 0) = (young / (1.0 - poisson * poisson)) * (dEcaux_dx1(0, 0) + poisson * dEcaux_dx1(1, 1));
+        //     dSaux_dx1(1, 1) = (young / (1.0 - poisson * poisson)) * (dEcaux_dx1(1, 1) + poisson * dEcaux_dx1(0, 0));
+        //     dSaux_dx1(1, 0) = (young / (1.0 + poisson)) * dEcaux_dx1(1, 0);
+        //     dSaux_dx1(0, 1) = (young / (1.0 + poisson)) * dEcaux_dx1(0, 1);
+
+        //     dSaux_dx2(0, 0) = (young / (1.0 - poisson * poisson)) * (dEcaux_dx2(0, 0) + poisson * dEcaux_dx2(1, 1));
+        //     dSaux_dx2(1, 1) = (young / (1.0 - poisson * poisson)) * (dEcaux_dx2(1, 1) + poisson * dEcaux_dx2(0, 0));
+        //     dSaux_dx2(1, 0) = (young / (1.0 + poisson)) * dEcaux_dx2(1, 0);
+        //     dSaux_dx2(0, 1) = (young / (1.0 + poisson)) * dEcaux_dx2(0, 1);
+        // }
+
+        // dPtaux_dx1 = prod(dAcaux_dx1, Saux) + prod(Acaux, dSaux_dx1);
+        // dPtaux_dx2 = prod(dAcaux_dx2, Saux) + prod(Acaux, dSaux_dx2);
+
+        // divPtaux(0) = dPtaux_dx1(0, 0) + dPtaux_dx2(0, 1);
+        // divPtaux(1) = dPtaux_dx1(1, 0) + dPtaux_dx2(1, 1);
+
+        grad_aaux(0, 0) = dAcaux_dx1(0, 0);
+        grad_aaux(1, 0) = dAcaux_dx1(1, 0);
+        grad_aaux(0, 1) = dAcaux_dx2(0, 0);
+        grad_aaux(1, 1) = dAcaux_dx2(1, 0);
+
+        unitX1(0) = 1.0;
+        unitX1(1) = 0.0;
+
+        term1 = prod(trans(Pt), aaux);
+
+        term2 = prod(trans(Ptaux), a);
+
+        term3 = -0.5 * (tensorContraction(S, Ecaux) + tensorContraction(Saux, Ec)) * unitX1;
+
+        if (type == "STATIC")
+        {
+            term4 = 0.0;
+        }
+        else
+        {
+            accel(0) = 0.0;
+            accel(1) = 0.0;
+            for (int ij = 0; ij < connection_.size(); ij++)
+            {
+                accel += phi(ij) * connection_[ij]->getCurrentAcceleration();
+            }
+            term4 = density * (inner_prod(accel, aaux));
+        }
+
+        term5 = tensorContraction(Pt, grad_aaux);
+
+        term6 = tensorContraction(Ptaux, grad_a);
+
+        term7 = -1.0 * tensorContraction(S, dEcaux_dx1);
+
+        term8 = -1.0 * tensorContraction(Saux, dEc_dx1);
+
+        jIntegral(1) += 0.5 * youngLine * (inner_prod((term1 + term2 + term3), grad_q)) * weight * j0 * thickness;
+    }
+    return jIntegral;
+}
+
+double Element::tensorContraction(const bounded_matrix<double, 2, 2> &tensorA, const bounded_matrix<double, 2, 2> &tensorB)
+{
+    double scalar = 0.0;
+
+    for (int i = 0; i < 2; i++)
+    {
+        for (int j = 0; j < 2; j++)
+        {
+            scalar += tensorA(i, j) * tensorB(i, j);
+        }
+    }
+
+    return scalar;
+}
+
+bounded_vector<double, 2> Element::contributionDynamicJ_IntegralInitial(const int &hammerPoints, const std::string &ep, const double &rotation, const bounded_vector<double, 2> &tipCoordinates)
+{
+    bounded_vector<double, 2> jIntegral;
+    jIntegral(0) = 0.0;
+    jIntegral(1) = 0.0;
+
+    int nnos = connection_.size();
+    double young, poisson, density;
+    mesh_->getMaterial()->setProperties(young, poisson, density);
+    double thickness = mesh_->getThickness();
+
+    double mi = young / (2.0 * (1.0 + poisson));
+    double youngLine;
+
+    double k;
+
+    if (ep == "EPD")
+    {
+        k = 3.0 - 4.0 * poisson;
+        youngLine = density * thickness * young / (1.0 - poisson * poisson);
+    }
+    else
+    {
+        k = (3.0 - poisson) / (1.0 + poisson);
+        youngLine = density * thickness * young;
+    }
+
+    matrix<double> domainIntegrationPoints = hammerQuadrature(hammerPoints);
+
+    bounded_matrix<double, 2, 2> matrixRotation;
+    matrixRotation(0, 0) = cos(rotation);
+    matrixRotation(0, 1) = sin(rotation);
+    matrixRotation(1, 0) = -sin(rotation);
+    matrixRotation(1, 1) = cos(rotation);
+
+    const double pi = 3.14159265358979323846;
+
+    for (int ihh = 0; ihh < hammerPoints; ihh++)
+    {
+        double xsi1 = domainIntegrationPoints(ihh, 0);
+        double xsi2 = domainIntegrationPoints(ihh, 1);
+        double weight = domainIntegrationPoints(ihh, 2);
+
+        vector<double> phi = domainShapeFunction(xsi1, xsi2);
+        matrix<double> dphi_dxsi = domainDerivativeShapeFunction(xsi1, xsi2); //row = direction, column = node
+
+        bounded_vector<double, 2> accelaux, coordP;
+        accelaux(0) = 0.0;
+        accelaux(1) = 0.0;
+        coordP(0) = 0.0;
+        coordP(1) = 0.0;
+
+        for (int in = 0; in < nnos; in++)
+        {
+            accelaux += phi(in) * connection_[in]->getCurrentAcceleration();
+            coordP += phi(in) * connection_[in]->getInitialCoordinate();
+        }
+
+        bounded_vector<double, 2> tipToPointAux = coordP - tipCoordinates;
+        bounded_vector<double, 2> tipToPoint = prod(matrixRotation, tipToPointAux);
+        const double radius = norm_2(tipToPointAux);
+        const double teta = atan2(tipToPoint(1), tipToPoint(0));
+
+        // bounded_vector<double, 2> accel = prod(matrixRotation, accelaux);
+
+        bounded_vector<double, 2> accel = accelaux;
+
+        bounded_matrix<double, 2, 2> A0 = referenceJacobianMatrix(xsi1, xsi2);
+        double j0 = jacobianDeterminant(A0);
+        // bounded_matrix<double, 2, 2> A0I = inverseMatrix(A0);
+        bounded_matrix<double, 2, 2> A1 = currentJacobianMatrix(xsi1, xsi2);
+        // bounded_matrix<double, 2, 2> Ac_aux = prod(A1, A0I); //dyi / dxj
+
+        // bounded_matrix<double, 2, 2> Ac, mataux;
+
+        // mataux = prod(matrixRotation, Ac_aux);
+        // Ac = prod(mataux, trans(matrixRotation)); //gradiente nos eixos da ponta da fissura
+
+        //AUXILIARY STATE K1 = 1 E K2 = 0
+        double du1aux_dr, du2aux_dr, du1aux_dteta, du2aux_dteta;
+
+        du1aux_dr = (sqrt(2.0 * pi * radius) / (8.0 * mi * pi * radius)) * (cos(0.5 * teta) * (k - cos(teta)));
+        du2aux_dr = (sqrt(2.0 * pi * radius) / (8.0 * mi * pi * radius)) * (sin(0.5 * teta) * (k - cos(teta)));
+
+        du1aux_dteta = (sqrt(radius / (2.0 * pi)) / (2.0 * mi)) * (-0.5 * sin(0.5 * teta) * (k - cos(teta)) + sin(teta) * cos(0.5 * teta));
+        du2aux_dteta = (sqrt(radius / (2.0 * pi)) / (2.0 * mi)) * (0.5 * cos(0.5 * teta) * (k - cos(teta)) + sin(teta) * sin(0.5 * teta));
+
+        double du1aux_dx1c, du2aux_dx1c;
+
+        du1aux_dx1c = cos(teta) * du1aux_dr - (sin(teta) / radius) * du1aux_dteta;
+        du2aux_dx1c = cos(teta) * du2aux_dr - (sin(teta) / radius) * du2aux_dteta;
+
+        jIntegral(0) += density * (accel(0) * (A1(0, 0) - 1.0) + accel(1) * A1(1, 0)) * j0 * weight;
+
+        //std::cout<<density * (accel(0) * A1(0, 0) + accel(1) * A1(1, 0)) * j0 * weight<<std::endl;
+
+        // jIntegral(0) += 0.5 * youngLine * (accel(0) * du1aux_dx1c + accel(1) * du2aux_dx1c) * j0 * weight;
+
+        // std::cout << "AUXILIAR I: " << " " << accel(0) << " " << accel(1) << " " << du1aux_dx1c << " " << du2aux_dx1c << std::endl;
+
+        //AUXILIARY STATE K1 = 0 E K2 = 1
+        du1aux_dr = (sqrt(2.0 * pi * radius) / (8.0 * mi * pi * radius)) * (sin(0.5 * teta) * (k + 2.0 + cos(teta)));
+        du2aux_dr = (sqrt(2.0 * pi * radius) / (8.0 * mi * pi * radius)) * (-cos(0.5 * teta) * (k - 2.0 + cos(teta)));
+
+        du1aux_dteta = (sqrt(radius / (2.0 * pi)) / (2.0 * mi)) * (0.5 * cos(0.5 * teta) * (k + 2.0 + cos(teta)) - sin(teta) * sin(0.5 * teta));
+        du2aux_dteta = (sqrt(radius / (2.0 * pi)) / (2.0 * mi)) * (0.5 * sin(0.5 * teta) * (k - 2.0 + cos(teta)) + sin(teta) * cos(0.5 * teta));
+
+        du1aux_dx1c = cos(teta) * du1aux_dr - (sin(teta) / radius) * du1aux_dteta;
+        du2aux_dx1c = cos(teta) * du2aux_dr - (sin(teta) / radius) * du2aux_dteta;
+
+        // std::cout << "AUXILIAR II: " <<  " " << accel(0) << " " << accel(1) << " " << du1aux_dx1c << " " << du2aux_dx1c << std::endl;
+
+        //jIntegral(1) += 0.5 * youngLine * (accel(0) * du1aux_dx1c + accel(1) * du2aux_dx1c) * j0 * weight;
+    }
+    //  std::cout << jIntegral(0) << std::endl;
     return jIntegral;
 }

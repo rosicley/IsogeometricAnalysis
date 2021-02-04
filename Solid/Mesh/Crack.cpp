@@ -67,7 +67,8 @@ std::string Crack::getGmshCodeCrackPlugin()
 void Crack::addLastPoint(Point *newPoint)
 {
     points_.push_back(newPoint);
-    points_[points_.size() - 2]->setlcar(points_[points_.size() - 3]->getlcar());
+    //points_[points_.size() - 2]->setlcar(points_[points_.size() - 3]->getlcar());
+    points_[points_.size() - 2]->setlcar(1.0);
 }
 
 double Crack::getLastAngle()

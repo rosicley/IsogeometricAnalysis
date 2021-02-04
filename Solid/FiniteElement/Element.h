@@ -109,7 +109,18 @@ public:
 
     bounded_vector<double, 2> contributionJ_IntegralFromRice(const int &quadraturePoints, const int &side, const std::string &ep, const double &rotation, Node *tipNode);
 
+    bounded_vector<double, 2> contributionJ_TESTE(const int &quadraturePoints, const int &side, const std::string &ep, const double &rotation, const bounded_vector<double, 2> &tipCoordinates);
+
+    bounded_vector<double, 2> domainJ_IntegralInitial(const int &hammerPoints, const std::string &ep, const std::string &type, const double &Jradius, const double &rotation, const bounded_vector<double, 2> &tipCoordinates);
+
+    bounded_vector<double, 2> contributionDynamicJ_IntegralInitial(const int &hammerPoints, const std::string &ep, const double &rotation, const bounded_vector<double, 2> &tipCoordinates);
+
+    bounded_vector<double, 2> domainJ_IntegralInitial2(const int &hammerPoints, const std::string &ep, const std::string &type, const double &Jradius, const double &rotation, const bounded_vector<double, 2> &tipCoordinates);
+
+
     // void setCauchyStressToNode(const std::string &planeState);
+
+    double tensorContraction(const bounded_matrix<double, 2, 2> &tensorA, const bounded_matrix<double, 2, 2> &tensorB);
 
 private:
     int index_;
