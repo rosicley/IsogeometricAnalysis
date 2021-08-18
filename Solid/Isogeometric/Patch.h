@@ -63,21 +63,21 @@ public:
 private:
     int index_; //ok
 
-    bounded_vector<int, 2> degree_;
+    bounded_vector<int, 2> degree_; //NEW OK
 
-    bounded_vector<int, 2> npc_dir_;
+    bounded_vector<int, 2> npc_dir_;//NEW OK
 
-    bounded_vector<int, 2> spans_;
+    bounded_vector<int, 2> spans_; //OK//NEW OK
 
     int numberOfCells_; // = numberOfSpanU * numberOfSpanV;
 
     int npc_; //ok
 
-    vector<double> knotVectorU_; //ok
+    vector<double> knotVectorU_; //ok //NEW OK
 
-    vector<double> knotVectorV_; //ok
+    vector<double> knotVectorV_; //ok //NEW OK
 
-    std::vector<ControlPoint *> controlPoints_; //ok
+    std::vector<ControlPoint *> controlPoints_; //ok 
 
     Material *material_; //ok
 

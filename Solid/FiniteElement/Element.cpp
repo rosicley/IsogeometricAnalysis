@@ -2577,6 +2577,11 @@ bounded_vector<double, 4> Element::getCauchyStress(const bounded_vector<double, 
     identity_matrix<double> I(2);                                        //identity matrix
     bounded_matrix<double, 2, 2> Ec = 0.5 * (prod(trans(Ac), Ac) - I);   //current green strain tensor
 
+    // Ec(0, 0) = Ac(0, 0) - 1.0;
+    // Ec(1, 1) = Ac(1, 1) - 1.0;
+    // Ec(0, 1) = 0.5 * (Ac(0, 1) + Ac(1, 0));
+    // Ec(1, 0) = 0.5 * (Ac(0, 1) + Ac(1, 0));
+
     bounded_matrix<double, 2, 2> S; //second piola kirchhoff stress tensor
 
     if (ep == "EPD")

@@ -608,7 +608,7 @@ void GlobalSolid::dataReading(const std::string &inputParameters, const std::str
         isogeometric.close();
 
         int cpindex = 0;
-        double dist = 1.0e-6;
+        double dist = 1.0e-06;
 
         ///LOOPING PARA ORGANIZAR OS PONTOS DE CONTROLE DOS PATCHES NO GLOBAL
         for (Patch *patch : patches_)
@@ -625,10 +625,10 @@ void GlobalSolid::dataReading(const std::string &inputParameters, const std::str
                     bounded_vector<double, 2> coord_global = cp_global->getInitialCoordinate();
                     int index = cp_global->getIndex();
 
-                    bounded_vector<double, 2> aux = coord_global - coord_patch;
-                    double dist2 = aux(0) * aux(0) + aux(1) * aux(1);
+                    //bounded_vector<double, 2> aux = coord_global - coord_patch;
+                    //double dist2 = aux(0) * aux(0) + aux(1) * aux(1);
 
-                    if (dist2 <= dist)
+                    if (abs(coord_global(0) - coord_patch(0)) <= dist and abs(coord_global(1) - coord_patch(1)) <= dist)
                     {
                         ver = index;
                         break;
@@ -837,7 +837,7 @@ void GlobalSolid::dataFromGmsh(const std::string &inputGmesh, const std::string 
 
     for (int i = 0; i < geometry->getNumberOfCrackes(); i++)
     {
-        std::vector<BoundaryElement *> integralj = finiteElementBoundary_["j" + std::to_string(i)];
+        std::vector<BoundaryElement *> integralj = finiteElementBoundary_["j0"];
         double radius = geometry_->getRadiusJintegral();
         bounded_vector<double, 2> tip = geometry_->getCrack("c" + std::to_string(i))->getLastPoint()->getCoordinates();
 
@@ -1016,52 +1016,23 @@ void GlobalSolid::exportMirror()
 
 void GlobalSolid::teste()
 {
-    int rank;
-    MPI_Comm_rank(PETSC_COMM_WORLD, &rank);
-    // std::cout << "RANK: " << rank << " NODES: " << nodes_.size() << std::endl;
-    // std::cout << "RANK: " << rank << " Elements: " << elements_.size() << std::endl;
-    // std::cout << "RANK: " << rank << " BoundaryElements: " << boundaryFE_.size() << std::endl;
-    // std::cout<<"TESTANDO "<<elements_.size()<<std::endl;
+    Cell *el = cells_[48];
+    std::pair<vector<double>, matrix<double>> elementMatrices;
+    elementMatrices = el->cellContributions(planeState_, "STATIC", numberOfSteps_, numberOfSteps_, 1.0, 0.25, 0.5, quadrature_);
+    // std::vector<int> freedom = el->getFreedomDegree();
+    // int num = freedom.size();
 
-    // std::cout<<"TESTANDO 1 "<<std::endl;
-    //computeDistanceFromFEBoundary();
-    // std::cout << "teste... " << std::endl;
-    // incidenceLocalxGlobal();
-    computeDistanceFromFEBoundary();
-    incidenceLocalxGlobal();
-    shareDataBetweenRanks();
-    //checkInactivesCPandNode();
-    //firstAccelerationCalculation();
-    std::cout << "o improvável deu certo" << std::endl;
-
-    if (rank == 0)
+    for (size_t i = 0; i < el->getControlPoints().size(); i++)
     {
-        exportToParaviewISO(0);
+        for (size_t j = 0; j < el->getControlPoints().size() * 2; j++)
+        {
+            // std::cout << elementMatrices.second(i, j) << " ";
+        }
+        // std::cout << std::endl;
+        // std::cout << elementMatrices.first(i) << std::endl;
+        std::cout << el->getControlPoint(i)->getIndex() * 2 << std::endl;
+        std::cout << el->getControlPoint(i)->getIndex() * 2 + 1 << std::endl;
     }
-    else if (rank == 1)
-    {
-        exportToParaviewFEM(0);
-        // for (BoundaryElement *bou : boundaryFE_)
-        // {
-        //     std::cout << "LINE: " << bou->getBoundaryIndex() << " ";
-        //     for (int i = 0; i < bou->getNodes().size(); i++)
-        //     {
-        //         std::cout << bou->getNode(i)->getIndexFE() << " ";
-        //     }
-        //     std::cout << std::endl;
-        // }
-    }
-
-    exportToParaviewHammerPoints();
-
-    // for (Cell *cell : cells_part)
-    // {
-    //     cell->computeDistanceFromFEBoundary(quadrature_, boundaryFE_);
-    // }
-    // for (Cell *cell : cells_part)
-    // {
-    //     cell->computeDistanceFromFEBoundary(quadrature_, boundaryFE_);
-    // }
 }
 
 std::string GlobalSolid::getAnalysisType()
@@ -1159,7 +1130,6 @@ int GlobalSolid::solveStaticProblem()
     {
         boost::posix_time::ptime t1 =
             boost::posix_time::microsec_clock::local_time();
-
         if (rank == 0 and analysisOfCrackPropagation_ == false)
         {
             std::cout << "------------------------- LOAD STEP = "
@@ -1167,6 +1137,8 @@ int GlobalSolid::solveStaticProblem()
         }
         int propagation = 0;
         bool testPropagation = true;
+
+        double valueForce;
 
         while (testPropagation == true)
         {
@@ -1501,7 +1473,7 @@ int GlobalSolid::solveStaticProblem()
                 if (rank == 0 and plotSIFs_ == true)
                 {
                     bounded_vector<double, 2> sifs = getSIFs();
-                    sifFile << sifs(0) << " " << sifs(1) << std::endl;
+                    sifFile << sifs(0) << " " << sifs(1) << " " << neumannConditionsFE_[0]->getNode()->getCurrentDisplacement()(0) << std::endl;
                     length += crackLengthPropagation_;
                 }
 
@@ -1560,6 +1532,32 @@ int GlobalSolid::solveStaticProblem()
             }
             else
             {
+                // for (Node *n : nodes_)
+                // {
+                //     double sigmaA = -800.0, sigmaB = 600.0;
+                //     double young, poisson, density;
+                //     materials_[0]->setProperties(young, poisson, density);
+                //     double K1, K2;
+                //     if (planeState_ == "EPD")
+                //     {
+                //         K1 = (1 - poisson * poisson) / young;
+                //         K2 = poisson / (1 - poisson);
+                //     }
+                //     else
+                //     {
+                //     }
+                //     double a = 1.0;
+                //     double b = 1.5;
+                //     double C = (a * a * b * b * (sigmaA - sigmaB)) / (b * b - a * a);
+                //     double b2 = (sigmaB * b * b - sigmaA * a * a) / (b * b - a * a);
+
+                //     bounded_vector<double, 2> coord = n->getInitialCoordinate();
+                //     double tetaa = atan2(coord(1), coord(0));
+                //     double radius = norm_2(coord);
+                //     double urr = K1 * (b2 * (1 - K2) * radius - C / radius * (1 + K2));
+                //     n->incrementCurrentCoordinate(0, cos(tetaa) * urr);
+                //     n->incrementCurrentCoordinate(1, sin(tetaa) * urr);
+                // }
                 if (rank == 0 and cells_.size() > 0)
                 {
                     exportToParaviewISO(std::to_string(loadStep));
@@ -1570,12 +1568,18 @@ int GlobalSolid::solveStaticProblem()
                     exportToParaviewFEM(std::to_string(loadStep));
                 }
 
-                if (rank == 0 and plotSIFs_ == true)
-                {
-                    bounded_vector<double, 2> sifs = getSIFs();
-                    sifFile << sifs(0) << " " << sifs(1) << " " << nodes_[2]->getCurrentCoordinate()(1) << " " << nodes_[3]->getCurrentCoordinate()(1) << std::endl;
-                    length += crackLengthPropagation_;
-                }
+                // if (rank == 0)
+                // {
+                //     // sifFile << valueForce << std::en
+                //     sifFile << controlPoints_[0]->getCurrentCoordinate()(0) << " " << controlPoints_[0]->getCurrentCoordinate()(1) << std::endl;
+                // }
+
+                // if (rank == 0 and plotSIFs_ == true)
+                // {
+                //     bounded_vector<double, 2> sifs = getSIFs();
+                //     sifFile << sifs(0) << " " << sifs(1) << " " << nodes_[2]->getCurrentCoordinate()(1) << " " << nodes_[3]->getCurrentCoordinate()(1) << std::endl;
+                //     length += crackLengthPropagation_;
+                // }
                 testPropagation = false;
             }
         }
@@ -3159,30 +3163,9 @@ void GlobalSolid::domainDecompositionMETIS(const std::string &elementType)
 
 int GlobalSolid::solveDynamicProblem()
 {
-    firstAccelerationCalculation();
-
-    Mat A;
-    Vec b, x, All;
-    PetscErrorCode ierr;
-    PetscInt Istart, Iend, Idof, Ione, iterations, *dof;
-    KSP ksp;
-    PC pc;
-    VecScatter ctx;
-    PetscScalar val, value;
-
     int rank;
 
     MPI_Comm_rank(PETSC_COMM_WORLD, &rank);
-
-    std::stringstream fileName;
-
-    if (rank == 0 and crackProblem_ == true)
-    {
-        fileName << "SIFs"
-                 << ".txt";
-    }
-
-    std::ofstream sifFile(fileName.str());
 
     if (rank == 0 and cells_.size() > 0)
     {
@@ -3224,6 +3207,27 @@ int GlobalSolid::solveDynamicProblem()
         }
     }
 
+    firstAccelerationCalculation();
+
+    Mat A;
+    Vec b, x, All;
+    PetscErrorCode ierr;
+    PetscInt Istart, Iend, Idof, Ione, iterations, *dof;
+    KSP ksp;
+    PC pc;
+    VecScatter ctx;
+    PetscScalar val, value;
+
+    std::stringstream fileName;
+
+    if (rank == 1)
+    {
+        fileName << "SIFs"
+                 << ".txt";
+    }
+
+    std::ofstream sifFile(fileName.str());
+
     double length = 0.0;
     int auxprop = 0;
 
@@ -3245,7 +3249,7 @@ int GlobalSolid::solveDynamicProblem()
     int propagation = 0;
     double time = 0.0;
 
-    for (int timeStep = 0; timeStep <= numberOfSteps_; timeStep++)
+    for (int timeStep = 1; timeStep <= numberOfSteps_; timeStep++)
     {
         boost::posix_time::ptime t1 =
             boost::posix_time::microsec_clock::local_time();
@@ -3333,13 +3337,10 @@ int GlobalSolid::solveDynamicProblem()
                 for (DirichletConditionFE *con : dirichletConditionsFE_)
                 {
                     Node *no = con->getNode();
-                    if (no->getIndexFE() != 2 and no->getIndexFE() != 3)
-                    {
-                        int dir = con->getDirection();
-                        double val1 = (con->getValue()); // / (1.0 * numberOfSteps_);
+                    int dir = con->getDirection();
+                    double val1 = (con->getValue()); // / (1.0 * numberOfSteps_);
 
-                        no->incrementCurrentCoordinate(dir, val1);
-                    }
+                    no->incrementCurrentCoordinate(dir, val1);
                 }
             }
 
@@ -3507,9 +3508,15 @@ int GlobalSolid::solveDynamicProblem()
                 accel = node->getCurrentCoordinate() / (beta_ * deltat_ * deltat_) - node->getPastCoordinate() / (beta_ * deltat_ * deltat_) -
                         node->getPastVelocity() / (beta_ * deltat_) - node->getPastAcceleration() * (0.5 / beta_ - 1.0);
                 node->setCurrentAcceleration(accel);
-
                 vel = gamma_ * deltat_ * node->getCurrentAcceleration() + node->getPastVelocity() + deltat_ * (1.0 - gamma_) * node->getPastAcceleration();
                 node->setCurrentVelocity(vel);
+                // if (node->getIndex() == 2 and rank == 0)
+                // {
+                //     // std::cout << node->getCurrentCoordinate()(0) << " " << node->getCurrentCoordinate()(1) << std::endl;
+                //     // std::cout << node->getPastCoordinate()(0) << " " << node->getPastCoordinate()(1) << std::endl;
+                //     std::cout << accel(0) << " " << accel(1) << std::endl;
+                //     std::cout << vel(0) << " " << vel(1) << std::endl;
+                // }
             }
 
             for (InactiveNode *no : inactiveNode_)
@@ -3582,49 +3589,58 @@ int GlobalSolid::solveDynamicProblem()
             node->setCurrentVelocity(vel);
         }
 
-        if (rank == 0 and crackProblem_ == true)
+        if (rank == 1)
         {
             // bounded_vector<double, 2> sifs = getSIFs();
             // sifFile << time << " " << sifs(0) << " " << sifs(1) << std::endl;
-            Node *no = neumannConditionsFE_[0]->getNode();
-            bounded_vector<double, 2> coordNode = no->getCurrentCoordinate();
-            int cellIndex = no->getCellIndex();
-            if (cellIndex == -1)
-            {
-                std::cout << "O NÓ NÃO ENCONTROU UMA CÉLULA.."
-                          << "\n";
-            }
-            else
-            {
-                Cell *cell = cells_[cellIndex];
-                bounded_vector<double, 2> xsiglobal = no->getXsisGlobal();
-                bounded_vector<double, 2> blendF = blendFunction(no->getDistanceToBoundary());
 
-                std::vector<ControlPoint *> connection = cell->getControlPoints();
-                vector<double> wpc2(connection.size());
-                bounded_vector<int, 2> INC_;
-                INC_ = connection[connection.size() - 1]->getINC();
-                for (int i = 0; i < connection.size(); i++)
-                {
-                    wpc2(i) = connection[i]->getWeight();
-                }
-                vector<double> phi = cell->shapeFunction(xsiglobal, wpc2, INC_);
+            // sifFile << time << " " << (controlPoints_[0]->getCurrentDisplacement()(1) + controlPoints_[4]->getCurrentDisplacement()(0)) * 0.5
+            //         << " " << (controlPoints_[20]->getCurrentDisplacement()(1) + controlPoints_[24]->getCurrentDisplacement()(0)) * 0.5
+            //         << " " << (nodes_[0]->getCurrentDisplacement()(0) + nodes_[3]->getCurrentDisplacement()(1)) * 0.5
+            //         << " " << (nodes_[1]->getCurrentDisplacement()(0) + nodes_[2]->getCurrentDisplacement()(1)) * 0.5
+            //         << std::endl;
 
-                bounded_vector<double, 2> coordInter;
-                coordInter = (1.0 - blendF(0)) * coordNode;
+            sifFile << controlPoints_[0]->getCurrentCoordinate()(0) << " " << controlPoints_[0]->getCurrentCoordinate()(1) << std::endl;
 
-                for (int i = 0; i < connection.size(); i++)
-                {
-                    bounded_vector<double, 2> coordCP = connection[i]->getCurrentCoordinate();
-                    coordInter += blendF(0) * phi(i) * coordCP;
-                }
+            time += deltat_;
 
-                coordNode = coordInter;
-            }
-            sifFile << -coordNode(1) + no->getInitialCoordinate()(1) << " " << -no->getCurrentCoordinate()(1) + no->getInitialCoordinate()(1) << std::endl;
+            // Node *no = neumannConditionsFE_[0]->getNode();
+            // bounded_vector<double, 2> coordNode = no->getCurrentCoordinate();
+            // int cellIndex = no->getCellIndex();
+            // if (cellIndex == -1)
+            // {
+            //     std::cout << "O NÓ NÃO ENCONTROU UMA CÉLULA.."
+            //               << "\n";
+            // }
+            // else
+            // {
+            //     Cell *cell = cells_[cellIndex];
+            //     bounded_vector<double, 2> xsiglobal = no->getXsisGlobal();
+            //     bounded_vector<double, 2> blendF = blendFunction(no->getDistanceToBoundary());
+
+            //     std::vector<ControlPoint *> connection = cell->getControlPoints();
+            //     vector<double> wpc2(connection.size());
+            //     bounded_vector<int, 2> INC_;
+            //     INC_ = connection[connection.size() - 1]->getINC();
+            //     for (int i = 0; i < connection.size(); i++)
+            //     {
+            //         wpc2(i) = connection[i]->getWeight();
+            //     }
+            //     vector<double> phi = cell->shapeFunction(xsiglobal, wpc2, INC_);
+
+            //     bounded_vector<double, 2> coordInter;
+            //     coordInter = (1.0 - blendF(0)) * coordNode;
+
+            //     for (int i = 0; i < connection.size(); i++)
+            //     {
+            //         bounded_vector<double, 2> coordCP = connection[i]->getCurrentCoordinate();
+            //         coordInter += blendF(0) * phi(i) * coordCP;
+            //     }
+
+            //     coordNode = coordInter;
+            // }
+            // sifFile << -coordNode(1) + no->getInitialCoordinate()(1) << " " << -no->getCurrentCoordinate()(1) + no->getInitialCoordinate()(1) << std::endl;
         }
-
-        time += deltat_;
     }
     PetscFree(dof);
     return 0;
@@ -3669,7 +3685,7 @@ int GlobalSolid::firstAccelerationCalculation()
     //Create PETSc sparse parallel matrix
     ierr = MatCreateAIJ(PETSC_COMM_WORLD, PETSC_DECIDE, PETSC_DECIDE,
                         2 * cpnumber_, 2 * cpnumber_,
-                        100, NULL, 300, NULL, &A);
+                        1800, NULL, 3000, NULL, &A);
     CHKERRQ(ierr);
 
     ierr = MatGetOwnershipRange(A, &Istart, &Iend);
@@ -3845,7 +3861,7 @@ int GlobalSolid::firstAccelerationCalculation()
     CHKERRQ(ierr);
 
     Ione = 1;
-
+    double norm = 0.0;
     for (ControlPoint *cp : controlPoints_)
     {
         bounded_vector<double, 2> firstAccel;
@@ -3873,11 +3889,14 @@ int GlobalSolid::firstAccelerationCalculation()
         ierr = VecGetValues(All, Ione, &Idof, &val);
         CHKERRQ(ierr);
         firstAccel(0) = val;
+        norm += val;
 
         Idof = 2 * i + 1;
         ierr = VecGetValues(All, Ione, &Idof, &val);
         CHKERRQ(ierr);
         firstAccel(1) = val;
+        norm += val;
+
         node->setCurrentAcceleration(firstAccel);
         node->setPastAcceleration(firstAccel);
 
@@ -4610,15 +4629,23 @@ bounded_vector<double, 2> GlobalSolid::blendFunction(const double &DA)
         blend(0) = 2.0 * aux * aux * aux - 3.0 * aux * aux + 1.0;
         blend(1) = (6.0 / blendingZoneThickness_) * aux * aux - (6.0 / blendingZoneThickness_) * aux;
     }
+    else if (blendingFunctionOrder_ == 5)
+    {
+        blend(0) = pow(aux, 5.0) - 2.5 * pow(aux, 4.0) + 4.0 * pow(aux, 3.0) - 3.5 * pow(aux, 2.0) + 1.0;
+        blend(1) = 5.0 / blendingZoneThickness_ * pow(aux, 4.0) - 10.0 / blendingZoneThickness_ * pow(aux, 3.0) + 12.0 / blendingZoneThickness_ * pow(aux, 2.0) - 7.0 / blendingZoneThickness_ * pow(aux, 1.0);
+
+        // blend(0) = aux * aux * aux * aux * aux - 2.5 * aux * aux * aux * aux + 4.0 * aux * aux * aux - 3.5 * aux * aux + 1.0;
+        // blend(1) = (5.0 / blendingZoneThickness_) * aux * aux * aux * aux - (10.0 / blendingZoneThickness_) * aux * aux * aux + (12.0 / blendingZoneThickness_) * aux * aux - (7.0 / blendingZoneThickness_) * aux;
+    }
     else if (blendingFunctionOrder_ == 4)
     {
-        blend(0) = aux * aux * aux * aux - 2.0 * aux * aux + 1;
+        blend(0) = aux * aux * aux * aux - 2.0 * aux * aux + 1.0;
         blend(1) = (4.0 / blendingZoneThickness_) * aux * aux * aux - (4.0 / blendingZoneThickness_) * aux;
 
-        // blend(0) = 2.0 * aux * aux * aux * aux - 2.0 * aux * aux * aux - aux * aux + 1;
+        // blend(0) = 2.0 * aux * aux * aux * aux - 2.0 * aux * aux * aux - aux * aux + 1.0;
         // blend(1) = (8.0 / blendingZoneThickness_) * aux * aux * aux - (6.0 / blendingZoneThickness_) * aux * aux - (2.0 / blendingZoneThickness_) * aux;
 
-        // blend(0) = 3.0 * aux * aux * aux * aux - 4.0 * aux * aux * aux + 1;
+        // blend(0) = 3.0 * aux * aux * aux * aux - 4.0 * aux * aux * aux + 1.0;
         // blend(1) = (12.0 / blendingZoneThickness_) * aux * aux * aux - (12.0 / blendingZoneThickness_) * aux * aux;
     }
     else if (blendingFunctionOrder_ == 1)
@@ -5450,8 +5477,8 @@ bounded_vector<double, 2> GlobalSolid::getSIFs()
 
     for (Element *el : JintegralElements_)
     {
-        sif += el->contributionJ_IntegralInitial(quadrature_, elementsSideJintegral_[el->getIndex()], planeState_, angle, node->getInitialCoordinate());
-        //sif += el->contributionJ_IntegralFromRice(quadrature_, elementsSideJintegral_[el->getIndex()], planeState_, angle, node);
+        // sif += el->contributionJ_IntegralInitial(quadrature_, elementsSideJintegral_[el->getIndex()], planeState_, angle, node->getInitialCoordinate());
+        sif += el->contributionJ_IntegralFromRice(quadrature_, elementsSideJintegral_[el->getIndex()], planeState_, angle, node);
     }
 
     // for (Element *el : dynamicJintegralElements_)

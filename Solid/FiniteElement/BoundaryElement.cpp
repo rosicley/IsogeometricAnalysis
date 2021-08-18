@@ -269,9 +269,9 @@ vector<double> BoundaryElement::computeDistribuitedLoads(const bounded_vector<do
 
         double jacobian = sqrt(pow(tangent(0), 2) + pow(tangent(1), 2));
 
-        // bounded_vector<double, 2> normal;
-        // normal(0)=tangent(1)/jacobian;
-        // normal(1)=-tangent(0)/jacobian;
+        bounded_vector<double, 2> normal;
+        normal(0) = tangent(1) / jacobian; //HORÁRIO
+        normal(1) = -tangent(0) / jacobian;
 
         // double aux = 0.0;
         // for (int m = 0; m < npc; m++)
@@ -281,8 +281,8 @@ vector<double> BoundaryElement::computeDistribuitedLoads(const bounded_vector<do
 
         for (int ih = 0; ih < nnode; ih++)
         {
-            distribuitedLoad(2 * ih) += value(0) * functions(ih, 0) * weight * jacobian;     // * normal(0);
-            distribuitedLoad(2 * ih + 1) += value(1) * functions(ih, 0) * weight * jacobian; // * normal(1);
+            distribuitedLoad(2 * ih) += value(0) * functions(ih, 0) * weight * jacobian * normal(0);     // * normal(0);
+            distribuitedLoad(2 * ih + 1) += value(1) * functions(ih, 0) * weight * jacobian * normal(1); // * normal(0);
         }
     }
     return distribuitedLoad;

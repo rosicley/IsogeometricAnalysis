@@ -559,59 +559,59 @@ matrix<double> Cell::isoQuadrature(const int &points)
         pointCoordIso(8, 1) = -0.774596669241483;
         pointCoordIso(8, 2) = 0.308641975308642;
     }
-    else if (points == 4)
-    {
-        pointCoordIso(0, 0) = -0.861136311594053;
-        pointCoordIso(1, 0) = -0.861136311594053;
-        pointCoordIso(2, 0) = -0.861136311594053;
-        pointCoordIso(3, 0) = -0.861136311594053;
-        pointCoordIso(4, 0) = 0.861136311594053;
-        pointCoordIso(5, 0) = 0.861136311594053;
-        pointCoordIso(6, 0) = 0.861136311594053;
-        pointCoordIso(7, 0) = 0.861136311594053;
-        pointCoordIso(8, 0) = -0.339981043584856;
-        pointCoordIso(9, 0) = -0.339981043584856;
-        pointCoordIso(10, 0) = -0.339981043584856;
-        pointCoordIso(11, 0) = -0.339981043584856;
-        pointCoordIso(12, 0) = 0.339981043584856;
-        pointCoordIso(13, 0) = 0.339981043584856;
-        pointCoordIso(14, 0) = 0.339981043584856;
-        pointCoordIso(15, 0) = 0.339981043584856;
+    // else if (points == 4)
+    // {
+    //     pointCoordIso(0, 0) = -0.861136311594053;
+    //     pointCoordIso(1, 0) = -0.861136311594053;
+    //     pointCoordIso(2, 0) = -0.861136311594053;
+    //     pointCoordIso(3, 0) = -0.861136311594053;
+    //     pointCoordIso(4, 0) = 0.861136311594053;
+    //     pointCoordIso(5, 0) = 0.861136311594053;
+    //     pointCoordIso(6, 0) = 0.861136311594053;
+    //     pointCoordIso(7, 0) = 0.861136311594053;
+    //     pointCoordIso(8, 0) = -0.339981043584856;
+    //     pointCoordIso(9, 0) = -0.339981043584856;
+    //     pointCoordIso(10, 0) = -0.339981043584856;
+    //     pointCoordIso(11, 0) = -0.339981043584856;
+    //     pointCoordIso(12, 0) = 0.339981043584856;
+    //     pointCoordIso(13, 0) = 0.339981043584856;
+    //     pointCoordIso(14, 0) = 0.339981043584856;
+    //     pointCoordIso(15, 0) = 0.339981043584856;
 
-        pointCoordIso(0, 1) = -0.861136311594053;
-        pointCoordIso(1, 1) = 0.861136311594053;
-        pointCoordIso(2, 1) = -0.339981043584856;
-        pointCoordIso(3, 1) = 0.339981043584856;
-        pointCoordIso(4, 1) = -0.861136311594053;
-        pointCoordIso(5, 1) = 0.861136311594053;
-        pointCoordIso(6, 1) = -0.339981043584856;
-        pointCoordIso(7, 1) = 0.339981043584856;
-        pointCoordIso(8, 1) = -0.861136311594053;
-        pointCoordIso(9, 1) = 0.861136311594053;
-        pointCoordIso(10, 1) = -0.339981043584856;
-        pointCoordIso(11, 1) = 0.339981043584856;
-        pointCoordIso(12, 1) = -0.861136311594053;
-        pointCoordIso(13, 1) = 0.861136311594053;
-        pointCoordIso(14, 1) = -0.339981043584856;
-        pointCoordIso(15, 1) = 0.339981043584856;
+    //     pointCoordIso(0, 1) = -0.861136311594053;
+    //     pointCoordIso(1, 1) = 0.861136311594053;
+    //     pointCoordIso(2, 1) = -0.339981043584856;
+    //     pointCoordIso(3, 1) = 0.339981043584856;
+    //     pointCoordIso(4, 1) = -0.861136311594053;
+    //     pointCoordIso(5, 1) = 0.861136311594053;
+    //     pointCoordIso(6, 1) = -0.339981043584856;
+    //     pointCoordIso(7, 1) = 0.339981043584856;
+    //     pointCoordIso(8, 1) = -0.861136311594053;
+    //     pointCoordIso(9, 1) = 0.861136311594053;
+    //     pointCoordIso(10, 1) = -0.339981043584856;
+    //     pointCoordIso(11, 1) = 0.339981043584856;
+    //     pointCoordIso(12, 1) = -0.861136311594053;
+    //     pointCoordIso(13, 1) = 0.861136311594053;
+    //     pointCoordIso(14, 1) = -0.339981043584856;
+    //     pointCoordIso(15, 1) = 0.339981043584856;
 
-        pointCoordIso(0, 2) = 0.121002993285602;
-        pointCoordIso(1, 2) = 0.121002993285602;
-        pointCoordIso(2, 2) = 0.226851851851852;
-        pointCoordIso(3, 2) = 0.226851851851852;
-        pointCoordIso(4, 2) = 0.121002993285602;
-        pointCoordIso(5, 2) = 0.121002993285602;
-        pointCoordIso(6, 2) = 0.226851851851852;
-        pointCoordIso(7, 2) = 0.226851851851852;
-        pointCoordIso(8, 2) = 0.226851851851852;
-        pointCoordIso(9, 2) = 0.226851851851852;
-        pointCoordIso(10, 2) = 0.425293303010694;
-        pointCoordIso(11, 2) = 0.425293303010694;
-        pointCoordIso(12, 2) = 0.226851851851852;
-        pointCoordIso(13, 2) = 0.226851851851852;
-        pointCoordIso(14, 2) = 0.425293303010694;
-        pointCoordIso(15, 2) = 0.425293303010694;
-    }
+    //     pointCoordIso(0, 2) = 0.121002993285602;
+    //     pointCoordIso(1, 2) = 0.121002993285602;
+    //     pointCoordIso(2, 2) = 0.226851851851852;
+    //     pointCoordIso(3, 2) = 0.226851851851852;
+    //     pointCoordIso(4, 2) = 0.121002993285602;
+    //     pointCoordIso(5, 2) = 0.121002993285602;
+    //     pointCoordIso(6, 2) = 0.226851851851852;
+    //     pointCoordIso(7, 2) = 0.226851851851852;
+    //     pointCoordIso(8, 2) = 0.226851851851852;
+    //     pointCoordIso(9, 2) = 0.226851851851852;
+    //     pointCoordIso(10, 2) = 0.425293303010694;
+    //     pointCoordIso(11, 2) = 0.425293303010694;
+    //     pointCoordIso(12, 2) = 0.226851851851852;
+    //     pointCoordIso(13, 2) = 0.226851851851852;
+    //     pointCoordIso(14, 2) = 0.425293303010694;
+    //     pointCoordIso(15, 2) = 0.425293303010694;
+    // }
     else if (points == 5)
     {
         pointCoordIso(0, 0) = 0.000000000000000;
@@ -1926,6 +1926,11 @@ bounded_vector<double, 4> Cell::getCauchStress(const bounded_vector<double, 2> &
     identity_matrix<double> I(2);                                              //identity matrix
     bounded_matrix<double, 2, 2> Ec = 0.5 * (prod(trans(Ac), Ac) - I);         //current green strain tensor
     bounded_matrix<double, 2, 2> S;                                            //second piola kirchhoff stress tensor
+
+    // Ec(0, 0) = Ac(0, 0) - 1.0;
+    // Ec(1, 1) = Ac(1, 1) - 1.0;
+    // Ec(0, 1) = 0.5 * (Ac(0, 1) + Ac(1, 0));
+    // Ec(1, 0) = 0.5 * (Ac(0, 1) + Ac(1, 0));
 
     if (ep == "EPD")
     {

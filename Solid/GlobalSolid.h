@@ -285,5 +285,5 @@ private:
 
     bool quarterPointElement_;
 
-    bool crackProblem_ = true;
+    bool crackProblem_ = false;
 };

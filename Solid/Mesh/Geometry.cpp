@@ -375,11 +375,14 @@ std::string Geometry::createGmshCode()
         gmshCode += lines_[name]->getGmshCode();
     }
 
-    int auxC = 0;
+    //int auxC = 0;
+    std::vector<int> auxC;
+    auxC.reserve(crackes_.size());
     int npoints = points_.size();
 
     for (int ic = 0; ic < crackes_.size(); ic++)
     {
+        auxC[ic] = 0;
         std::string nameOfCrack = "c" + std::to_string(ic);
 
         std::vector<Point *> pointsCrack = crackes_[nameOfCrack]->getPoints();
@@ -414,25 +417,25 @@ std::string Geometry::createGmshCode()
         {
             for (int i = 0; i < pointsCrack.size() - 2; i++)
             {
-                Line *l = new Line(nameOfCrack + std::to_string(auxC++), {pointsCrack[i], pointsCrack[i + 1]}, "line", false);
+                Line *l = new Line(nameOfCrack + std::to_string(auxC[ic]++), {pointsCrack[i], pointsCrack[i + 1]}, "line", false);
                 gmshCode += l->getGmshCode();
                 delete l;
             }
         }
 
-        Line *c00 = new Line(nameOfCrack + std::to_string(auxC++), {pointsCrack[pointsCrack.size() - 2], p1aux}, "line", false);
+        Line *c00 = new Line(nameOfCrack + std::to_string(auxC[ic]++), {pointsCrack[pointsCrack.size() - 2], p1aux}, "line", false);
         gmshCode += c00->getGmshCode();
         delete c00;
 
-        Line *c01 = new Line(nameOfCrack + std::to_string(auxC++), {p1aux, pointsCrack[pointsCrack.size() - 1]}, "line", false);
+        Line *c01 = new Line(nameOfCrack + std::to_string(auxC[ic]++), {p1aux, pointsCrack[pointsCrack.size() - 1]}, "line", false);
         gmshCode += c00->getGmshCode();
         delete c01;
 
         gmshCode += "Physical Line('" + nameOfCrack + "') = {";
-        for (int i = 0; i < auxC; i++)
+        for (int i = 0; i < auxC[ic]; i++)
         {
             gmshCode += nameOfCrack + std::to_string(i);
-            if (i != auxC - 1)
+            if (i != auxC[ic] - 1)
             {
                 gmshCode += ", ";
             }
@@ -467,7 +470,7 @@ std::string Geometry::createGmshCode()
     for (int ic = 0; ic < crackes_.size(); ic++)
     {
         std::string nameOfCrack = "c" + std::to_string(ic);
-        for (int i = 0; i < auxC; i++)
+        for (int i = 0; i < auxC[ic]; i++)
         {
             gmshCode += "Line{" + nameOfCrack + std::to_string(i) + "} In Surface{" + crackes_[nameOfCrack]->getPlaneSurface()->getName() + "};\n//\n";
         }
@@ -696,6 +699,11 @@ void Geometry::createGeometryFromCrack()
                 bounded_vector<double, 2> auxDelta = auxCoord1 - boundCoord0;
                 bounded_vector<double, 2> values = prod(inverseMatrix(mat), auxDelta);
 
+                if (values(0) < 0.0)
+                {
+                    values(0) = 0.0;
+                }
+
                 bounded_vector<double, 2> newCoord;
                 newCoord(0) = boundCoord0(0) + cos(teta0) * values(0);
                 newCoord(1) = boundCoord0(1) + sin(teta0) * values(0);
@@ -708,6 +716,11 @@ void Geometry::createGeometryFromCrack()
 
                 auxDelta = auxCoord1 - boundCoord0;
                 values = prod(inverseMatrix(mat), auxDelta);
+
+                if (values(0) < 0.0)
+                {
+                    values(0) = 0.0;
+                }
 
                 newCoord(0) = boundCoord0(0) + cos(teta0) * values(0);
                 newCoord(1) = boundCoord0(1) + sin(teta0) * values(0);
