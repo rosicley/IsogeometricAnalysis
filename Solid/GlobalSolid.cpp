@@ -116,8 +116,10 @@ void GlobalSolid::addNode(const int &index, const int &indexFE,
 
 void GlobalSolid::dataReading(const std::string &inputParameters, const std::string &inputProperties, const std::string &inputMeshIso, const bool &rhino)
 {
-    int rank;
+    int rank, size;
+
     MPI_Comm_rank(PETSC_COMM_WORLD, &rank);
+    MPI_Comm_size(PETSC_COMM_WORLD, &size);
     std::string line;
 
     //Opening parameters file
@@ -512,7 +514,7 @@ void GlobalSolid::dataReading(const std::string &inputParameters, const std::str
                         vector<double> force(2 * npc_dir(0), 0.0);
                         for (int c = 0; c < span(0); c++)
                         {
-                            vector<double> contribuition = cells_[j]->computeDistribuitedLoads(value, quadrature_, 0);
+                            vector<double> contribuition = cells_[j]->computeDistribuitedLoads(value, 10, 0);
                             j = j + 1;
 
                             for (int in = 0; in < contribuition.size(); in++)
@@ -534,7 +536,7 @@ void GlobalSolid::dataReading(const std::string &inputParameters, const std::str
 
                         for (int c = 0; c < span(1); c++)
                         {
-                            vector<double> contribuition = cells_[j]->computeDistribuitedLoads(value, quadrature_, 1);
+                            vector<double> contribuition = cells_[j]->computeDistribuitedLoads(value, 10, 1);
                             j = j + span(0);
 
                             for (int in = 0; in < contribuition.size(); in++)
@@ -558,7 +560,7 @@ void GlobalSolid::dataReading(const std::string &inputParameters, const std::str
                         vector<double> force(2 * npc_dir(0), 0.0);
                         for (int c = 0; c < span(0); c++)
                         {
-                            vector<double> contribuition = cells_[j]->computeDistribuitedLoads(value, quadrature_, 2);
+                            vector<double> contribuition = cells_[j]->computeDistribuitedLoads(value, 10, 2);
                             std::vector<ControlPoint *> points = cells_[j]->getControlPointsOnSide(2);
                             j = j + 1;
 
@@ -582,7 +584,7 @@ void GlobalSolid::dataReading(const std::string &inputParameters, const std::str
                         vector<double> force(2 * npc_dir(1), 0.0);
                         for (int c = 0; c < span(1); c++)
                         {
-                            vector<double> contribuition = cells_[j]->computeDistribuitedLoads(value, quadrature_, 3);
+                            vector<double> contribuition = cells_[j]->computeDistribuitedLoads(value, 10, 3);
                             j = j + span(0);
 
                             for (int in = 0; in < contribuition.size(); in++)
@@ -655,10 +657,23 @@ void GlobalSolid::dataReading(const std::string &inputParameters, const std::str
         {
             pat->removeControlPoints();
         }
-        ISOdomainDecompositionMETIS();
-        for (int i = 0; i < cells_.size(); i++)
+
+        if (size > 1)
         {
-            if (rank == cellPartition_[i])
+            ISOdomainDecompositionMETIS();
+            for (int i = 0; i < cells_.size(); i++)
+            {
+                if (rank == cellPartition_[i])
+                {
+                    cells_part.push_back(cells_[i]);
+                }
+            }
+        }
+        else
+        {
+            cellPartition_ = new idx_t[cells_.size()];
+            pointsPartition_ = new idx_t[controlPoints_.size()];
+            for (int i = 0; i < cells_.size(); i++)
             {
                 cells_part.push_back(cells_[i]);
             }
@@ -1050,7 +1065,7 @@ int GlobalSolid::solveStaticProblem()
     Mat A;
     Vec b, x, All;
     PetscErrorCode ierr;
-    PetscInt Istart, Iend, Idof, Ione, iterations, *dof;
+    PetscInt Istart, Iend, Idof, Idof2, Ione, iterations, *dof;
     KSP ksp;
     PC pc;
     VecScatter ctx;
@@ -1064,7 +1079,7 @@ int GlobalSolid::solveStaticProblem()
     std::stringstream fileName;
     if (rank == 0 and plotSIFs_ == true)
     {
-        fileName << "SIFs"
+        fileName << "tangentMatrix"
                  << ".txt";
     }
     std::ofstream sifFile(fileName.str());
@@ -1080,7 +1095,8 @@ int GlobalSolid::solveStaticProblem()
             exportToParaviewISO(std::to_string(0));
         }
     }
-    else if (rank == 1 and elements_.size() > 0)
+
+    if (rank == 0 and elements_.size() > 0)
     {
         if (analysisOfCrackPropagation_ == true)
         {
@@ -1101,7 +1117,8 @@ int GlobalSolid::solveStaticProblem()
         computeDistanceFromFEBoundary();
         incidenceLocalxGlobal();
         checkInactivesCPandNode();
-        shareDataBetweenRanks();
+        if (size > 1)
+            shareDataBetweenRanks();
 
         if (plotHammerPointsInBlendingZone_ == true)
         {
@@ -1339,7 +1356,85 @@ int GlobalSolid::solveStaticProblem()
 
                 MatZeroRowsColumns(A, ndir, dof, 1.0, x, b);
 
-                //MatView(A, PETSC_VIEWER_STDOUT_WORLD);
+                double menorDP = 1.0e240;
+                if (size == 1)
+                {
+                    for (int i = 0; i < 2 * cpnumber_; i++)
+                    {
+                        Ione = 1;
+                        Idof = i;
+                        ierr = MatGetValues(A, Ione, &Idof, Ione, &Idof, &val);
+                        CHKERRQ(ierr);
+                        if (val < menorDP)
+                        {
+                            menorDP = val;
+                        }
+                    }
+                }
+
+                // menorDP = 1.0;
+
+                if (size == 1)
+                {
+
+                    // sifFile.precision(5);
+                    // sifFile << std::scientific;
+
+                    sifFile << "mat = SparseArray[{";
+                    // sifFile << "mat = {";
+                    Ione = 1;
+                    for (int i = 0; i < 2 * cpnumber_; i++)
+                    {
+                        Idof = i;
+                        // sifFile << "{";
+                        for (int j = 0; j < 2 * cpnumber_; j++)
+                        {
+                            Idof2 = j;
+                            ierr = MatGetValues(A, Ione, &Idof, Ione, &Idof2, &val);
+                            CHKERRQ(ierr);
+                            // sifFile << val;
+                            // if (j != 2 * cpnumber_ - 1)
+                            // {
+                            //     sifFile << ", ";
+                            // }
+                            // else
+                            // {
+                            //     if (i != 2 * cpnumber_ - 1)
+                            //     {
+                            //         sifFile << "},\n";
+                            //     }
+                            //     else
+                            //     {
+                            //         sifFile << "}";
+                            //     }
+                            // }
+                            if (fabs(val) > 1.0e-25)
+                            {
+                                sifFile << "{" << i + 1 << ", " << j + 1 << "} -> " << val / menorDP;
+                                if (i == j and i == 2 * cpnumber_ - 1)
+                                {
+                                    sifFile << "}];\nSingularValueList[mat]";
+                                }
+                                else
+                                {
+                                    sifFile << ",";
+                                }
+                            }
+                            else if (fabs(val) > 0.0)
+                            {
+                                std::cout << "VALORES DESCARTADOS... VERIFICAR! " << val << "\n";
+                            }
+
+                            // if(i==j)
+                            // {
+                            //     std::cout<<val<<std::endl;
+                            // }
+                        }
+                        sifFile << "\n";
+                    }
+                }
+
+                // MatView(A, PETSC_VIEWER_STDOUT_WORLD);
                 // CHKERRQ(ierr);
 
                 //Create KSP context to solve the linear system
@@ -1348,17 +1443,17 @@ int GlobalSolid::solveStaticProblem()
                 ierr = KSPSetOperators(ksp, A, A);
                 CHKERRQ(ierr);
 
-                // ////Solve using GMRES
-                // ierr = KSPSetTolerances(ksp, 1.e-10, PETSC_DEFAULT, PETSC_DEFAULT, 500);
-                // CHKERRQ(ierr);
-                // ierr = KSPGetPC(ksp, &pc);
-                // ierr = PCSetType(pc, PCLU);
-                // ierr = KSPSetType(ksp, KSPDGMRES);
-                // CHKERRQ(ierr);
-                // ierr = KSPGMRESSetRestart(ksp, 500);
-                // CHKERRQ(ierr);
+// ////Solve using GMRES
+// ierr = KSPSetTolerances(ksp, 1.e-10, PETSC_DEFAULT, PETSC_DEFAULT, 5000);
+// CHKERRQ(ierr);
+// ierr = KSPGetPC(ksp, &pc);
+// ierr = PCSetType(pc, PCNONE);
+// ierr = KSPSetType(ksp, KSPDGMRES);
+// CHKERRQ(ierr);
+// ierr = KSPGMRESSetRestart(ksp, 1000);
+// CHKERRQ(ierr);
 
-                //Solve using MUMPS
+//Solve using MUMPS
 #if defined(PETSC_HAVE_MUMPS)
                 ierr = KSPSetType(ksp, KSPPREONLY);
                 ierr = KSPGetPC(ksp, &pc);
@@ -1368,7 +1463,7 @@ int GlobalSolid::solveStaticProblem()
                 CHKERRQ(ierr);
                 ierr = KSPSetUp(ksp);
 
-                //Solve linear system
+                //Solve linear systemll0
                 ierr = KSPSolve(ksp, b, x);
                 CHKERRQ(ierr);
                 ierr = KSPGetTotalIterations(ksp, &iterations);
@@ -1418,14 +1513,14 @@ int GlobalSolid::solveStaticProblem()
                     node->incrementCurrentCoordinate(1, val);
                 }
 
-                for (InactiveNode *no : inactiveNode_)
-                {
-                    no->interpolateGlobalCoordinate();
-                }
-                for (InactiveCP *cp : inactiveCP_)
-                {
-                    cp->interpolateGlobalCoordinate();
-                }
+                // for (InactiveNode *no : inactiveNode_)
+                // {
+                //     no->interpolateGlobalCoordinate();
+                // }
+                // for (InactiveCP *cp : inactiveCP_)
+                // {
+                //     cp->interpolateGlobalCoordinate();
+                // }
 
                 boost::posix_time::ptime t2 =
                     boost::posix_time::microsec_clock::local_time();
@@ -1464,7 +1559,7 @@ int GlobalSolid::solveStaticProblem()
                     exportToParaviewISO(std::to_string(loadStep) + "_" + std::to_string(propagation));
                     // exportToParaviewAuxiliarMesh(std::to_string(loadStep) + "_" + std::to_string(propagation));
                 }
-                else if (rank == 1 and elements_.size() > 0)
+                else if (rank == 0 and elements_.size() > 0)
                 {
                     stressCalculateFEM();
                     exportToParaviewFEM(std::to_string(loadStep) + "_" + std::to_string(propagation));
@@ -1473,7 +1568,7 @@ int GlobalSolid::solveStaticProblem()
                 if (rank == 0 and plotSIFs_ == true)
                 {
                     bounded_vector<double, 2> sifs = getSIFs();
-                    sifFile << sifs(0) << " " << sifs(1) << " " << neumannConditionsFE_[0]->getNode()->getCurrentDisplacement()(0) << std::endl;
+                    sifFile << sifs(0) << " " << sifs(1) << std::endl;
                     length += crackLengthPropagation_;
                 }
 
@@ -1558,11 +1653,30 @@ int GlobalSolid::solveStaticProblem()
                 //     n->incrementCurrentCoordinate(0, cos(tetaa) * urr);
                 //     n->incrementCurrentCoordinate(1, sin(tetaa) * urr);
                 // }
+                // for (Node *n : nodes_)
+                // {
+                //     double a = 0.25;
+                //     double S = 1000.0;
+                //     double young, poisson, density;
+                //     materials_[0]->setProperties(young, poisson, density);
+                //     double k = (3.0 - poisson) / (1.0 + poisson);
+                //     double mi = young / (2.0 * (1.0 + poisson));
+
+                //     bounded_vector<double, 2> coord = n->getInitialCoordinate();
+                //     double theta = atan2(coord(1), coord(0));
+                //     double radius = norm_2(coord);
+                //     bounded_vector<double, 2> teoDisp, dif;
+                //     teoDisp(0) = S * a / (8.0 * mi) * (radius / a * (k + 1.0) * cos(theta) + 2.0 * a / radius * ((1.0 + k) * cos(theta) + cos(3.0 * theta)) - 2.0 * a * a * a / (radius * radius * radius) * cos(3.0 * theta));
+                //     teoDisp(1) = S * a / (8.0 * mi) * (radius / a * (k - 3.0) * sin(theta) + 2.0 * a / radius * ((1.0 - k) * sin(theta) + sin(3.0 * theta)) - 2.0 * a * a * a / (radius * radius * radius) * sin(3.0 * theta));
+                //     dif = (n->getCurrentDisplacement() - (teoDisp)) + coord;
+                //     n->setCurrentCoordinate(dif);
+                // }
+                // std::cout << "PASSOU\n";
                 if (rank == 0 and cells_.size() > 0)
                 {
                     exportToParaviewISO(std::to_string(loadStep));
                 }
-                else if (rank == 1 and elements_.size() > 0)
+                if (rank == 0 and elements_.size() > 0)
                 {
                     stressCalculateFEM();
                     exportToParaviewFEM(std::to_string(loadStep));
@@ -1746,6 +1860,62 @@ void GlobalSolid::exportToParaviewISO(const std::string &nameF)
     file << "      </DataArray> "
          << "\n";
 
+    file << "      <DataArray type=\"Float64\" NumberOfComponents=\"2\" "
+         << "Name=\"TheoreticalDisplacement\" format=\"ascii\">"
+         << "\n";
+    for (Cell *cell : cells_)
+    {
+        double sigmaA = -8.0, sigmaB = 6.0;
+        double young, poisson, density;
+        materials_[0]->setProperties(young, poisson, density);
+        double K1, K2;
+        if (planeState_ == "EPD")
+        {
+            K1 = (1.0 - poisson * poisson) / young;
+            K2 = poisson / (1.0 - poisson);
+        }
+        else
+        {
+        }
+        double a = 1.0;
+        double b = 2.0;
+        double C = (a * a * b * b * (sigmaA - sigmaB)) / (b * b - a * a);
+        double b2 = (sigmaB * b * b - sigmaA * a * a) / (b * b - a * a);
+
+        bounded_vector<double, 2> x, qxsi;
+        bounded_vector<double, 2> disp;
+        bounded_vector<int, 2> INC_;
+        std::vector<ControlPoint *> connection = cell->getControlPoints();
+        vector<double> wpc2(connection.size());
+        vector<double> phi2_;
+
+        INC_ = connection[connection.size() - 1]->getINC();
+
+        for (int i = 0; i < connection.size(); i++)
+        {
+            wpc2(i) = connection[i]->getWeight();
+        }
+
+        for (int j = 0; j < auxxx; j++)
+        {
+            qxsi(0) = qxsi2(j, 0);
+            qxsi(1) = qxsi2(j, 1);
+            phi2_ = cell->shapeFunction(qxsi, wpc2, INC_);
+            disp(0) = 0.0;
+            disp(1) = 0.0;
+            for (int i = 0; i < connection.size(); i++)
+            {
+                disp += phi2_(i) * connection[i]->getInitialCoordinate();
+            }
+            double tetaa = atan2(disp(1), disp(0));
+            double radius = norm_2(disp);
+            double urr = K1 * (b2 * (1.0 - K2) * radius - C / radius * (1.0 + K2));
+            file << cos(tetaa) * urr << " " << sin(tetaa) * urr << std::endl;
+        }
+    }
+    file << "      </DataArray> "
+         << "\n";
+
     file << "      <DataArray type=\"Float64\" NumberOfComponents=\"4\" "
          << "Name=\"CauchyStress\" format=\"ascii\">"
          << "\n";
@@ -1798,6 +1968,16 @@ void GlobalSolid::exportToParaviewISO(const std::string &nameF)
     }
     file << "      </DataArray> "
          << "\n";
+
+    file << "      <DataArray type=\"Float64\" NumberOfComponents=\"1\" "
+         << "Name=\"Index\" format=\"ascii\">" << std::endl;
+    for (Cell *el : cells_)
+    {
+        file << el->getIndex() << "\n";
+    }
+    file << "      </DataArray> "
+         << "\n";
+
     file << "    </CellData>"
          << "\n";
 
@@ -1966,6 +2146,64 @@ void GlobalSolid::exportToParaviewFEM(const std::string &nameF)
     }
     file << "      </DataArray> "
          << "\n";
+    file << "      <DataArray type=\"Float64\" NumberOfComponents=\"2\" "
+         << "Name=\"TheoreticalDisplacement\" format=\"ascii\">"
+         << "\n";
+    for (Node *n : nodes_)
+    {
+        // double a = 0.25;
+        // double S = 1000.0;
+        // double young, poisson, density;
+        // materials_[0]->setProperties(young, poisson, density);
+        // double k = (3.0 - poisson) / (1.0 + poisson);
+        // double mi = young / (2.0 * (1.0 + poisson));
+
+        // bounded_vector<double, 2> coord = n->getInitialCoordinate();
+        // double theta = atan2(coord(1), coord(0));
+        // double radius = norm_2(coord);
+        // bounded_vector<double, 2> teoDisp, dif;
+        // teoDisp(0) = S * a / (8.0 * mi) * (radius / a * (k + 1.0) * cos(theta) + 2.0 * a / radius * ((1.0 + k) * cos(theta) + cos(3.0 * theta)) - 2.0 * a * a * a / (radius * radius * radius) * cos(3.0 * theta));
+        // teoDisp(1) = S * a / (8.0 * mi) * (radius / a * (k - 3.0) * sin(theta) + 2.0 * a / radius * ((1.0 - k) * sin(theta) + sin(3.0 * theta)) - 2.0 * a * a * a / (radius * radius * radius) * sin(3.0 * theta));
+
+        // file << teoDisp(0) << " " << teoDisp(1) << std::endl;
+
+        ///ANEL
+        double sigmaA = -8.0, sigmaB = 6.0;
+        double young, poisson, density;
+        materials_[0]->setProperties(young, poisson, density);
+        double K1, K2;
+        if (planeState_ == "EPD")
+        {
+            K1 = (1.0 - poisson * poisson) / young;
+            K2 = poisson / (1.0 - poisson);
+        }
+        else
+        {
+        }
+        double a = 2.0;
+        double b = 6.0;
+        double C = (a * a * b * b * (sigmaA - sigmaB)) / (b * b - a * a);
+        double b2 = (sigmaB * b * b - sigmaA * a * a) / (b * b - a * a);
+
+        bounded_vector<double, 2> coord = n->getInitialCoordinate();
+        double tetaa = atan2(coord(1), coord(0));
+        double radius = norm_2(coord);
+        double urr = K1 * (b2 * (1.0 - K2) * radius - C / radius * (1.0 + K2));
+        file << cos(tetaa) * urr << " " << sin(tetaa) * urr << std::endl;
+
+        //BARRINHA FORÇA COSSENO
+        // double young, poisson, density;
+        // materials_[0]->setProperties(young, poisson, density);
+        // double l = 10.0;
+        // double S = 1.0;
+        // double pi = 3.1415926535897932384626433;
+
+        // double ux = -1.0 / (young * S) * (-l * l / (pi * pi) * cos(pi * coord(0) / l) - 2.0 * l * coord(0) / (pi * pi) + l * l / (pi * pi));
+
+        // file << ux << " " << 0.0 << std::endl;
+    }
+    file << "      </DataArray> "
+         << "\n";
 
     file << "      <DataArray type=\"Float64\" NumberOfComponents=\"4\" "
          << "Name=\"CauchyStress\" format=\"ascii\">"
@@ -2023,6 +2261,17 @@ void GlobalSolid::exportToParaviewFEM(const std::string &nameF)
     }
     file << "      </DataArray> "
          << "\n";
+
+    file << "      <DataArray type=\"Float64\" NumberOfComponents=\"1\" "
+         << "Name=\"Index\" format=\"ascii\">" << std::endl;
+
+    for (Element *el : elements_)
+    {
+        file << el->getIndex() << "\n";
+    }
+    file << "      </DataArray> "
+         << "\n";
+
     file << "      <DataArray type=\"Float64\" NumberOfComponents=\"1\" "
          << "Name=\"J-Integral\" format=\"ascii\">" << std::endl;
     if (elementsSideJintegral_.size() >= 1)
@@ -3954,10 +4203,10 @@ void GlobalSolid::incidenceLocalxGlobal()
             for (int i = 0; i < conec.size(); i++)
             {
                 DAhammer += phi(i) * conec[i]->getDistanceToBoundary();
-                coordFE += phi(i) * conec[i]->getCurrentCoordinate();
+                coordFE += phi(i) * conec[i]->getInitialCoordinate();
             }
 
-            if (DAhammer <= blendingZoneThickness_ + tolerance_) //inside of blend zone
+            if (DAhammer <= blendingZoneThickness_) //inside of blend zone
             {
                 insideBlendZone.push_back(false);
 
@@ -3991,7 +4240,7 @@ void GlobalSolid::incidenceLocalxGlobal()
 
                         for (int cp = 0; cp < npc; cp++)
                         {
-                            bounded_vector<double, 2> coordinateCP = conPoints[cp]->getCurrentCoordinate();
+                            bounded_vector<double, 2> coordinateCP = conPoints[cp]->getInitialCoordinate();
                             coordISO(0) += functions.first(cp) * coordinateCP(0);
                             coordISO(1) += functions.first(cp) * coordinateCP(1);
                         }
@@ -4007,8 +4256,8 @@ void GlobalSolid::incidenceLocalxGlobal()
                         cont++;
                     }
 
-                    if (xsiISO(0) >= -1.0 - tolerance_ and xsiISO(0) <= 1.0 + tolerance_ and //ponto de hammer encontrou uma célula
-                        xsiISO(1) >= -1.0 - tolerance_ and xsiISO(1) <= 1.0 + tolerance_)
+                    if (xsiISO(0) >= -1.0 and xsiISO(0) <= 1.0 and //ponto de hammer encontrou uma célula
+                        xsiISO(1) >= -1.0 and xsiISO(1) <= 1.0 and erro <= 1.0e-08)
                     {
                         insideBlendZone[ih] = true;
                         blendZone = true;
@@ -4072,7 +4321,7 @@ void GlobalSolid::computeDistanceFromFEBoundary()
             if (no->getDistanceToBoundary() == -10000.0) //-10000.0 é o valor que a variável foi iniciada na criação do nó
             {
                 double distanceNode = 1000000.0;
-                bounded_vector<double, 2> coord = no->getCurrentCoordinate();
+                bounded_vector<double, 2> coord = no->getInitialCoordinate();
 
                 for (BoundaryElement *bound : blendingBoundary_)
                 {
@@ -4083,7 +4332,7 @@ void GlobalSolid::computeDistanceFromFEBoundary()
                     std::vector<Node *> boundaryConec = bound->getNodes();
                     bounded_vector<double, 2> coordBoundary, firstDerivate, secondDerivate;
 
-                    while ((fabs(deltaxsi) >= tolerance_) and (cont <= 20))
+                    while ((fabs(deltaxsi) >= 1.0e-08) and (cont <= 20))
                     {
                         matrix<double> boundaryFunctions = bound->shapeFunctionsAndDerivates(xsiBoundary); //PHI, PHI', PHI''
                         coordBoundary(0) = 0.0;
@@ -4095,7 +4344,7 @@ void GlobalSolid::computeDistanceFromFEBoundary()
                         int aux = 0;
                         for (Node *node : boundaryConec)
                         {
-                            bounded_vector<double, 2> coordinateNode = node->getCurrentCoordinate();
+                            bounded_vector<double, 2> coordinateNode = node->getInitialCoordinate();
 
                             coordBoundary(0) += boundaryFunctions(aux, 0) * coordinateNode(0);
                             coordBoundary(1) += boundaryFunctions(aux, 0) * coordinateNode(1);
@@ -4126,7 +4375,7 @@ void GlobalSolid::computeDistanceFromFEBoundary()
                         coordBoundary(1) = 0.0;
                         for (Node *node : boundaryConec)
                         {
-                            bounded_vector<double, 2> coordinateNode = node->getCurrentCoordinate();
+                            bounded_vector<double, 2> coordinateNode = node->getInitialCoordinate();
                             coordBoundary(0) += boundaryFunctions(aux, 0) * coordinateNode(0);
                             coordBoundary(1) += boundaryFunctions(aux, 0) * coordinateNode(1);
 
@@ -4141,7 +4390,7 @@ void GlobalSolid::computeDistanceFromFEBoundary()
                         coordBoundary(1) = 0.0;
                         for (Node *node : boundaryConec)
                         {
-                            bounded_vector<double, 2> coordinateNode = node->getCurrentCoordinate();
+                            bounded_vector<double, 2> coordinateNode = node->getInitialCoordinate();
                             coordBoundary(0) += boundaryFunctions(aux, 0) * coordinateNode(0);
                             coordBoundary(1) += boundaryFunctions(aux, 0) * coordinateNode(1);
 
@@ -4158,8 +4407,8 @@ void GlobalSolid::computeDistanceFromFEBoundary()
                 }
                 no->setDistanceToBoundary(distanceNode);
 
-                bounded_vector<double, 2> coordFE = no->getCurrentCoordinate();
-                if (distanceNode <= blendingZoneThickness_ + tolerance_)
+                bounded_vector<double, 2> coordFE = no->getInitialCoordinate();
+                if (distanceNode <= blendingZoneThickness_)
                 {
                     for (Cell *cell : cells_)
                     {
@@ -4192,7 +4441,7 @@ void GlobalSolid::computeDistanceFromFEBoundary()
 
                             for (int cp = 0; cp < npc; cp++)
                             {
-                                bounded_vector<double, 2> coordinateCP = conPoints[cp]->getCurrentCoordinate();
+                                bounded_vector<double, 2> coordinateCP = conPoints[cp]->getInitialCoordinate();
                                 coordISO(0) += functions.first(cp) * coordinateCP(0);
                                 coordISO(1) += functions.first(cp) * coordinateCP(1);
                             }
@@ -4209,7 +4458,7 @@ void GlobalSolid::computeDistanceFromFEBoundary()
                         }
 
                         if (xsiISO(0) >= -1.0 - tolerance_ and xsiISO(0) <= 1.0 + tolerance_ and //o nó encontrou uma célula
-                            xsiISO(1) >= -1.0 - tolerance_ and xsiISO(1) <= 1.0 + tolerance_)
+                            xsiISO(1) >= -1.0 - tolerance_ and xsiISO(1) <= 1.0 + tolerance_ and erro <= 1.0e-08)
                         {
                             no->setCellIndex(cell->getIndex());
                             no->setXsisGlobal(xsiISO);
@@ -4245,7 +4494,7 @@ void GlobalSolid::computeDistanceFromFEBoundary()
                 std::vector<Node *> boundaryConec = bound->getNodes();
                 bounded_vector<double, 2> coordBoundary, firstDerivate, secondDerivate, normal;
 
-                while (fabs(deltaxsi) >= tolerance_ and cont <= 20)
+                while (fabs(deltaxsi) >= 1.0e-08 and cont <= 20)
                 {
                     matrix<double> boundaryFunctions = bound->shapeFunctionsAndDerivates(xsiBoundary); //PHI, PHI', PHI''
                     coordBoundary(0) = 0.0;
@@ -4631,16 +4880,30 @@ bounded_vector<double, 2> GlobalSolid::blendFunction(const double &DA)
     }
     else if (blendingFunctionOrder_ == 5)
     {
-        blend(0) = pow(aux, 5.0) - 2.5 * pow(aux, 4.0) + 4.0 * pow(aux, 3.0) - 3.5 * pow(aux, 2.0) + 1.0;
-        blend(1) = 5.0 / blendingZoneThickness_ * pow(aux, 4.0) - 10.0 / blendingZoneThickness_ * pow(aux, 3.0) + 12.0 / blendingZoneThickness_ * pow(aux, 2.0) - 7.0 / blendingZoneThickness_ * pow(aux, 1.0);
+        blend(0) = -6.0 * pow(aux, 5) + 15.0 * pow(aux, 4) - 10.0 * pow(aux, 3) + 1.0;
+        blend(1) = -30.0 / blendingZoneThickness_ * pow(aux, 4) + 60 / blendingZoneThickness_ * pow(aux, 3) - 30.0 / blendingZoneThickness_ * pow(aux, 2);
+
+        // blend(0) = pow(aux, 5.0) - 2.5 * pow(aux, 4.0) + 4.0 * pow(aux, 3.0) - 3.5 * pow(aux, 2.0) + 1.0;
+        // blend(1) = 5.0 / blendingZoneThickness_ * pow(aux, 4.0) - 10.0 / blendingZoneThickness_ * pow(aux, 3.0) + 12.0 / blendingZoneThickness_ * pow(aux, 2.0) - 7.0 / blendingZoneThickness_ * pow(aux, 1.0);
 
         // blend(0) = aux * aux * aux * aux * aux - 2.5 * aux * aux * aux * aux + 4.0 * aux * aux * aux - 3.5 * aux * aux + 1.0;
         // blend(1) = (5.0 / blendingZoneThickness_) * aux * aux * aux * aux - (10.0 / blendingZoneThickness_) * aux * aux * aux + (12.0 / blendingZoneThickness_) * aux * aux - (7.0 / blendingZoneThickness_) * aux;
     }
     else if (blendingFunctionOrder_ == 4)
     {
-        blend(0) = aux * aux * aux * aux - 2.0 * aux * aux + 1.0;
-        blend(1) = (4.0 / blendingZoneThickness_) * aux * aux * aux - (4.0 / blendingZoneThickness_) * aux;
+        if (DA <= blendingZoneThickness_ * 0.5)
+        {
+            blend(0) = 8.0 * aux * aux * aux * aux - 8.0 * aux * aux * aux + 1.0;
+            blend(1) = (32.0 / blendingZoneThickness_) * aux * aux * aux - (24.0 / blendingZoneThickness_) * aux * aux;
+        }
+        else
+        {
+            double dif = 1.0 - aux;
+            blend(0) = -8.0 * dif * dif * dif * dif + 8.0 * dif * dif * dif;
+            blend(1) = (32.0 / blendingZoneThickness_) * dif * dif * dif - (24.0 / blendingZoneThickness_) * dif * dif;
+        }
+        // blend(0) = aux * aux * aux * aux - 2.0 * aux * aux + 1.0;
+        // blend(1) = (4.0 / blendingZoneThickness_) * aux * aux * aux - (4.0 / blendingZoneThickness_) * aux;
 
         // blend(0) = 2.0 * aux * aux * aux * aux - 2.0 * aux * aux * aux - aux * aux + 1.0;
         // blend(1) = (8.0 / blendingZoneThickness_) * aux * aux * aux - (6.0 / blendingZoneThickness_) * aux * aux - (2.0 / blendingZoneThickness_) * aux;
@@ -4717,6 +4980,9 @@ void GlobalSolid::checkInactivesCPandNode()
     std::unordered_set<int> inactiveNode;
 
     double min = 1.0e200;
+    double max = 1.0e-200;
+
+    double limN = 1.0e-15;
 
     for (Node *node : nodes_)
     {
@@ -4727,23 +4993,38 @@ void GlobalSolid::checkInactivesCPandNode()
         {
             min = val;
         }
+        if (val > max)
+        {
+            max = val;
+        }
 
-        // if (val < tolerance_)
-        // {
-        //     inactiveNode.insert(node->getIndexFE());
-        //     inactiveCPandNode_.insert(Idof);
-        //     // std::cout << "The node " << node->getIndex() << " was desactived." << std::endl;
-        // }
+        if (val < limN)
+        {
+            inactiveNode.insert(node->getIndexFE());
+            inactiveCPandNode_.insert(Idof);
+        }
     }
 
-    double lim = min / 21.0;
+    double limCP = min / 10000.0;
 
+    if (rank == 0)
+        std::cout << "phi*phi\nNode - max: " << max << " // min: " << min << std::endl;
+
+    min = 1.0e200;
+    max = 1.0e-200;
     for (ControlPoint *cp : controlPoints_)
     {
         Idof = cp->getIndex();
         VecGetValues(All, Ione, &Idof, &val);
-
-        if (val < lim)
+        if (val < min and val != 0.0)
+        {
+            min = val;
+        }
+        if (val > max)
+        {
+            max = val;
+        }
+        if (val <= limCP)
         {
             if (inactiveCPaux.count(Idof) == 0)
             {
@@ -4753,6 +5034,10 @@ void GlobalSolid::checkInactivesCPandNode()
             }
         }
     }
+
+    if (rank == 0)
+        std::cout << "CP - max: " << max << " // min: " << min << "\n\n";
+
     // for (Node *node : nodes_)
     // {
     //     Idof = node->getIndex();
@@ -4772,10 +5057,12 @@ void GlobalSolid::checkInactivesCPandNode()
     {
         if (rank == 0)
         {
-            std::cout << "The CP " << cp->getIndex() << "(" << cp->getInitialCoordinate()(0) << " " << cp->getInitialCoordinate()(1) << ") "
-                      << " was desactived." << std::endl;
+            Idof = cp->getIndex();
+            VecGetValues(All, Ione, &Idof, &val);
+            std::cout << "The CP " << cp->getIndex() << "(" << cp->getInitialCoordinate()(0) / cp->getWeight() << " " << cp->getInitialCoordinate()(1) / cp->getWeight() << ") "
+                      << " was desactived ( " << val << " )." << std::endl;
         }
-        bounded_vector<double, 2> coord = cp->getCurrentCoordinate();
+        bounded_vector<double, 2> coord = cp->getInitialCoordinate();
 
         for (Element *el : elements_)
         {
@@ -4796,7 +5083,7 @@ void GlobalSolid::checkInactivesCPandNode()
 
                 bounded_matrix<double, 2, 2> jacobian = el->referenceJacobianMatrix(xsiFE(0), xsiFE(1));
                 bounded_matrix<double, 2, 2> inverse = inverseMatrix(jacobian);
-                deltaxsi = prod(inverse, coord - coordFE);
+                deltaxsi = prod(inverse, coord / cp->getWeight() - coordFE);
 
                 xsiFE = xsiFE + deltaxsi;
 
@@ -4807,7 +5094,7 @@ void GlobalSolid::checkInactivesCPandNode()
 
             if (xsiFE(0) >= -tolerance_ and xsiFE(0) <= 1.0 + tolerance_ and //ponto de hammer encontrou uma célula
                 xsiFE(1) >= -tolerance_ and xsiFE(1) <= 1.0 + tolerance_ and
-                xsiFE(0) + xsiFE(1) <= 1.0 + tolerance_) //só vai funcionar para triângulos não muito deformados...
+                xsiFE(0) + xsiFE(1) <= 1.0 + tolerance_ and error <= 1.0e-08) //só vai funcionar para triângulos não muito deformados...
             {
                 InactiveCP *inactive = new InactiveCP(cp, el, xsiFE);
                 inactiveCP_.push_back(inactive);
@@ -4825,8 +5112,12 @@ void GlobalSolid::checkInactivesCPandNode()
     for (int nn : inactiveNode)
     {
         Node *no = nodes_[nn];
-        std::cout << "NO DESATIVADO " << no->getIndex() << std::endl;
-        bounded_vector<double, 2> coordFE = no->getCurrentCoordinate();
+        Idof = no->getIndex();
+        VecGetValues(All, Ione, &Idof, &val);
+        if (rank == 0)
+            std::cout << "NODE " << no->getIndex() << "(" << no->getInitialCoordinate()(0) << " " << no->getInitialCoordinate()(1) << ") "
+                      << " was desactived ( " << val << " )." << std::endl;
+        bounded_vector<double, 2> coordFE = no->getInitialCoordinate();
 
         for (Cell *cell : cells_)
         {
@@ -4858,7 +5149,7 @@ void GlobalSolid::checkInactivesCPandNode()
 
                 for (int cp = 0; cp < npc; cp++)
                 {
-                    bounded_vector<double, 2> coordinateCP = conPoints[cp]->getCurrentCoordinate();
+                    bounded_vector<double, 2> coordinateCP = conPoints[cp]->getInitialCoordinate();
                     coordISO(0) += functions.first(cp) * coordinateCP(0);
                     coordISO(1) += functions.first(cp) * coordinateCP(1);
                 }
@@ -4875,11 +5166,16 @@ void GlobalSolid::checkInactivesCPandNode()
             }
 
             if (xsiISO(0) >= -1.0 - 1.0e-08 and xsiISO(0) <= 1.0 + 1.0e-08 and //ponto de hammer encontrou uma célula
-                xsiISO(1) >= -1.0 - 1.0e-08 and xsiISO(1) <= 1.0 + 1.0e-08)
+                xsiISO(1) >= -1.0 - 1.0e-08 and xsiISO(1) <= 1.0 + 1.0e-08 and error <= 1.0e-08)
             {
 
                 InactiveNode *inactive = new InactiveNode(no, cell, xsiISO);
                 inactiveNode_.push_back(inactive);
+
+                if (rank == 0)
+                {
+                    std::cout << "NODE " << no->getIndex() << " found the cell " << cell->getIndex() << std::endl;
+                }
 
                 break;
             }
@@ -5131,8 +5427,15 @@ void GlobalSolid::stressCalculateFEM()
 void GlobalSolid::generateMesh(Geometry *geometry, const std::string &elementType, const std::string &algorithm, std::string geofile,
                                const bool &plotMesh, const bool &showInfo)
 {
-    int rank;
+    int rank, size;
+
     MPI_Comm_rank(PETSC_COMM_WORLD, &rank);
+    MPI_Comm_size(PETSC_COMM_WORLD, &size);
+
+    MPI_Barrier(PETSC_COMM_WORLD);
+
+    boost::posix_time::ptime geoIni =
+        boost::posix_time::microsec_clock::local_time();
 
     finiteElementType_ = elementType;
     geometry_ = geometry;
@@ -5161,6 +5464,8 @@ void GlobalSolid::generateMesh(Geometry *geometry, const std::string &elementTyp
     if (rank == 0)
     {
         std::string gmshCode = geometry->createGmshCode();
+
+        // gmshCode += "Transfinite Curve {l0, l2} = 7 Using Progression 1;\nTransfinite Curve {l1, l3} = 2 Using Progression 1;\nTransfinite Surface {s0} Left;\n";
 
         if (elementType == "T10")
         {
@@ -5240,9 +5545,16 @@ void GlobalSolid::generateMesh(Geometry *geometry, const std::string &elementTyp
 
         system(cmd.c_str());
     }
+
     MPI_Barrier(PETSC_COMM_WORLD);
 
+    boost::posix_time::ptime geoFin =
+        boost::posix_time::microsec_clock::local_time();
+
     dataFromGmsh(mshfile, elementType, geometry);
+
+    boost::posix_time::ptime dataFin =
+        boost::posix_time::microsec_clock::local_time();
 
     applyBoundaryConditions(geometry);
 
@@ -5254,20 +5566,51 @@ void GlobalSolid::generateMesh(Geometry *geometry, const std::string &elementTyp
         system((remove + aux).c_str());
     }
 
-    domainDecompositionMETIS(elementType);
+    boost::posix_time::ptime metisIni =
+        boost::posix_time::microsec_clock::local_time();
+
+    if (size > 1)
+        domainDecompositionMETIS(elementType);
+
+    boost::posix_time::ptime metisFin =
+        boost::posix_time::microsec_clock::local_time();
+
+    boost::posix_time::time_duration diff = geoFin - geoIni;
+    boost::posix_time::time_duration diff1 = dataFin - geoFin;
+    boost::posix_time::time_duration diff2 = metisFin - metisIni;
+
+    time__ << diff.total_milliseconds() / 1000. << " " << diff1.total_milliseconds() / 1000. << " " << diff2.total_milliseconds() / 1000. << "\n";
+
+    if (rank == 0)
+        std::cout << time__.str() << std::endl;
 
     if (quarterPointElement_ == true)
     {
         quarterPointElements();
     }
 
-    for (int i = 0; i < elements_.size(); i++)
+    if (size > 1)
     {
-        if (rank == elementPartition_[i])
+        for (int i = 0; i < elements_.size(); i++)
         {
-            elements_part.push_back(elements_[i]);
+            if (rank == elementPartition_[i])
+            {
+                elements_part.push_back(elements_[i]);
+            }
         }
     }
+    else
+    {
+        elementPartition_ = new idx_t[elements_.size()];
+        nodePartition_ = new idx_t[nodes_.size()];
+        for (int i = 0; i < elements_.size(); i++)
+        {
+            elements_part.push_back(elements_[i]);
+            elementPartition_[i] = 0;
+        }
+    }
+
+    MPI_Barrier(PETSC_COMM_WORLD);
 
     // for (Node *n : nodes_)
     // {
@@ -5316,7 +5659,7 @@ void GlobalSolid::applyBoundaryConditions(Geometry *geometry)
             std::vector<BoundaryElement *> boundLine = finiteElementBoundary_[name];
             for (BoundaryElement *bound : boundLine)
             {
-                vector<double> forcevec = bound->computeDistribuitedLoads(force, quadrature_);
+                vector<double> forcevec = bound->computeDistribuitedLoads(force, 5);
                 std::vector<Node *> conec = bound->getNodes();
                 double value0, value1;
 
@@ -5477,8 +5820,8 @@ bounded_vector<double, 2> GlobalSolid::getSIFs()
 
     for (Element *el : JintegralElements_)
     {
-        // sif += el->contributionJ_IntegralInitial(quadrature_, elementsSideJintegral_[el->getIndex()], planeState_, angle, node->getInitialCoordinate());
-        sif += el->contributionJ_IntegralFromRice(quadrature_, elementsSideJintegral_[el->getIndex()], planeState_, angle, node);
+        sif += el->contributionJ_IntegralInitial(quadrature_, elementsSideJintegral_[el->getIndex()], planeState_, angle, node->getInitialCoordinate());
+        // sif += el->contributionJ_IntegralFromRice(quadrature_, elementsSideJintegral_[el->getIndex()], planeState_, angle, node);
     }
 
     // for (Element *el : dynamicJintegralElements_)
@@ -5944,4 +6287,28 @@ void GlobalSolid::quarterPointElements()
 void GlobalSolid::useQuarterPointElements()
 {
     quarterPointElement_ = true;
+}
+
+void GlobalSolid::error()
+{
+    int rank, size;
+
+    MPI_Comm_rank(PETSC_COMM_WORLD, &rank);
+    MPI_Comm_size(PETSC_COMM_WORLD, &size);
+
+    bounded_vector<double, 2> normsError;
+    normsError(0) = 0.0;
+    normsError(1) = 0.0;
+    for (Element *el : elements_part)
+    {
+        normsError += el->errorL2(hammerPoints_, hammerPointsBlendZone_);
+    }
+    std::cout << rank << std::scientific << " L2: " << normsError(0) << " - H1: " << normsError(1) << std::endl;
+    normsError(0) = 0.0;
+    normsError(1) = 0.0;
+    for (Cell *el : cells_part)
+    {
+        normsError += el->errorL2(quadrature_);
+    }
+    std::cout << rank << std::scientific << " L2: " << normsError(0) << " - H1: " << normsError(1) << std::endl;
 }

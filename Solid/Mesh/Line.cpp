@@ -15,12 +15,11 @@ Line::Line(const std::string &name, std::vector<Point *> points, const std::stri
 
 Line::~Line() {}
 
-// Line *Line::operator-()
-// {
-//     Line *copy = new Line(name_, {points_});
-//     copy->setName("-" + name_);
-//     return copy;
-// }
+Line *Line::operator-()
+{
+    Line *copy = new Line("-" + name_, points_, typeLine_, discretization_);
+    return copy;
+}
 
 std::string Line::getName()
 {

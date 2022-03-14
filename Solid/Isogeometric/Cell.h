@@ -85,7 +85,9 @@ public:
 
     vector<double> diagonalMass(const int &points);
 
-    bounded_matrix<double, 2, 2 > get2PiolaStress(const bounded_vector<double, 2> &qxsi, const std::string &ep);
+    bounded_matrix<double, 2, 2> get2PiolaStress(const bounded_vector<double, 2> &qxsi, const std::string &ep);
+
+    bounded_vector<double, 2> errorL2(const int &pointsQuadrature);
 
 private:
     int index_; //cell number //OK

@@ -58,6 +58,12 @@
         "typeindex": "cpp",
         "typeinfo": "cpp",
         "unordered_set": "cpp",
-        "*.in": "cpp"
+        "*.in": "cpp",
+        "bit": "cpp",
+        "condition_variable": "cpp",
+        "numeric": "cpp",
+        "random": "cpp",
+        "mutex": "cpp",
+        "variant": "cpp"
     }
 }

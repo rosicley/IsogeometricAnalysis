@@ -1605,6 +1605,15 @@ std::pair<vector<double>, matrix<double>> Cell::cellContributions(const std::str
 
             bounded_matrix<double, 2, 2> S; //second piola kirchhoff stress tensor
 
+            // bounded_vector<double, 2> coordPo;
+            // coordPo(0) = 0.0;
+            // coordPo(1) = 0.0;
+            // int ik = 0;
+            // for (ControlPoint *n : controlPoints_)
+            // {
+            //     coordPo += n->getInitialCoordinate() * functions.first(ik++);
+            // }
+
             if (ep == "EPD")
             {
                 S(0, 0) = (young / ((1.0 + poisson) * (1.0 - 2.0 * poisson))) * ((1.0 - poisson) * Ec(0, 0) + poisson * Ec(1, 1));
@@ -1664,7 +1673,19 @@ std::pair<vector<double>, matrix<double>> Cell::cellContributions(const std::str
 
                     double m = density * functions.first(i) * accel; //inertial force
 
-                    double shape = (shapeForce_(j) * step / numberOfStep / thickness) * functions.first(i);
+                    double shape = 0.0;
+                    // if (j == 0)
+                    // {
+                    //     // shape = cos(3.1415926535897932384626433 * coordPo(0) / 10.0) * functions.first(i);
+                    //     if (coordPo(0) <= 30.0 / 3.0 or coordPo(0) >= 2.0 * 30.0 / 3.0)
+                    //     {
+                    //         shape = 0.0;
+                    //     }
+                    //     else
+                    //     {
+                    //         shape = sin(3.1415926535897932384626433 / 10.0 * (coordPo(0) - 10.0)) * functions.first(i);
+                    //     }
+                    // }
 
                     rhs(2 * i + j) -= (r + m - shape) * weight * j0 * thickness;
 
@@ -1768,6 +1789,15 @@ std::pair<vector<double>, matrix<double>> Cell::cellContributions(const std::str
 
                 bounded_matrix<double, 2, 2> S; //second piola kirchhoff stress tensor
 
+                // bounded_vector<double, 2> coordPo;
+                // coordPo(0) = 0.0;
+                // coordPo(1) = 0.0;
+                // int ik = 0;
+                // for (ControlPoint *n : controlPoints_)
+                // {
+                //     coordPo += n->getInitialCoordinate() * functions.first(ik++);
+                // }
+
                 if (ep == "EPD")
                 {
                     S(0, 0) = (young / ((1.0 + poisson) * (1.0 - 2.0 * poisson))) * ((1.0 - poisson) * Ec(0, 0) + poisson * Ec(1, 1));
@@ -1827,7 +1857,11 @@ std::pair<vector<double>, matrix<double>> Cell::cellContributions(const std::str
 
                         double m = density * functions.first(i) * accel; //inertial force
 
-                        double shape = (shapeForce_(j) * step / numberOfStep / thickness) * functions.first(i);
+                        double shape = 0.0;
+                        // if (j == 0)
+                        // {
+                        //     shape = cos(3.1415926535897932384626433 * coordPo(0) / 10.0) * functions.first(i);
+                        // }
 
                         rhs(2 * i + j) -= (r + m - shape) * weight * j0 * thickness;
 
@@ -2529,14 +2563,14 @@ vector<double> Cell::computeDistribuitedLoads(const bounded_vector<double, 2> &v
         }
 
         double jacobian = sqrt(pow(tangent(0), 2) + pow(tangent(1), 2));
-        // bounded_vector<double, 2> normal;
-        // normal(0) = tangent(1) / jacobian;
-        // normal(1) = -tangent(0) / jacobian;
+        bounded_vector<double, 2> normal;
+        normal(0) = tangent(1) / jacobian;
+        normal(1) = -tangent(0) / jacobian;
 
         for (int ih = 0; ih < npc; ih++)
         {
-            distribuitedLoad(2 * ih) += value(0) * functions.first(ih) * weight * thickness * jacobian;
-            distribuitedLoad(2 * ih + 1) += value(1) * functions.first(ih) * weight * thickness * jacobian;
+            distribuitedLoad(2 * ih) += value(0) * functions.first(ih) * weight * thickness * jacobian * normal(0);
+            distribuitedLoad(2 * ih + 1) += value(1) * functions.first(ih) * weight * thickness * jacobian * normal(1);
         }
     }
     return distribuitedLoad;
@@ -2807,11 +2841,16 @@ vector<double> Cell::diagonalMass(const int &points)
             qxsi(1) = domainIntegrationPoints_(ih, 1);
             double weight = domainIntegrationPoints_(ih, 2);
 
-            vector<double> phi = shapeFunction(qxsi, wpc2, INC_);
+            std::pair<vector<double>, matrix<double>> functions;
+
+            functions = shapeFunctionAndDerivates(qxsi, wpc2, INC_);
+
+            bounded_matrix<double, 2, 2> A0 = referenceJacobianMatrix(functions.second); //initial configuration map
+            double j0 = jacobianDeterminant(A0);
 
             for (int i = 0; i < number; i++)
             {
-                mass(i) += phi(i) * phi(i) * weight;
+                mass(i) += functions.first(i) * functions.first(i) * weight * j0;
             }
         }
     }
@@ -2821,20 +2860,294 @@ vector<double> Cell::diagonalMass(const int &points)
         {
             if (distanceFE_[ih] <= 0.0)
             {
+                std::cout<<"Entrou aqui\n";
                 bounded_vector<double, 2> qxsi;
                 qxsi(0) = domainIntegrationPoints_(ih, 0);
                 qxsi(1) = domainIntegrationPoints_(ih, 1);
                 double weight = domainIntegrationPoints_(ih, 2);
 
-                vector<double> phi = shapeFunction(qxsi, wpc2, INC_);
+                std::pair<vector<double>, matrix<double>> functions;
+
+                functions = shapeFunctionAndDerivates(qxsi, wpc2, INC_);
+
+                bounded_matrix<double, 2, 2> A0 = referenceJacobianMatrix(functions.second); //initial configuration map
+                double j0 = jacobianDeterminant(A0);
 
                 for (int i = 0; i < number; i++)
                 {
-                    mass(i) += phi(i) * phi(i) * weight;
+                    mass(i) += functions.first(i) * functions.first(i) * weight * j0;
                 }
             }
         }
     }
 
     return mass;
+}
+
+bounded_vector<double, 2> Cell::errorL2(const int &pointsQuadrature)
+{
+    int npc = controlPoints_.size();
+    vector<double> wpc(npc);
+    for (int i = 0; i < npc; i++)
+    {
+        wpc(i) = controlPoints_[i]->getWeight();
+    }
+    bounded_vector<int, 2> inc;
+    inc = controlPoints_[npc - 1]->getINC();
+
+    matrix<double> domainIntegrationPoints_;
+    if (distanceFE_.size() == 0)
+    {
+        domainIntegrationPoints_ = isoQuadrature(pointsQuadrature);
+    }
+    else
+    {
+        domainIntegrationPoints_ = isoQuadrature(sqrt(distanceFE_.size()));
+    }
+
+    double sigmaA = -8.0, sigmaB = 6.0;
+    double young, poisson, density;
+    patch_->getMaterial()->setProperties(young, poisson, density);
+
+    double errorL2 = 0.0, errorH1 = 0.0, K1, K2;
+
+    K1 = (1.0 - poisson * poisson) / young;
+    K2 = poisson / (1.0 - poisson);
+
+    double a = 2.0;
+    double b = 6.0;
+    double C = (a * a * b * b * (sigmaA - sigmaB)) / (b * b - a * a);
+    double b2 = (sigmaB * b * b - sigmaA * a * a) / (b * b - a * a);
+
+    double radius, theta;
+
+    if (distanceFE_.size() == 0) /// a célula não tem nenhum ponto dentro da zona de superposição
+    {
+        for (int ih = 0; ih < domainIntegrationPoints_.size1(); ih++)
+        {
+            double xsi1 = domainIntegrationPoints_(ih, 0);
+            double xsi2 = domainIntegrationPoints_(ih, 1);
+            double weight = domainIntegrationPoints_(ih, 2);
+
+            bounded_vector<double, 2> qxsi;
+            qxsi(0) = xsi1;
+            qxsi(1) = xsi2;
+
+            std::pair<vector<double>, matrix<double>> functions;
+
+            functions = shapeFunctionAndDerivates(qxsi, wpc, inc);
+
+            bounded_matrix<double, 2, 2> A0 = referenceJacobianMatrix(functions.second); //initial configuration map
+            double j0 = jacobianDeterminant(A0);
+            bounded_matrix<double, 2, 2> A0I; //inverse initial configuration map
+            A0I(0, 0) = A0(1, 1) / j0;
+            A0I(1, 1) = A0(0, 0) / j0;
+            A0I(0, 1) = -A0(0, 1) / j0;
+            A0I(1, 0) = -A0(1, 0) / j0;
+            bounded_matrix<double, 2, 2> A1 = currentJacobianMatrix(functions.second); //current configuration map
+            bounded_matrix<double, 2, 2> Ac = prod(A1, A0I);                           //current deformation gradient
+            identity_matrix<double> I(2);                                              //identity matrix
+
+            bounded_vector<double, 2> initCoord, numDisp, teoDisp;
+            initCoord(0) = 0.0;
+            initCoord(1) = 0.0;
+            numDisp(0) = 0.0;
+            numDisp(1) = 0.0;
+
+            for (int i = 0; i < controlPoints_.size(); i++)
+            {
+                initCoord += functions.first(i) * controlPoints_[i]->getInitialCoordinate();
+                numDisp += functions.first(i) * controlPoints_[i]->getCurrentDisplacement();
+            }
+
+            radius = norm_2(initCoord);
+            theta = atan2(initCoord(1), initCoord(0));
+
+            double urr = K1 * (b2 * (1.0 - K2) * radius - C / radius * (1.0 + K2));
+
+            bounded_vector<double, 2> dif;
+            dif(0) = cos(theta) * urr - numDisp(0);
+            dif(1) = sin(theta) * urr - numDisp(1);
+
+            // double l = 30.0;
+            // double S = 1.0;
+            // double pi = 3.1415926535897932384626433;
+            // double ux;
+            // // double ux = -1.0 / (young * S) * (-l * l / (pi * pi) * cos(pi * initCoord(0) / l) - 2.0 * l * initCoord(0) / (pi * pi) + l * l / (pi * pi));
+            // if (initCoord(0) <= l / 3.0)
+            // {
+            //     ux = 1.0 / (young * S) * l * initCoord(0) / (3.0 * pi);
+            // }
+            // else if (initCoord(0) >= 2.0 * l / 3.0)
+            // {
+            //     ux = -1.0 / (young * S) * l * initCoord(0) / (3.0 * pi) + 1.0 / (young * S) * l * l / (3.0 * pi);
+            // }
+            // else
+            // {
+            //     ux = 1.0 / (young * S) * (l * l / (3.0 * 3.0 * pi * pi) * sin(pi / (l / 3.0) * (initCoord(0) - l / 3.0)) + l * l / (9.0 * pi));
+            //     // std::cout << "NAO DEVERIA ENTRAR AQUI PARA O PROBLEMA EM QUESTÃO\n"
+            //     //           << std::endl;
+            // }
+
+            // dif(0) = ux - numDisp(0);
+            // dif(1) = 0.0 - numDisp(1);
+
+            errorL2 += (dif(0) * dif(0) + dif(1) * dif(1)) * j0 * weight;
+
+            bounded_matrix<double, 2, 2> gradU_num = Ac - I;
+
+            double dur_dr = K1 * (b2 * (1.0 - K2) + C / (radius * radius) * (1.0 + K2));
+            double du1_dr = cos(theta) * dur_dr;
+            double du2_dr = sin(theta) * dur_dr;
+            double du1_dtheta = -sin(theta) * urr;
+            double du2_dtheta = cos(theta) * urr;
+
+            bounded_matrix<double, 2, 2> gradU_teo;
+            gradU_teo(0, 0) = cos(theta) * du1_dr - sin(theta) / radius * du1_dtheta;
+            gradU_teo(0, 1) = sin(theta) * du1_dr + cos(theta) / radius * du1_dtheta;
+            gradU_teo(1, 0) = cos(theta) * du2_dr - sin(theta) / radius * du2_dtheta;
+            gradU_teo(1, 1) = sin(theta) * du2_dr + cos(theta) / radius * du2_dtheta;
+
+            // // gradU_teo(0, 0) = -1.0 / (young * S) * (l / pi * sin(pi * initCoord(0) / l) - 2.0 * l / (pi * pi));
+            // gradU_teo(0, 1) = 0.0;
+            // gradU_teo(1, 0) = 0.0;
+            // gradU_teo(1, 1) = 0.0;
+
+            // if (initCoord(0) <= l / 3.0)
+            // {
+            //     gradU_teo(0, 0) = 1.0 / (young * S) * l / (3.0 * pi);
+            // }
+            // else if (initCoord(0) >= 2.0 * l / 3.0)
+            // {
+            //     gradU_teo(0, 0) = -1.0 / (young * S) * l / (3.0 * pi);
+            // }
+            // else
+            // {
+            //     gradU_teo(0, 0) = 1.0 / (young * S) * cos(pi / (l / 3.0) * (initCoord(0) - l / 3.0)) * l / (3.0 * pi);
+            // }
+
+            bounded_matrix<double, 2, 2> gradDif = gradU_teo - gradU_num;
+
+            errorH1 += (gradDif(0, 0) * gradDif(0, 0) + gradDif(0, 1) * gradDif(0, 1) + gradDif(1, 0) * gradDif(1, 0) + gradDif(1, 1) * gradDif(1, 1)) * j0 * weight;
+        }
+    }
+    else
+    {
+        for (int ih = 0; ih < domainIntegrationPoints_.size1(); ih++)
+        {
+            if (distanceFE_[ih] <= 0.0)
+            {
+                double xsi1 = domainIntegrationPoints_(ih, 0);
+                double xsi2 = domainIntegrationPoints_(ih, 1);
+                double weight = domainIntegrationPoints_(ih, 2);
+
+                bounded_vector<double, 2> qxsi;
+                qxsi(0) = xsi1;
+                qxsi(1) = xsi2;
+
+                std::pair<vector<double>, matrix<double>> functions;
+
+                functions = shapeFunctionAndDerivates(qxsi, wpc, inc);
+
+                bounded_matrix<double, 2, 2> A0 = referenceJacobianMatrix(functions.second); //initial configuration map
+                double j0 = jacobianDeterminant(A0);
+                bounded_matrix<double, 2, 2> A0I; //inverse initial configuration map
+                A0I(0, 0) = A0(1, 1) / j0;
+                A0I(1, 1) = A0(0, 0) / j0;
+                A0I(0, 1) = -A0(0, 1) / j0;
+                A0I(1, 0) = -A0(1, 0) / j0;
+                bounded_matrix<double, 2, 2> A1 = currentJacobianMatrix(functions.second); //current configuration map
+                bounded_matrix<double, 2, 2> Ac = prod(A1, A0I);                           //current deformation gradient
+                identity_matrix<double> I(2);                                              //identity matrix
+
+                bounded_vector<double, 2> initCoord, numDisp, teoDisp;
+                initCoord(0) = 0.0;
+                initCoord(1) = 0.0;
+                numDisp(0) = 0.0;
+                numDisp(1) = 0.0;
+
+                for (int i = 0; i < controlPoints_.size(); i++)
+                {
+                    initCoord += functions.first(i) * controlPoints_[i]->getInitialCoordinate();
+                    numDisp += functions.first(i) * controlPoints_[i]->getCurrentDisplacement();
+                }
+
+                std::cout << "Entrou aqui com raio igual a " << norm_2(initCoord) << std::endl;
+
+                radius = norm_2(initCoord);
+                theta = atan2(initCoord(1), initCoord(0));
+
+                double urr = K1 * (b2 * (1.0 - K2) * radius - C / radius * (1.0 + K2));
+
+                bounded_vector<double, 2> dif;
+                dif(0) = cos(theta) * urr - numDisp(0);
+                dif(1) = sin(theta) * urr - numDisp(1);
+
+                // double l = 30.0;
+                // double S = 1.0;
+                // double pi = 3.1415926535897932384626433;
+                // double ux;
+                // // double ux = -1.0 / (young * S) * (-l * l / (pi * pi) * cos(pi * initCoord(0) / l) - 2.0 * l * initCoord(0) / (pi * pi) + l * l / (pi * pi));
+                // if (initCoord(0) <= l / 3.0)
+                // {
+                //     ux = 1.0 / (young * S) * l * initCoord(0) / (3.0 * pi);
+                // }
+                // else if (initCoord(0) >= 2.0 * l / 3.0)
+                // {
+                //     ux = -1.0 / (young * S) * l * initCoord(0) / (3.0 * pi) + 1.0 / (young * S) * l * l / (3.0 * pi);
+                // }
+                // else
+                // {
+                //     ux = 1.0 / (young * S) * (l * l / (3.0 * 3.0 * pi * pi) * sin(pi / (l / 3.0) * (initCoord(0) - l / 3.0)) + l * l / (9.0 * pi));
+                //     // std::cout << "NAO DEVERIA ENTRAR AQUI PARA O PROBLEMA EM QUESTÃO\n"
+                //     //           << std::endl;
+                // }
+
+                // dif(0) = ux - numDisp(0);
+                // dif(1) = 0.0 - numDisp(1);
+
+                errorL2 += (dif(0) * dif(0) + dif(1) * dif(1)) * j0 * weight;
+
+                bounded_matrix<double, 2, 2> gradU_num = Ac - I;
+
+                double dur_dr = K1 * (b2 * (1.0 - K2) + C / (radius * radius) * (1.0 + K2));
+                double du1_dr = cos(theta) * dur_dr;
+                double du2_dr = sin(theta) * dur_dr;
+                double du1_dtheta = -sin(theta) * urr;
+                double du2_dtheta = cos(theta) * urr;
+
+                bounded_matrix<double, 2, 2> gradU_teo;
+                gradU_teo(0, 0) = cos(theta) * du1_dr - sin(theta) / radius * du1_dtheta;
+                gradU_teo(0, 1) = sin(theta) * du1_dr + cos(theta) / radius * du1_dtheta;
+                gradU_teo(1, 0) = cos(theta) * du2_dr - sin(theta) / radius * du2_dtheta;
+                gradU_teo(1, 1) = sin(theta) * du2_dr + cos(theta) / radius * du2_dtheta;
+
+                // gradU_teo(0, 0) = -1.0 / (young * S) * (l / pi * sin(pi * initCoord(0) / l) - 2.0 * l / (pi * pi));
+                // gradU_teo(0, 1) = 0.0;
+                // gradU_teo(1, 0) = 0.0;
+                // gradU_teo(1, 1) = 0.0;
+
+                // if (initCoord(0) <= l / 3.0)
+                // {
+                //     gradU_teo(0, 0) = 1.0 / (young * S) * l / (3.0 * pi);
+                // }
+                // else if (initCoord(0) >= 2.0 * l / 3.0)
+                // {
+                //     gradU_teo(0, 0) = -1.0 / (young * S) * l / (3.0 * pi);
+                // }
+                // else
+                // {
+                //     gradU_teo(0, 0) = 1.0 / (young * S) * cos(pi / (l / 3.0) * (initCoord(0) - l / 3.0)) * l / (3.0 * pi);
+                // }
+
+                bounded_matrix<double, 2, 2> gradDif = gradU_teo - gradU_num;
+
+                errorH1 += (gradDif(0, 0) * gradDif(0, 0) + gradDif(0, 1) * gradDif(0, 1) + gradDif(1, 0) * gradDif(1, 0) + gradDif(1, 1) * gradDif(1, 1)) * j0 * weight;
+            }
+        }
+    }
+    bounded_vector<double, 2> norms;
+    norms(0) = errorL2;
+    norms(1) = errorH1;
+    return norms;
 }

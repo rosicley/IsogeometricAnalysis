@@ -21,13 +21,19 @@ clear:
 	@$ rm *.o *~ s *.vtu mirror* ISOdomain* FEdomain* *.mod *.dat ma26* tensao* esforc* saida omega.txt *.geo Solid/BoundaryConditions/*.o Solid/Isogeometric/*.o Solid/*.o Solid/FiniteElement/*.o Solid/Mesh/*.o $(CURRENT_DIR)/src/*.gch
 
 run1:
-	@$ mpirun -np 1 ./s
+	@$ mpirun -np 1 ./s  
 
 run2:
 	@$ mpirun -np 2 ./s
 
 run3:
 	@$ mpirun -np 3 ./s
+
+run4teste:
+	@$ mpirun -n 4 ./s -ksp_view -ksp_monitor_singular_value
+
+run5teste:
+	@$ mpirun -n 5 ./s -ksp_view -pc_type none -ksp_type gmres -ksp_monitor_singular_value -ksp_gmres_restart 1000
 
 run4:
 	@$ mpirun -n 4 ./s
@@ -36,7 +42,7 @@ run5:
 	@$ mpirun -np 5 ./s
 
 run6:
-	@$ mpirun -np 6 ./s
+	@$ mpirun -np 6 ./s 
 
 run7:
 	@$ mpirun -np 7 ./s
@@ -49,4 +55,12 @@ run12:
 
 run10:
 	@$ mpirun -np 10 ./s
-#	@$ mpirun -np 16 ./f -pc_type jacobi -ksp_type gmres -ksp_monitor_singular_value -ksp_gmres_restart 1000
+
+run11:
+	@$ mpirun -np 11 ./s
+
+run6teste:
+	@$ mpirun -np 6 ./s -pc_type cholesky -pc_factor_mat_solver_type mumps -ksp_view -mat_mumps_icntl_4 2 -mat_mumps_icntl_5 0 -mat_mumps_icntl_18 3 -mat_mumps_icntl_28 2 -mat_mumps_icntl_29 2 -ksp_type gmres -ksp_monitor_singular_value -ksp_gmres_restart 1000
+
+run6teste2:
+	@$ mpirun -np 6 ./s -ksp_view -pc_type cholesky -ksp_type gmres -ksp_monitor_singular_value -ksp_gmres_restart 1000

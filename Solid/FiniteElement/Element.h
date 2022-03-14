@@ -10,9 +10,9 @@
 #include <boost/numeric/ublas/matrix.hpp>
 #include <boost/numeric/ublas/vector.hpp>
 #include "../Isogeometric/Cell.h"
-#include <boost/numeric/bindings/lapack/driver/gesv.hpp>
-#include <boost/numeric/bindings/ublas/matrix.hpp>
-#include <boost/numeric/bindings/ublas/vector.hpp>
+#include <boost/numeric/bindings/lapack/gesv.hpp>
+#include <boost/numeric/ublas/matrix.hpp>
+#include <boost/numeric/ublas/vector.hpp>
 
 using namespace boost::numeric::ublas;
 
@@ -117,6 +117,7 @@ public:
 
     bounded_vector<double, 2> domainJ_IntegralInitial2(const int &hammerPoints, const std::string &ep, const std::string &type, const double &Jradius, const double &rotation, const bounded_vector<double, 2> &tipCoordinates);
 
+    bounded_vector<double, 2> errorL2(const int &hammerPoints, const int &hammerPointsBlendZone);
 
     // void setCauchyStressToNode(const std::string &planeState);
 

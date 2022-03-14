@@ -16,14 +16,17 @@
 #include "FiniteElement/BoundaryElement.h"
 #include "FiniteElement/Inactive.h"
 #include "Mesh/Geometry.h"
-#include <boost/timer.hpp>
+#include <boost/timer/timer.hpp>
 #include <boost/thread.hpp>
-#include <boost/numeric/bindings/lapack/driver/gesv.hpp>
-#include <boost/numeric/bindings/ublas/matrix.hpp>
-#include <boost/numeric/bindings/ublas/vector.hpp>
+#include <boost/numeric/bindings/lapack/gesv.hpp>
+#include <boost/numeric/ublas/matrix.hpp>
+#include <boost/numeric/ublas/vector.hpp>
+#include <boost/numeric/bindings/traits/ublas_matrix.hpp>
 #include <metis.h>
 #include <petscksp.h>
 #include <petscvec.h>
+#include <time.h>
+
 
 using namespace boost::numeric::ublas;
 #ifdef _WIN32
@@ -159,6 +162,8 @@ public:
 
     void useQuarterPointElements();
 
+    void error();
+
 private:
     //Isogeometric - Global
     std::vector<Patch *> patches_;
@@ -286,4 +291,6 @@ private:
     bool quarterPointElement_;
 
     bool crackProblem_ = false;
+
+    std::stringstream time__;
 };

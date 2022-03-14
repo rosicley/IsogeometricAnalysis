@@ -281,8 +281,8 @@ vector<double> BoundaryElement::computeDistribuitedLoads(const bounded_vector<do
 
         for (int ih = 0; ih < nnode; ih++)
         {
-            distribuitedLoad(2 * ih) += value(0) * functions(ih, 0) * weight * jacobian * normal(0);     // * normal(0);
-            distribuitedLoad(2 * ih + 1) += value(1) * functions(ih, 0) * weight * jacobian * normal(1); // * normal(0);
+            distribuitedLoad(2 * ih) += value(0) * functions(ih, 0) * weight * jacobian * normal(0);
+            distribuitedLoad(2 * ih + 1) += value(1) * functions(ih, 0) * weight * jacobian * normal(1);
         }
     }
     return distribuitedLoad;
